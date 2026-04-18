@@ -269,16 +269,88 @@ class DistNet(nn.Module):
         eye = torch.eye(self.total_basis_num, device=flat.device, dtype=flat.dtype)
         return ((gram - eye) ** 2).mean()
 
+    @staticmethod
+    def _flatten_sequence_input(x: torch.Tensor) -> tuple[torch.Tensor, tuple[int, int] | None]:
+        """Accept either frame or grouped-sequence input and flatten to frame axis."""
+
+        if x.ndim == 4:
+            return x, None
+        if x.ndim == 5:
+            batch_size, seq_len, channels, height, width = x.shape
+            return x.reshape(batch_size * seq_len, channels, height, width), (batch_size, seq_len)
+        raise ValueError(f"Expected input rank 4 or 5, got shape {tuple(x.shape)}")
+
+    @staticmethod
+    def _flatten_sequence_labels(
+        labels: torch.Tensor | None,
+        sequence_shape: tuple[int, int] | None,
+    ) -> torch.Tensor | None:
+        """Broadcast sequence-level labels across time when needed."""
+
+        if labels is None or sequence_shape is None:
+            return labels
+
+        batch_size, seq_len = sequence_shape
+        if labels.ndim == 1:
+            if labels.shape[0] != batch_size:
+                raise ValueError(
+                    f"Expected {batch_size} labels for sequence batch, got {tuple(labels.shape)}"
+                )
+            labels = labels.unsqueeze(1).expand(batch_size, seq_len)
+        elif labels.ndim == 2:
+            expected = (batch_size, seq_len)
+            if tuple(labels.shape) != expected:
+                raise ValueError(
+                    f"Expected sequence labels with shape {expected}, got {tuple(labels.shape)}"
+                )
+        else:
+            raise ValueError(
+                f"Expected sequence labels rank 1 or 2, got shape {tuple(labels.shape)}"
+            )
+
+        return labels.reshape(batch_size * seq_len)
+
+    @staticmethod
+    def _reshape_sequence_tensor(
+        tensor: torch.Tensor | None,
+        sequence_shape: tuple[int, int] | None,
+    ) -> torch.Tensor | None:
+        """Restore flattened frame-major tensors back to `B x T x ...`."""
+
+        if tensor is None or sequence_shape is None:
+            return tensor
+        batch_size, seq_len = sequence_shape
+        return tensor.reshape(batch_size, seq_len, *tensor.shape[1:])
+
+    def _reshape_sequence_index_list(
+        self,
+        indices_list: list[torch.Tensor],
+        sequence_shape: tuple[int, int] | None,
+    ) -> list[torch.Tensor]:
+        """Restore decoded per-level indices back to sequence form."""
+
+        if sequence_shape is None:
+            return indices_list
+        return [
+            self._reshape_sequence_tensor(level_indices, sequence_shape)
+            for level_indices in indices_list
+        ]
+
     def forward(self, x, side_labels=None, dataset_labels=None):
         """
         Forward pass for one direction-specific motion matrix batch.
 
         Input shape:
-        - `(B, 1, H, W)` where `H=W=119` for mouth experiments
+        - frame batch: `(B, 1, H, W)`
+        - grouped sequence batch: `(B, T, 1, H, W)`
 
         Returns both reconstructions and auxiliary signals so training code can
         decide which losses to use.
         """
+
+        x, sequence_shape = self._flatten_sequence_input(x)
+        side_labels = self._flatten_sequence_labels(side_labels, sequence_shape)
+        dataset_labels = self._flatten_sequence_labels(dataset_labels, sequence_shape)
 
         feats = self.initial_conv(x)
         feats = self.layer1(feats)
@@ -294,7 +366,7 @@ class DistNet(nn.Module):
         # - `shared_quantized`: continuous vector with straight-through gradient
         # - `indices`: flattened discrete code
         # - `lq_loss`: commitment / quantization loss
-        shared_quantized, indices, lq_loss = self.lq(shared_raw)
+        shared_quantized, indices, _ = self.lq(shared_raw)
         basis = self.get_structured_basis()
         basis_list = self.split_basis(basis)
         d_list = self.decode_indices(indices)
@@ -320,69 +392,162 @@ class DistNet(nn.Module):
         recon = shared_recon + self.private_residual_weight * id_nuisance_residual
         recon = self._enforce_matrix_constraints(recon).unsqueeze(1)
 
+        zero_loss = shared_raw.new_zeros(shared_raw.shape[0])
+        commitment_loss_per_sample = zero_loss
+        quantization_loss_per_sample = zero_loss
+        if self.training:
+            commitment_loss_per_sample = F.mse_loss(
+                shared_raw.detach(),
+                shared_quantized,
+                reduction="none",
+            ).mean(dim=1)
+            quantization_loss_per_sample = F.mse_loss(
+                shared_quantized.detach(),
+                shared_raw,
+                reduction="none",
+            ).mean(dim=1)
+        lq_loss_per_sample = (
+            self.lq.commitment_loss_weight * commitment_loss_per_sample
+            + self.lq.quantization_loss_weight * quantization_loss_per_sample
+        )
+        lq_loss = lq_loss_per_sample.mean()
+
         side_logits = None
         discrete_side_logits = None
         side_loss = None
         side_loss_cont = None
         side_loss_disc = None
+        side_loss_per_sample = None
+        side_loss_cont_per_sample = None
+        side_loss_disc_per_sample = None
         if side_labels is not None:
             # Two complementary side losses:
             # 1. continuous loss on the shared latent
             # 2. discrete loss on one selected level code
             side_logits = self.side_classifier(shared_quantized)
-            side_loss_cont = F.cross_entropy(side_logits, side_labels)
+            side_loss_cont_per_sample = F.cross_entropy(
+                side_logits, side_labels, reduction="none"
+            )
+            side_loss_cont = side_loss_cont_per_sample.mean()
             discrete_side_logits = self.discrete_side_classifier(d_list[1])
-            side_loss_disc = F.cross_entropy(discrete_side_logits, side_labels)
+            side_loss_disc_per_sample = F.cross_entropy(
+                discrete_side_logits, side_labels, reduction="none"
+            )
+            side_loss_disc = side_loss_disc_per_sample.mean()
+            side_loss_per_sample = side_loss_cont_per_sample + side_loss_disc_per_sample
             side_loss = side_loss_cont + side_loss_disc
 
         private_dataset_logits = None
         shared_dataset_logits = None
         dataset_private_loss = None
         dataset_adv_loss = None
+        dataset_private_loss_per_sample = None
+        dataset_adv_loss_per_sample = None
         if self.use_dataset_aux and dataset_labels is not None:
             # Optional helper objective:
             # - private branch may keep dataset-specific information
             # - shared branch is weakly discouraged from encoding it
             private_dataset_logits = self.private_dataset_classifier(private_z)
-            dataset_private_loss = F.cross_entropy(private_dataset_logits, dataset_labels)
+            dataset_private_loss_per_sample = F.cross_entropy(
+                private_dataset_logits,
+                dataset_labels,
+                reduction="none",
+            )
+            dataset_private_loss = dataset_private_loss_per_sample.mean()
 
             shared_dataset_logits = self.shared_dataset_adversary(
                 grad_reverse(shared_quantized, self.grl_lambda)
             )
-            dataset_adv_loss = F.cross_entropy(shared_dataset_logits, dataset_labels)
+            dataset_adv_loss_per_sample = F.cross_entropy(
+                shared_dataset_logits,
+                dataset_labels,
+                reduction="none",
+            )
+            dataset_adv_loss = dataset_adv_loss_per_sample.mean()
 
         orth_loss = self.orthogonality_loss(basis)
-        residual_l1 = id_nuisance_residual.abs().mean()
+        residual_l1_per_sample = id_nuisance_residual.abs().mean(dim=(1, 2))
+        residual_l1 = residual_l1_per_sample.mean()
+
+        reconstructed = self._reshape_sequence_tensor(recon, sequence_shape)
+        action_reconstruction = self._reshape_sequence_tensor(
+            self._enforce_matrix_constraints(shared_recon).unsqueeze(1),
+            sequence_shape,
+        )
+        private_residual = self._reshape_sequence_tensor(
+            id_nuisance_residual.unsqueeze(1),
+            sequence_shape,
+        )
+        shared_quantized = self._reshape_sequence_tensor(shared_quantized, sequence_shape)
+        private_z = self._reshape_sequence_tensor(private_z, sequence_shape)
+        indices = self._reshape_sequence_tensor(indices, sequence_shape)
+        decoded_indices = self._reshape_sequence_index_list(d_list, sequence_shape)
+        side_logits = self._reshape_sequence_tensor(side_logits, sequence_shape)
+        discrete_side_logits = self._reshape_sequence_tensor(
+            discrete_side_logits, sequence_shape
+        )
+        private_dataset_logits = self._reshape_sequence_tensor(
+            private_dataset_logits, sequence_shape
+        )
+        shared_dataset_logits = self._reshape_sequence_tensor(
+            shared_dataset_logits, sequence_shape
+        )
+        lq_loss_per_sample = self._reshape_sequence_tensor(lq_loss_per_sample, sequence_shape)
+        residual_l1_per_sample = self._reshape_sequence_tensor(
+            residual_l1_per_sample, sequence_shape
+        )
+        side_loss_per_sample = self._reshape_sequence_tensor(
+            side_loss_per_sample, sequence_shape
+        )
+        side_loss_cont_per_sample = self._reshape_sequence_tensor(
+            side_loss_cont_per_sample, sequence_shape
+        )
+        side_loss_disc_per_sample = self._reshape_sequence_tensor(
+            side_loss_disc_per_sample, sequence_shape
+        )
+        dataset_private_loss_per_sample = self._reshape_sequence_tensor(
+            dataset_private_loss_per_sample, sequence_shape
+        )
+        dataset_adv_loss_per_sample = self._reshape_sequence_tensor(
+            dataset_adv_loss_per_sample, sequence_shape
+        )
 
         return {
-            "reconstructed": recon,
+            "reconstructed": reconstructed,
             # `action_reconstruction` is the interpretable shared-motion part.
-            "action_reconstruction": self._enforce_matrix_constraints(shared_recon).unsqueeze(1),
+            "action_reconstruction": action_reconstruction,
             # Kept for backward compatibility with earlier code that used the
             # older `shared_reconstruction` naming.
-            "shared_reconstruction": self._enforce_matrix_constraints(shared_recon).unsqueeze(1),
-            "id_nuisance_residual": id_nuisance_residual.unsqueeze(1),
+            "shared_reconstruction": action_reconstruction,
+            "id_nuisance_residual": private_residual,
             # Kept for backward compatibility with earlier code that used the
             # older `private_residual` naming.
-            "private_residual": id_nuisance_residual.unsqueeze(1),
+            "private_residual": private_residual,
             "shared_quantized": shared_quantized,
             "private_z": private_z,
             "indices": indices,
-            "decoded_indices": d_list,
+            "decoded_indices": decoded_indices,
             "action_basis": basis,
             # Backward-compatible alias.
             "basis": basis,
             "lq_loss": lq_loss,
+            "lq_loss_per_sample": lq_loss_per_sample,
             "orth_loss": orth_loss,
             "residual_l1": residual_l1,
+            "residual_l1_per_sample": residual_l1_per_sample,
             "side_loss": {
                 "side_loss": side_loss,
                 "side_loss_cont": side_loss_cont,
                 "side_loss_disc": side_loss_disc,
+                "side_loss_per_sample": side_loss_per_sample,
+                "side_loss_cont_per_sample": side_loss_cont_per_sample,
+                "side_loss_disc_per_sample": side_loss_disc_per_sample,
             },
             "dataset_loss": {
                 "private_dataset_loss": dataset_private_loss,
                 "shared_dataset_adv_loss": dataset_adv_loss,
+                "private_dataset_loss_per_sample": dataset_private_loss_per_sample,
+                "shared_dataset_adv_loss_per_sample": dataset_adv_loss_per_sample,
             },
             "side_logits": side_logits,
             "discrete_side_logits": discrete_side_logits,
