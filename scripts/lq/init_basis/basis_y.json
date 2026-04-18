@@ -1,0 +1,74 @@
+{
+  "mode": "y",
+  "region": "mouth",
+  "bank_shape": [
+    11,
+    119,
+    119
+  ],
+  "ordering": {
+    "by_source": [
+      "IMR",
+      "TT"
+    ],
+    "by_side": [
+      "left_affected",
+      "bilateral_normal",
+      "right_affected"
+    ],
+    "action": [
+      "mild",
+      "kmeans_1",
+      "kmeans_2",
+      "kmeans_3",
+      "kmeans_4",
+      "kmeans_5"
+    ]
+  },
+  "paths": {
+    "grouped_dir": "data/win20-step20/svd_multi_patient_grouped_results",
+    "tt_svd_dir": "data/win20-step20/TT-SVD",
+    "imr_svd_dir": "data/win20-step20/IMR-SVD"
+  },
+  "cluster_metadata": {
+    "sampled_subjects": [
+      "850823",
+      "845408",
+      "844753",
+      "850830",
+      "740525",
+      "861649",
+      "847397",
+      "851367",
+      "851519",
+      "840172"
+    ],
+    "sampled_paths": [
+      "data/win20-step20/TT-SVD/850823/PC1_y.npy",
+      "data/win20-step20/TT-SVD/845408/PC1_y.npy",
+      "data/win20-step20/TT-SVD/844753/PC1_y.npy",
+      "data/win20-step20/TT-SVD/850830/PC1_y.npy",
+      "data/win20-step20/TT-SVD/740525/PC1_y.npy",
+      "data/win20-step20/TT-SVD/861649/PC1_y.npy",
+      "data/win20-step20/TT-SVD/847397/PC1_y.npy",
+      "data/win20-step20/TT-SVD/851367/PC1_y.npy",
+      "data/win20-step20/TT-SVD/851519/PC1_y.npy",
+      "data/win20-step20/TT-SVD/840172/PC1_y.npy"
+    ],
+    "assignments": [
+      3,
+      1,
+      0,
+      3,
+      1,
+      2,
+      0,
+      4,
+      0,
+      0
+    ],
+    "cluster_count": 5,
+    "sample_count": 10,
+    "tt_priority_count": 8
+  }
+}
