@@ -2,7 +2,7 @@
 
 [TOC]
 
-**最后更新**: 2026-04-12（第五章码本分型分析完成）
+**最后更新**: 2026-04-20（补充LQ round-1 重构兼容性进展）
 
 ---
 
@@ -240,22 +240,160 @@
 
 ---
 
-## 六、关键实验发现总结
+## 六、LQ原型训练进展与FSQ替换（2026-04-19）
 
-### 6.1 差分形式确认
+### 6.1 当前范围
+
+当前 `scripts/lq` 的工作重点已经收敛到一个可运行的单方向原型：
+
+- mode: `x`
+- region: `mouth`
+- data: `data/win20-step20/IMR,data/win20-step20/TT`
+- 输入形式: `B x T x 1 x H x W`
+- 当前目标: 学习共享离散运动码 + 动作基重建，并保留私有残差分支
+
+### 6.2 工程状态
+
+当前已经完成：
+
+- 序列输入训练接口接通
+- `basis_init` 接入训练流程
+- batch memory smoke test 接入
+- `train.py` 按帧计算 loss
+- round-1 工程重构已完成第一轮拆分：
+  - 训练逻辑拆入 `scripts/lq/training/`
+  - 数据逻辑拆入 `scripts/lq/data/`
+  - `DistNet` 内部拆入 `scripts/lq/model/` 子模块
+  - 对外 CLI 与 checkpoint / dataset 语义保持不变
+- `network.py` 支持结构探针：
+  - `pool_size`
+  - `shared_dim`
+  - residual cap
+  - soft basis mixing
+- 官方量化器切换接通：
+  - `LatentQuantize`
+  - `FSQ`
+- `analyze_checkpoint.py` 可统计 basis bank 与 code usage
+
+### 6.3 当前阶段简要总结
+
+当前这一阶段已经完成从“单个 FSQ baseline”到“结构 probe”的一轮收敛，
+重点围绕以下问题展开：
+
+- 是否能让共享离散码真正被使用，而不是 collapse
+- 是否能让 shared branch 承担更多解释，而不是主要依赖 private residual
+- basis 的正交性、稀疏性和 shared 结构复杂度是否会改变上述行为
+
+当前得到的简要结论是：
+
+- 早期 collapse 的主要缓解来自官方 `FSQ` 替换，`v10` 起 code usage 明显
+  好于旧版 `LatentQuantize`
+- 进一步加强 basis 约束（全局 QR、basis L1）后，总重建可以继续下降，但
+  很容易把压力重新推回 private residual branch
+- 引入 residual FSQ 后，高层 code usage 比单个 FSQ 更健康，说明量化结构
+  本身仍然重要
+- 在 residual FSQ 基础上，再增加 shared 路径复杂度（anchor-guided sparse
+  mixing）并显式加入 `shared_recon` 监督后，shared reconstruction 比
+  `v17` 有明确回升，说明“先增强 shared 结构，再单独监督 shared”是正确方向
+
+当前最有代表性的几组结果为：
+
+- `v10 FSQ baseline`:
+  - `val_recon = 0.3600`
+  - `val_shared_recon = 0.3620`
+  - L2 `[20, 23, 37]`
+  - L3 `[18, 2, 3, 3, 25, 29]`
+- `v17 residual_fsq + global_qr + basis_l1`:
+  - `val_recon = 0.3109`
+  - `val_shared_recon = 0.3423`
+  - `val_scaled_residual = 0.0393`
+  - L3 `[55, 2, 1, 3, 13, 6]`
+- `v18 residual_fsq + sparse_shared_mixing + shared_recon_loss`:
+  - `val_recon = 0.3150`
+  - `val_shared_recon = 0.3469`
+  - `val_scaled_residual = 0.0394`
+  - L3 `[57, 1, 0, 2, 8, 12]`
+- `v19 v18 + tighter private residual cap`:
+  - `val_recon = 0.3275`
+  - `val_shared_recon = 0.3446`
+  - `val_scaled_residual = 0.0214`
+  - L3 `[57, 1, 1, 1, 10, 10]`
+- `v20 v19 + tighter cap=0.4`:
+  - `val_recon = 0.3310`
+  - `val_shared_recon = 0.3448`
+  - `val_scaled_residual = 0.0171`
+  - L3 `[57, 1, 0, 2, 17, 3]`
+- `v21 v19 + looser cap=0.6`:
+  - `val_recon = 0.3245`
+  - `val_shared_recon = 0.3446`
+  - `val_scaled_residual = 0.0251`
+  - L3 `[57, 1, 0, 2, 11, 9]`
+
+这里需要特别注意：
+
+- `v18` 和 `v19` 的总 loss 与早期 probe 不可直接比较，因为已显式加入
+  `shared_recon_weight`
+- `v20` 和 `v21` 也属于同一目标函数设置，因此更适合与 `v18/v19` 横向比较，
+  不应和更早期 probe 直接比较总 loss
+- 目前验证集仍只有 `80` 个有效帧，因此所有 probe 结论都应理解为方向性证据，
+  不是最终定论
+
+### 6.4 当前判断与下一步计划
+
+目前最合理的判断是：
+
+- 问题不只是 loss weight 设置，而是 shared branch 本身表达能力不足
+- 只收紧 basis 或只调 residual 权重，都会被 private residual 重新“绕开”
+- residual FSQ 有助于改善 code usage，但不能自动带来更好的 shared 解释
+- “增强 shared 结构 + 显式优化 shared reconstruction”已经显示出正向效果，
+  应该作为下一阶段主线保留
+- `0.4/0.5/0.6` 的局部 cap sweep 表明：
+  - cap 放松到 `0.6` 时，模型主要把收益转移到 private residual，解释性变差
+  - cap 收紧到 `0.4` 时，private residual 进一步下降，但 higher-level code usage
+    比 `0.5` 更集中
+  - `0.5` 目前仍是更稳妥的解释性 baseline；`0.4` 可以作为更激进的私有分支抑制备选
+
+下一步计划：
+
+- 保留当前 `v18/v19/v20` 共享结构设计：
+  - residual FSQ
+  - anchor-guided sparse shared mixing
+  - shared reconstruction supervision
+- 当前更合理的落点是：
+  - 以 `v19` 作为稳妥 interpretability baseline
+  - 将 `v20` 作为 stricter-private 备选对照
+- 下一步应从纯 tradeoff sweep 转向 shared 解释性的进一步加强，优先回答：
+  - 能否在保持 `v19/v20` 级别 private residual 的前提下，让 higher-level code usage
+    更均匀
+  - 能否通过更直接的共享结构约束，让 basis heatmap 语义更稳定、更不相似
+  - 在当前小验证集之外，这些趋势是否能在更大有效帧设置下保持稳定
+
+### 6.5 文档入口
+
+更完整的实现状态、实验时间线、结果和未决问题，见：
+
+- [`docs/lq_progress.md`](/home/weizilin/generate_idea/docs/lq_progress.md)
+- [`docs/lq_train_presets.md`](/home/weizilin/generate_idea/docs/lq_train_presets.md)
+- [`docs/lq_dataset_refactor_checklist.md`](/home/weizilin/generate_idea/docs/lq_dataset_refactor_checklist.md)
+
+---
+
+## 七、关键实验发现总结
+
+### 7.1 差分形式确认
 - ✅ 差分ΔD比RAW矩阵更能捕捉运动语义
 - ✅ 差分后PC1 dominant从eyehole(身份)变为mouth(运动)
 
-### 6.2 SVD联合分解可行
+### 7.2 SVD联合分解可行
 - ✅ 基向量跨患者共享（PC1 dominant region一致）
 - ✅ 身份信息没有混入基向量
 - ✅ Grassmann流形分析证实：共享基是"真共享"而非"计算强迫"
 
-### 6.4 Grassmann流形验证（2026-03-30）
+### 7.3 Grassmann流形验证（2026-03-30）
 - ✅ 跨数据集联合基子空间接近（TT_joint vs IMR_joint: X 13.5°, Y 7.1°）
 - ✅ 患者基与本数据集联合基对齐更好，验证基的真实共享性
 
-### 6.5 blendshape时间系数验证（2026-03-30）
+### 7.4 blendshape时间系数验证（2026-03-30）
 
 - ✅ PC1 ↔ cheekPuff/mouthUpperUpLeft (脸颊/嘴角运动)
 - ✅ PC2 ↔ jawOpen/cheekSquint/cheekPuff (张嘴+脸颊收缩)
@@ -263,9 +401,9 @@
 
 ---
 
-## 七、未来研究计划
+## 八、未来研究计划
 
-### 7.2 中期方向（神经网络）
+### 8.1 中期方向（神经网络）
 
 **目标**: 扩展到复杂运动序列 + 语义可解释
 
@@ -280,7 +418,7 @@
    - 部分时间窗口有标签
    - 加约束: 基的激活系数与对应blendshape相关
 
-### 7.3 长期目标
+### 8.2 长期目标
 
 - 实现多动作类型的运动基分解
 - 达到"每个基有确切动作语义"的可解释性
@@ -288,7 +426,7 @@
 
 ---
 
-## 八、关键文献
+## 九、关键文献
 
 | 论文 | 年份 | 相关内容 |
 |------|------|---------|
@@ -299,7 +437,7 @@
 
 ---
 
-## 九、待验证问题清单
+## 十、待验证问题清单
 
 - [x] 共享基是否是真共享？（Grassmann流形验证 ✓）
 - [x] blendshape弱监督是否有效？（第四章 ✓ PC1↔jawOpen, PC2↔mouth动作）

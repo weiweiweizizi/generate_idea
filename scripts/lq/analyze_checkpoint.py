@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 
 import fire
 import numpy as np
@@ -11,8 +12,18 @@ import torch
 from PIL import Image, ImageDraw
 from torch.utils.data import ConcatDataset, DataLoader
 
-from datasets import DatasetSpec, FacialMotionSequenceDataset, subject_split
-from model.network import DistNet
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from scripts.lq.data import DatasetSpec, FacialMotionSequenceDataset, subject_split
+    from scripts.lq.model.network import DistNet
+else:
+    from .data import DatasetSpec, FacialMotionSequenceDataset, subject_split
+    from .model.network import DistNet
+
+try:
+    RESAMPLE_NEAREST = Image.Resampling.NEAREST
+except AttributeError:
+    RESAMPLE_NEAREST = Image.NEAREST
 
 
 def build_specs(data_roots: str) -> list[DatasetSpec]:
@@ -117,7 +128,7 @@ def plot_basis_grid(basis: np.ndarray, levels: tuple[int, ...], output_path: Pat
         y0 = pad + row * (cell_size + title_h + pad)
 
         basis_img = basis_to_rgb_image(basis[idx], vmax=vmax).resize(
-            (cell_size, cell_size), Image.NEAREST
+            (cell_size, cell_size), RESAMPLE_NEAREST
         )
         canvas.paste(basis_img, (x0, y0 + title_h))
         draw.text((x0, y0), labels[idx], fill=(0, 0, 0))
@@ -202,7 +213,14 @@ def analyze(
     apply_deleted_filter = bool(config.get("apply_deleted_filter", True))
     basis_size = int(config.get("basis_size", 119))
     hidden_dim = int(config.get("hidden_dim", 32))
+    pool_size = int(config.get("pool_size", 1))
+    shared_dim = config.get("shared_dim")
+    if shared_dim is not None:
+        shared_dim = int(shared_dim)
     private_dim = int(config.get("private_dim", 32))
+    private_decoder_hidden_dim = config.get("private_decoder_hidden_dim")
+    if private_decoder_hidden_dim is not None:
+        private_decoder_hidden_dim = int(private_decoder_hidden_dim)
     levels = tuple(int(v) for v in str(config.get("levels", "2,3,6")).split(","))
     use_dataset_aux = bool(config.get("use_dataset_aux", False))
 
@@ -234,13 +252,26 @@ def analyze(
         levels=levels,
         basis_size=basis_size,
         hidden_dim=hidden_dim,
+        pool_size=pool_size,
+        shared_dim=shared_dim,
         private_dim=private_dim,
+        private_decoder_hidden_dim=private_decoder_hidden_dim,
         num_side_classes=3,
         num_dataset_classes=len(specs),
         private_residual_weight=float(config.get("private_residual_weight", 0.25)),
+        private_residual_max_l1=config.get("private_residual_max_l1"),
+        shared_basis_soft_mixing=bool(config.get("shared_basis_soft_mixing", False)),
+        shared_basis_anchor_bias=float(config.get("shared_basis_anchor_bias", 1.0)),
+        shared_basis_topk=config.get("shared_basis_topk"),
         grl_lambda=float(config.get("grl_lambda", 1.0)),
         use_dataset_aux=use_dataset_aux,
         action_basis_init_path=None,
+        lq_commitment_loss_weight=float(config.get("lq_commitment_loss_weight", 0.1)),
+        lq_quantization_loss_weight=float(config.get("lq_quantization_loss_weight", 0.1)),
+        lq_optimize_values=bool(config.get("lq_optimize_values", True)),
+        quantizer_type=config.get("quantizer_type", "latent_quantize"),
+        fsq_preserve_symmetry=bool(config.get("fsq_preserve_symmetry", True)),
+        basis_orthogonalization=config.get("basis_orthogonalization", "normalize"),
     ).to(device)
     model.load_state_dict(ckpt["model"])
 
