@@ -84,6 +84,26 @@ def build_side_classifier(shared_dim: int, num_side_classes: int) -> nn.Sequenti
     )
 
 
+def build_side_semantic_coeff_head(shared_dim: int, hidden_dim: int) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Linear(shared_dim, hidden_dim),
+        nn.ReLU(inplace=True),
+        nn.Linear(hidden_dim, 1),
+    )
+
+
+def build_side_semantic_basis_head(
+    shared_dim: int,
+    hidden_dim: int,
+    side_basis_count: int,
+) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Linear(shared_dim, hidden_dim),
+        nn.ReLU(inplace=True),
+        nn.Linear(hidden_dim, side_basis_count),
+    )
+
+
 def build_discrete_side_classifier(level_size: int, num_side_classes: int) -> nn.Embedding:
     return nn.Embedding(level_size, num_side_classes)
 

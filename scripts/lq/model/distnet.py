@@ -34,6 +34,8 @@ try:
         build_private_dataset_classifier,
         build_private_decoder,
         build_private_head,
+        build_side_semantic_basis_head,
+        build_side_semantic_coeff_head,
         build_shared_basis_heads,
         build_shared_coeff_heads,
         build_shared_coeff_net,
@@ -61,6 +63,8 @@ except ImportError:
         build_private_dataset_classifier,
         build_private_decoder,
         build_private_head,
+        build_side_semantic_basis_head,
+        build_side_semantic_coeff_head,
         build_shared_basis_heads,
         build_shared_coeff_heads,
         build_shared_coeff_net,
@@ -131,6 +135,8 @@ class DistNet(nn.Module):
         shared_basis_soft_mixing=False,
         shared_basis_anchor_bias=1.0,
         shared_basis_topk=None,
+        side_semantic_enabled=False,
+        side_basis_count=0,
     ):
         super().__init__()
 
@@ -164,6 +170,15 @@ class DistNet(nn.Module):
         self.shared_basis_soft_mixing = shared_basis_soft_mixing
         self.shared_basis_anchor_bias = shared_basis_anchor_bias
         self.shared_basis_topk = shared_basis_topk
+        self.side_semantic_enabled = side_semantic_enabled
+        self.side_basis_count = int(side_basis_count)
+
+        if self.side_basis_count < 0:
+            raise ValueError("side_basis_count must be >= 0")
+        if self.side_semantic_enabled and self.side_basis_count <= 0:
+            raise ValueError(
+                "side_basis_count must be > 0 when side_semantic_enabled=True"
+            )
 
         (
             self.initial_conv,
@@ -188,6 +203,9 @@ class DistNet(nn.Module):
         self.action_basis_bank = nn.Parameter(
             torch.randn(self.total_basis_num, basis_size, basis_size) * 0.02
         )
+        self.side_basis_bank = nn.Parameter(
+            torch.randn(self.side_basis_count, basis_size, basis_size) * 0.02
+        )
         if action_basis_init_path is not None:
             self._load_action_basis_init(action_basis_init_path)
 
@@ -203,6 +221,20 @@ class DistNet(nn.Module):
             shared_dim=self.shared_dim,
             hidden_dim=hidden_dim,
             levels=self.levels,
+        )
+        self.side_semantic_coeff_head = (
+            build_side_semantic_coeff_head(self.shared_dim, hidden_dim)
+            if self.side_basis_count > 0
+            else None
+        )
+        self.side_semantic_basis_head = (
+            build_side_semantic_basis_head(
+                self.shared_dim,
+                hidden_dim,
+                self.side_basis_count,
+            )
+            if self.side_basis_count > 0
+            else None
         )
         self.private_decoder = build_private_decoder(
             private_dim=private_dim,
@@ -239,6 +271,17 @@ class DistNet(nn.Module):
             basis_size=self.basis_size,
             basis_orthogonalization=self.basis_orthogonalization,
         )
+
+    def get_side_basis(self) -> torch.Tensor:
+        if self.side_basis_count == 0:
+            return self.side_basis_bank
+        side_basis = self._enforce_matrix_constraints(self.side_basis_bank)
+        side_basis_flat = F.normalize(
+            side_basis.reshape(self.side_basis_count, -1),
+            dim=1,
+            eps=1e-8,
+        )
+        return side_basis_flat.reshape(self.side_basis_count, self.basis_size, self.basis_size)
 
     def _limit_private_residual(self, residual: torch.Tensor) -> torch.Tensor:
         """
@@ -376,7 +419,27 @@ class DistNet(nn.Module):
             for level_indices in indices_list
         ]
 
-    def forward(self, x, side_labels=None, dataset_labels=None):
+    @staticmethod
+    def _mean_pool_sequence_tensor(
+        tensor: torch.Tensor | None,
+        sequence_shape: tuple[int, int] | None,
+    ) -> torch.Tensor | None:
+        """Optionally expose simple unmasked group pooling for later tasks."""
+
+        if tensor is None or sequence_shape is None:
+            return None
+        batch_size, seq_len = sequence_shape
+        if tensor.ndim >= 2 and tensor.shape[:2] == (batch_size, seq_len):
+            return tensor.mean(dim=1)
+        return tensor.reshape(batch_size, seq_len, *tensor.shape[1:]).mean(dim=1)
+
+    def forward(
+        self,
+        x,
+        side_labels=None,
+        dataset_labels=None,
+        return_group_pooled: bool = False,
+    ):
         """
         Forward pass for one direction-specific motion matrix batch.
 
@@ -400,6 +463,7 @@ class DistNet(nn.Module):
 
         shared_quantized, indices, stage_quantized = self._quantize_shared(shared_raw)
         basis = self.get_structured_basis()
+        side_basis = self.get_side_basis()
         basis_list = self.split_basis(basis)
         d_list = self.decode_indices(indices)
 
@@ -409,9 +473,12 @@ class DistNet(nn.Module):
             if stage_quantized is not None
             else [shared_quantized for _ in self.levels]
         )
-        shared_recon = torch.zeros(
+        shared_free_recon = torch.zeros(
             x.shape[0], self.basis_size, self.basis_size, device=x.device, dtype=x.dtype
         )
+        free_path_coeff_levels = []
+        free_path_usage_levels = []
+        free_path_rep_levels = []
 
         for level_idx, (basis_i, d_i, level_quantized_i) in enumerate(
             zip(basis_list, d_list, level_quantized_list)
@@ -425,13 +492,40 @@ class DistNet(nn.Module):
                 level_weights = F.softmax(level_logits, dim=-1)
                 selected_basis = torch.einsum("bl,lxy->bxy", level_weights, basis_i)
             else:
+                level_weights = F.one_hot(d_i, num_classes=basis_i.shape[0]).to(
+                    device=x.device,
+                    dtype=shared_quantized.dtype,
+                )
                 selected_basis = basis_i[d_i]
             if coeffs is None:
                 coeff = self.shared_coeff_heads[level_idx](level_quantized_i)
                 coeff = coeff.view(x.shape[0], 1, 1)
             else:
                 coeff = coeffs[:, level_idx].view(x.shape[0], 1, 1)
-            shared_recon = shared_recon + coeff * selected_basis
+            shared_free_recon = shared_free_recon + coeff * selected_basis
+            free_path_coeff_levels.append(coeff.view(x.shape[0], 1))
+            free_path_usage_levels.append(level_weights)
+            free_path_rep_levels.append(level_weights * coeff.view(x.shape[0], 1))
+
+        free_path_coefficients = torch.cat(free_path_coeff_levels, dim=1)
+        free_path_usage = torch.cat(free_path_usage_levels, dim=1)
+        free_path_rep = torch.cat(free_path_rep_levels, dim=1)
+
+        shared_side_recon = torch.zeros_like(shared_free_recon)
+        side_path_usage = shared_quantized.new_zeros((x.shape[0], self.side_basis_count))
+        side_path_rep = shared_quantized.new_zeros((x.shape[0], self.side_basis_count))
+        side_path_coefficients = shared_quantized.new_zeros((x.shape[0], 1))
+        side_basis_logits = None
+        if self.side_semantic_enabled and self.side_basis_count > 0:
+            side_basis_logits = self.side_semantic_basis_head(shared_quantized)
+            side_path_usage = F.softmax(side_basis_logits, dim=-1)
+            side_coeff = self.side_semantic_coeff_head(shared_quantized).view(x.shape[0], 1, 1)
+            side_path_coefficients = side_coeff.view(x.shape[0], 1)
+            side_path_rep = side_path_usage * side_path_coefficients
+            selected_side_basis = torch.einsum("bs,sxy->bxy", side_path_usage, side_basis)
+            shared_side_recon = side_coeff * selected_side_basis
+
+        shared_recon = shared_side_recon + shared_free_recon
 
         id_nuisance_residual = self.private_decoder(private_z).reshape(
             x.shape[0], self.basis_size, self.basis_size
@@ -517,6 +611,14 @@ class DistNet(nn.Module):
             self._enforce_matrix_constraints(shared_recon).unsqueeze(1),
             sequence_shape,
         )
+        shared_side_reconstruction = self._reshape_sequence_tensor(
+            self._enforce_matrix_constraints(shared_side_recon).unsqueeze(1),
+            sequence_shape,
+        )
+        shared_free_reconstruction = self._reshape_sequence_tensor(
+            self._enforce_matrix_constraints(shared_free_recon).unsqueeze(1),
+            sequence_shape,
+        )
         private_residual = self._reshape_sequence_tensor(
             id_nuisance_residual.unsqueeze(1),
             sequence_shape,
@@ -525,6 +627,19 @@ class DistNet(nn.Module):
         private_z = self._reshape_sequence_tensor(private_z, sequence_shape)
         indices = self._reshape_sequence_tensor(indices, sequence_shape)
         decoded_indices = self._reshape_sequence_index_list(d_list, sequence_shape)
+        side_path_usage = self._reshape_sequence_tensor(side_path_usage, sequence_shape)
+        free_path_usage = self._reshape_sequence_tensor(free_path_usage, sequence_shape)
+        side_path_rep = self._reshape_sequence_tensor(side_path_rep, sequence_shape)
+        free_path_rep = self._reshape_sequence_tensor(free_path_rep, sequence_shape)
+        side_path_coefficients = self._reshape_sequence_tensor(
+            side_path_coefficients,
+            sequence_shape,
+        )
+        free_path_coefficients = self._reshape_sequence_tensor(
+            free_path_coefficients,
+            sequence_shape,
+        )
+        side_basis_logits = self._reshape_sequence_tensor(side_basis_logits, sequence_shape)
         side_logits = self._reshape_sequence_tensor(side_logits, sequence_shape)
         discrete_side_logits = self._reshape_sequence_tensor(
             discrete_side_logits, sequence_shape
@@ -554,11 +669,23 @@ class DistNet(nn.Module):
         dataset_adv_loss_per_sample = self._reshape_sequence_tensor(
             dataset_adv_loss_per_sample, sequence_shape
         )
+        group_pooled_side_rep = (
+            self._mean_pool_sequence_tensor(side_path_rep, sequence_shape)
+            if return_group_pooled
+            else None
+        )
+        group_pooled_free_rep = (
+            self._mean_pool_sequence_tensor(free_path_rep, sequence_shape)
+            if return_group_pooled
+            else None
+        )
 
         return {
             "reconstructed": reconstructed,
             "action_reconstruction": action_reconstruction,
             "shared_reconstruction": action_reconstruction,
+            "shared_side_reconstruction": shared_side_reconstruction,
+            "shared_free_reconstruction": shared_free_reconstruction,
             "id_nuisance_residual": private_residual,
             "private_residual": private_residual,
             "shared_quantized": shared_quantized,
@@ -567,12 +694,22 @@ class DistNet(nn.Module):
             "decoded_indices": decoded_indices,
             "action_basis": basis,
             "basis": basis,
+            "side_basis": side_basis,
             "lq_loss": lq_loss,
             "lq_loss_per_sample": lq_loss_per_sample,
             "orth_loss": orth_loss,
             "basis_l1": basis_l1,
             "residual_l1": residual_l1,
             "residual_l1_per_sample": residual_l1_per_sample,
+            "side_path_usage": side_path_usage,
+            "free_path_usage": free_path_usage,
+            "side_path_representation": side_path_rep,
+            "free_path_representation": free_path_rep,
+            "side_path_coefficients": side_path_coefficients,
+            "free_path_coefficients": free_path_coefficients,
+            "side_basis_logits": side_basis_logits,
+            "group_pooled_side_rep": group_pooled_side_rep,
+            "group_pooled_free_rep": group_pooled_free_rep,
             "side_loss": {
                 "side_loss": side_loss,
                 "side_loss_cont": side_loss_cont,
