@@ -1,6 +1,6 @@
 # LQ Prototype Progress
 
-Last updated: 2026-04-20
+Last updated: 2026-04-20 (round-1 side semantic bank smoke)
 
 ## Scope
 
@@ -260,6 +260,46 @@ Current local sweep readout around `v19`:
   better balance between private suppression and L3 spread
 - `cap=0.6` is too loose for the current objective and mostly restores private
   correction capacity
+
+First round-1 side semantic bank smoke on `win20`:
+
+- run: `outputs/lq_x_mouth_v22_side_semantic_bank_probe_smoke`
+- preset change:
+  - keep the `v19` backbone intact:
+    - `action_basis_init_path=scripts/lq/init_basis/basis_x.npy`
+    - `shared_recon_weight=1.0`
+    - `quantizer_type=residual_fsq`
+    - `basis_orthogonalization=global_qr`
+    - `private_residual_max_l1=0.5`
+  - enable the round-1 side semantic bank only:
+    - `side_semantic_enabled=True`
+    - `side_basis_count=2`
+    - `side_loss_weight=0.3`
+- smoke result:
+  - `val_loss = 1.0672`
+  - `val_recon = 0.3636`
+  - `val_shared_recon = 0.3636`
+  - `val_scaled_residual = 0.00233`
+  - `val_side_group = 1.1104`
+- analysis result:
+  - output files written:
+    - `analysis/summary.json`
+    - `analysis/side_basis_bank_heatmap.png`
+    - `analysis/group_level_representations.npz`
+  - `side_basis_shape = [2, 119, 119]`
+  - `mean_side_path_usage = 0.500`
+  - `mean_free_path_usage = 0.273`
+  - `mean_side_recon_l1 = 0.00162`
+  - `mean_free_recon_l1 = 0.000262`
+  - `side_from_side_rep_acc = 0.364`
+  - `side_from_free_rep_acc = 0.364`
+  - `dataset_from_side_rep_acc = 0.818`
+  - `dataset_from_free_rep_acc = 0.818`
+- decision:
+  - accept as a successful round-1 preset and analysis smoke
+  - do not interpret it as semantic separation success yet
+  - `B_side` is not idle, but after one epoch it does not beat the free path on
+    the side probe, and both shared branches still retain obvious dataset signal
 
 ## Current Implementation Status
 

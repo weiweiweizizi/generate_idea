@@ -2,7 +2,7 @@
 
 [TOC]
 
-**最后更新**: 2026-04-20（补充LQ round-1 重构兼容性进展）
+**最后更新**: 2026-04-20（补充LQ round-1 side semantic bank smoke）
 
 ---
 
@@ -368,7 +368,54 @@
   - 能否通过更直接的共享结构约束，让 basis heatmap 语义更稳定、更不相似
   - 在当前小验证集之外，这些趋势是否能在更大有效帧设置下保持稳定
 
-### 6.5 文档入口
+### 6.5 Round-1 side semantic bank smoke（2026-04-20）
+
+基于 `v19` backbone 的关键结构参数，补充了 `v22` round-1 smoke preset：
+
+- 保留：
+  - `action_basis_init_path=scripts/lq/init_basis/basis_x.npy`
+  - `shared_recon_weight=1.0`
+  - `quantizer_type=residual_fsq`
+  - `basis_orthogonalization=global_qr`
+  - `private_residual_max_l1=0.5`
+- 新增：
+  - `side_semantic_enabled=True`
+  - `side_basis_count=2`
+  - `side_loss_weight=0.3`
+
+Smoke 运行：
+
+- 训练输出：`outputs/lq_x_mouth_v22_side_semantic_bank_probe_smoke`
+- 1 epoch validation：
+  - `val_loss = 1.0672`
+  - `val_recon = 0.3636`
+  - `val_shared_recon = 0.3636`
+  - `val_scaled_residual = 0.00233`
+  - `val_side_group = 1.1104`
+
+Checkpoint analysis smoke 已完成，并写出：
+
+- `analysis/summary.json`
+- `analysis/side_basis_bank_heatmap.png`
+- `analysis/group_level_representations.npz`
+
+当前 smoke 结论：
+
+- `B_side` 已经被实际使用：
+  - `side_basis_shape = [2, 119, 119]`
+  - `mean_side_path_usage = 0.500`
+  - `mean_free_path_usage = 0.273`
+  - `mean_side_recon_l1 = 0.00162`，高于 `mean_free_recon_l1 = 0.000262`
+- 但 1 epoch 下还没有看到 side probe 优势：
+  - `side_from_side_rep_acc = 0.364`
+  - `side_from_free_rep_acc = 0.364`
+- free/shared 路径仍带有明显 dataset/side 痕迹：
+  - `dataset_from_side_rep_acc = 0.818`
+  - `dataset_from_free_rep_acc = 0.818`
+
+因此当前可确认的是：round-1 preset、训练链路和 side/free 分析链路已经打通；但仅凭 smoke 还不能认为 side semantic separation 已成立。
+
+### 6.6 文档入口
 
 更完整的实现状态、实验时间线、结果和未决问题，见：
 
