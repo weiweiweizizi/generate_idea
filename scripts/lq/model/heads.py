@@ -104,6 +104,17 @@ def build_side_semantic_basis_head(
     )
 
 
+def build_group_side_classifier(
+    side_basis_count: int,
+    num_side_classes: int,
+) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Linear(side_basis_count, 32),
+        nn.ReLU(inplace=True),
+        nn.Linear(32, num_side_classes),
+    )
+
+
 def build_discrete_side_classifier(level_size: int, num_side_classes: int) -> nn.Embedding:
     return nn.Embedding(level_size, num_side_classes)
 

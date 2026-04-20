@@ -31,6 +31,7 @@ try:
     from .encoder import build_motion_encoder
     from .heads import (
         build_discrete_side_classifier,
+        build_group_side_classifier,
         build_private_dataset_classifier,
         build_private_decoder,
         build_private_head,
@@ -60,6 +61,7 @@ except ImportError:
     from encoder import build_motion_encoder
     from heads import (
         build_discrete_side_classifier,
+        build_group_side_classifier,
         build_private_dataset_classifier,
         build_private_decoder,
         build_private_head,
@@ -137,6 +139,7 @@ class DistNet(nn.Module):
         shared_basis_topk=None,
         side_semantic_enabled=False,
         side_basis_count=0,
+        side_pooling="masked_mean",
     ):
         super().__init__()
 
@@ -172,6 +175,7 @@ class DistNet(nn.Module):
         self.shared_basis_topk = shared_basis_topk
         self.side_semantic_enabled = side_semantic_enabled
         self.side_basis_count = int(side_basis_count)
+        self.side_pooling = side_pooling
 
         if self.side_basis_count < 0:
             raise ValueError("side_basis_count must be >= 0")
@@ -179,6 +183,8 @@ class DistNet(nn.Module):
             raise ValueError(
                 "side_basis_count must be > 0 when side_semantic_enabled=True"
             )
+        if not self.side_pooling:
+            raise ValueError("side_pooling must be a non-empty string")
 
         (
             self.initial_conv,
@@ -233,6 +239,11 @@ class DistNet(nn.Module):
                 hidden_dim,
                 self.side_basis_count,
             )
+            if self.side_basis_count > 0
+            else None
+        )
+        self.group_side_classifier = (
+            build_group_side_classifier(self.side_basis_count, num_side_classes)
             if self.side_basis_count > 0
             else None
         )
@@ -432,6 +443,13 @@ class DistNet(nn.Module):
         if tensor.ndim >= 2 and tensor.shape[:2] == (batch_size, seq_len):
             return tensor.mean(dim=1)
         return tensor.reshape(batch_size, seq_len, *tensor.shape[1:]).mean(dim=1)
+
+    def classify_side_group(self, group_rep: torch.Tensor) -> torch.Tensor:
+        """Predict group-level side labels from pooled side-path representations."""
+
+        if self.group_side_classifier is None:
+            raise RuntimeError("group_side_classifier is unavailable when side_basis_count=0")
+        return self.group_side_classifier(group_rep)
 
     def forward(
         self,
