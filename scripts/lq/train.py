@@ -64,6 +64,10 @@ def train(
     side_weight=0.5,
     side_cont_weight=None,
     side_disc_weight=None,
+    side_semantic_enabled=False,
+    side_basis_count=0,
+    side_pooling="masked_mean",
+    side_loss_weight=0.0,
     dataset_private_weight=0.3,
     dataset_adv_weight=0.3,
     private_residual_weight=0.25,
@@ -148,6 +152,7 @@ def train(
         "residual": config["residual_weight"],
         "side_cont": config["side_cont_weight"],
         "side_disc": config["side_disc_weight"],
+        "side_group": config["side_loss_weight"],
         "dataset_private": config["dataset_private_weight"],
         "dataset_adv": config["dataset_adv_weight"],
     }
