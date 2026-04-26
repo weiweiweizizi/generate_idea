@@ -1,0 +1,28 @@
+# Example config only.
+# This compose schema is provisional until the implementation lands.
+# It assumes toy single-axis results generated from a double-crescent mouth
+# opening-motion example.
+
+experiment:
+  name: toy_double_crescent_open_mouth_compose_xy
+  output_dir: outputs/matrix_vis/examples/toy_double_crescent_open_mouth_compose_xy
+
+mesh:
+  source: data/toy/matrix_vis/double_crescent_mouth_opening/mesh_2d.npy
+  format: numpy
+  dimension: 2d
+  point_ids: auto
+
+inputs:
+  x_solution: outputs/matrix_vis/examples/toy_double_crescent_open_mouth_axis_x/solution.npz
+  y_solution: outputs/matrix_vis/examples/toy_double_crescent_open_mouth_axis_y/solution.npz
+
+compose:
+  subset_policy: intersection
+  keep_non_subset_static: true
+
+export:
+  save_npz: true
+  save_json_summary: true
+  save_static_preview: true
+  save_animation_preview: true
