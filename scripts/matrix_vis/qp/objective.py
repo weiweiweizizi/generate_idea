@@ -32,8 +32,7 @@ def build_acceleration_term(x_var: cp.Variable) -> cp.Expression:
 
 
 def build_velocity_change_term(x_var: cp.Variable) -> cp.Expression:
-    if x_var.shape[1] < 3:
+    if x_var.shape[1] < 2:
         return cp.Constant(0.0)
     velocity = x_var[:, 1:] - x_var[:, :-1]
-    velocity_delta = velocity[:, 1:] - velocity[:, :-1]
-    return cp.sum_squares(velocity_delta)
+    return cp.sum_squares(velocity)

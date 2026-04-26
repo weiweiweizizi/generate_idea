@@ -1,13 +1,13 @@
 # Example config only.
-# Placeholder toy assets are expected to describe a double-crescent mouth mesh
-# with an opening-mouth motion. Paths here are intentionally non-final.
+# Placeholder toy assets describe a closed flat-leaf contour that deforms
+# toward a near-rectangular mouth-opening shape. Paths here are intentionally non-final.
 
 experiment:
-  name: toy_double_crescent_open_mouth_axis_y
-  output_dir: outputs/matrix_vis/examples/toy_double_crescent_open_mouth_axis_y
+  name: toy_leaf_to_rectangle_axis_y
+  output_dir: outputs/matrix_vis/examples/toy_leaf_to_rectangle_axis_y
 
 mesh:
-  source: data/toy/matrix_vis/double_crescent_mouth_opening/mesh_2d.npy
+  source: data/toy/matrix_vis/leaf_to_rectangle_mouth_opening/mesh_2d.npy
   format: numpy
   dimension: 2d
   point_ids: auto
@@ -19,7 +19,7 @@ projection:
   anchor_point_id: 0
 
 basis:
-  source: data/toy/matrix_vis/double_crescent_mouth_opening/basis_open_mouth_y.npy
+  source: data/toy/matrix_vis/leaf_to_rectangle_mouth_opening/basis_open_mouth_y.npy
   basis_index: 0
   matrix_shape: square
   value_semantics: mean_distance_delta
@@ -29,7 +29,7 @@ solver:
   lambda_data: 1.0
   lambda_acc: 10.0
   lambda_vel: 1.0
-  enforce_order: true
+  enforce_order: false
   max_displacement: null
   qp_backend: osqp
 

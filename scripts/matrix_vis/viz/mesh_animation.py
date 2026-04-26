@@ -26,7 +26,8 @@ def save_motion_snapshot(
     plt = _load_matplotlib()
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.scatter(static_points[:, 0], static_points[:, 1], s=28, c="#c7c7c7", label="static mesh")
-    ax.plot(animated_points[:, 0], animated_points[:, 1], "-o", color="#d94841", linewidth=2, markersize=4, label="animated subset")
+    closed = np.concatenate([animated_points, animated_points[:1]], axis=0)
+    ax.plot(closed[:, 0], closed[:, 1], "-o", color="#d94841", linewidth=2, markersize=4, label="animated subset")
     ax.set_title(title)
     ax.set_aspect("equal", adjustable="box")
     ax.grid(True, alpha=0.25)
@@ -58,7 +59,9 @@ def save_motion_frames(
         ax.scatter(static_points[:, 0], static_points[:, 1], s=18, c="#d9d9d9")
         current = coordinates[frame_idx]
         ax.scatter(current[~subset_mask, 0], current[~subset_mask, 1], s=18, c="#bdbdbd")
-        ax.plot(current[subset_mask, 0], current[subset_mask, 1], "-o", color="#1f78b4", linewidth=2, markersize=4)
+        subset_points = current[subset_mask]
+        closed = np.concatenate([subset_points, subset_points[:1]], axis=0)
+        ax.plot(closed[:, 0], closed[:, 1], "-o", color="#1f78b4", linewidth=2, markersize=4)
         ax.set_xlim(x_min - x_pad, x_max + x_pad)
         ax.set_ylim(y_min - y_pad, y_max + y_pad)
         ax.set_aspect("equal", adjustable="box")

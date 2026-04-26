@@ -8,72 +8,52 @@ import numpy as np
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from scripts.matrix_vis.qp.constraints import build_order_indices
 
+OUTPUT_DIR = Path("data/toy/matrix_vis/leaf_to_rectangle_mouth_opening")
 
-OUTPUT_DIR = Path("data/toy/matrix_vis/double_crescent_mouth_opening")
-
-
-def make_arc(
+def make_superellipse_contour(
     *,
     radius_x: float,
     radius_y: float,
-    theta_start: float,
-    theta_end: float,
+    exponent: float,
     num_points: int,
-    y_offset: float = 0.0,
 ) -> np.ndarray:
-    theta = np.linspace(theta_start, theta_end, num_points, dtype=np.float32)
-    x = radius_x * np.cos(theta)
-    y = radius_y * np.sin(theta) + y_offset
-    return np.stack([x, y], axis=1)
+    theta = np.linspace(np.pi, -np.pi, num_points, endpoint=False, dtype=np.float32)
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+    x = radius_x * np.sign(cos_theta) * (np.abs(cos_theta) ** (2.0 / exponent))
+    y = radius_y * np.sign(sin_theta) * (np.abs(sin_theta) ** (2.0 / exponent))
+    return np.stack([x, y], axis=1).astype(np.float32)
 
 
-def build_double_crescent_mesh() -> np.ndarray:
-    upper_outer = make_arc(
+def build_flat_leaf_mesh(num_points: int = 16) -> np.ndarray:
+    return make_superellipse_contour(
         radius_x=2.8,
-        radius_y=1.0,
-        theta_start=np.deg2rad(200.0),
-        theta_end=np.deg2rad(340.0),
-        num_points=8,
-        y_offset=0.55,
+        radius_y=0.52,
+        exponent=1.35,
+        num_points=num_points,
     )
-    lower_outer = make_arc(
-        radius_x=2.8,
-        radius_y=1.1,
-        theta_start=np.deg2rad(20.0),
-        theta_end=np.deg2rad(160.0),
-        num_points=8,
-        y_offset=-0.55,
+
+
+def build_near_rectangle_target(num_points: int = 16) -> np.ndarray:
+    return make_superellipse_contour(
+        radius_x=2.25,
+        radius_y=1.18,
+        exponent=8.0,
+        num_points=num_points,
     )
-    return np.concatenate([upper_outer, lower_outer], axis=0).astype(np.float32)
 
 
 def build_open_mouth_trajectory(mesh_2d: np.ndarray, num_steps: int = 25) -> np.ndarray:
-    coordinates = np.repeat(mesh_2d[None, :, :], num_steps, axis=0)
-
-    x_order = build_order_indices(mesh_2d[:, 0])
-    y_order = build_order_indices(mesh_2d[:, 1])
-
-    x_profile_sorted = np.linspace(-0.18, 0.18, mesh_2d.shape[0], dtype=np.float32)
-    y_profile_sorted = np.linspace(-0.82, 0.82, mesh_2d.shape[0], dtype=np.float32)
-
-    x_displacement = np.zeros(mesh_2d.shape[0], dtype=np.float32)
-    y_displacement = np.zeros(mesh_2d.shape[0], dtype=np.float32)
-    x_displacement[x_order] = x_profile_sorted
-    y_displacement[y_order] = y_profile_sorted
-
-    # Keep point 0 fixed while preserving monotonicity: subtracting a constant
-    # from the whole displacement vector does not change sorted-order monotonicity.
-    x_displacement -= x_displacement[0]
-    y_displacement -= y_displacement[0]
-
+    coordinates = np.repeat(mesh_2d[None, :, :], num_steps, axis=0).astype(np.float32)
+    rectangle_target = build_near_rectangle_target(mesh_2d.shape[0])
+    full_displacement = rectangle_target - mesh_2d
+    full_displacement -= full_displacement[0]
     time = np.linspace(0.0, 1.0, num_steps, dtype=np.float32)
-    amplitudes = 0.5 * (1.0 - np.cos(np.pi * time))
+    amplitudes = 0.5 * (1.0 - np.cos(np.pi * time)) ** 0.85
 
     for step_idx, amplitude in enumerate(amplitudes):
-        coordinates[step_idx, :, 0] = mesh_2d[:, 0] + amplitude * x_displacement
-        coordinates[step_idx, :, 1] = mesh_2d[:, 1] + amplitude * y_displacement
+        coordinates[step_idx] = mesh_2d + amplitude * full_displacement
         coordinates[step_idx, 0, :] = mesh_2d[0]
     return coordinates.astype(np.float32)
 
@@ -95,7 +75,7 @@ def pairwise_axis_delta_average(trajectory: np.ndarray, axis_index: int) -> np.n
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    mesh_2d = build_double_crescent_mesh()
+    mesh_2d = build_flat_leaf_mesh()
     trajectory_2d = build_open_mouth_trajectory(mesh_2d)
     basis_x = pairwise_axis_delta_average(trajectory_2d, axis_index=0)
     basis_y = pairwise_axis_delta_average(trajectory_2d, axis_index=1)
