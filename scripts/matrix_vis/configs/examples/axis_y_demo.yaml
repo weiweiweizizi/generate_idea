@@ -29,7 +29,7 @@ solver:
   lambda_data: 1.0
   lambda_acc: 10.0
   lambda_vel: 1.0
-  enforce_order: true
+  enforce_order: false
   max_displacement: null
   qp_backend: osqp
 
