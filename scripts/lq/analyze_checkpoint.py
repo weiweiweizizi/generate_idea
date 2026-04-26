@@ -33,6 +33,14 @@ SKLEARN_IMPORT_ERROR = None
 SKLEARN_IMPORT_ATTEMPTED = False
 
 
+def parse_levels(levels) -> tuple[int, ...]:
+    if isinstance(levels, str):
+        return tuple(int(v) for v in levels.split(",") if str(v).strip())
+    if isinstance(levels, (tuple, list)):
+        return tuple(int(v) for v in levels)
+    raise TypeError(f"Unsupported levels value: {levels!r}")
+
+
 def build_specs(data_roots: str) -> list[DatasetSpec]:
     roots = [Path(root).expanduser() for root in data_roots.split(",") if root.strip()]
     return [
@@ -212,12 +220,56 @@ def fit_torch_linear_probe(
     return float((predictions == y_test).float().mean().item())
 
 
+def build_stratified_splits(
+    labels: np.ndarray,
+    *,
+    seed: int,
+    test_ratio: float,
+    num_repeats: int,
+) -> tuple[list[tuple[np.ndarray, np.ndarray]], str | None]:
+    """Create repeated stratified holdout splits for small-sample probe evaluation."""
+
+    classes, encoded = np.unique(labels, return_inverse=True)
+    if classes.size < 2:
+        return [], "need at least 2 classes"
+
+    split_pairs: list[tuple[np.ndarray, np.ndarray]] = []
+    for repeat_idx in range(num_repeats):
+        rng = np.random.default_rng(seed + repeat_idx)
+        train_indices = []
+        test_indices = []
+
+        for class_idx in range(classes.size):
+            class_members = np.flatnonzero(encoded == class_idx)
+            if class_members.size < 2:
+                return [], f"class {int(classes[class_idx])} has fewer than 2 samples"
+            shuffled = class_members.copy()
+            rng.shuffle(shuffled)
+            class_test = max(1, int(round(class_members.size * test_ratio)))
+            class_test = min(class_test, class_members.size - 1)
+            test_indices.extend(shuffled[:class_test].tolist())
+            train_indices.extend(shuffled[class_test:].tolist())
+
+        if not train_indices or not test_indices:
+            return [], "failed to create non-empty train/test split"
+
+        split_pairs.append(
+            (
+                np.asarray(train_indices, dtype=np.int64),
+                np.asarray(test_indices, dtype=np.int64),
+            )
+        )
+
+    return split_pairs, None
+
+
 def fit_linear_probe(
     features: np.ndarray,
     labels: np.ndarray,
     *,
     seed: int,
     test_ratio: float = 0.2,
+    num_repeats: int = 20,
 ) -> dict:
     """Fit a lightweight linear probe on held-out groups."""
 
@@ -232,6 +284,9 @@ def fit_linear_probe(
         "num_classes": int(np.unique(labels).size) if labels.size else 0,
         "train_size": 0,
         "test_size": 0,
+        "accuracy_std": None,
+        "accuracies": [],
+        "num_repeats": int(num_repeats),
         "error": None,
     }
 
@@ -249,65 +304,128 @@ def fit_linear_probe(
         return result
 
     classes, encoded = np.unique(labels, return_inverse=True)
-    if classes.size < 2:
-        result["error"] = "need at least 2 classes"
+    split_pairs, split_error = build_stratified_splits(
+        encoded,
+        seed=seed,
+        test_ratio=test_ratio,
+        num_repeats=num_repeats,
+    )
+    if split_error is not None:
+        result["error"] = split_error
         return result
-
-    rng = np.random.default_rng(seed)
-    train_indices = []
-    test_indices = []
-    for class_idx in range(classes.size):
-        class_members = np.flatnonzero(encoded == class_idx)
-        if class_members.size < 2:
-            result["error"] = f"class {int(classes[class_idx])} has fewer than 2 samples"
-            return result
-        shuffled = class_members.copy()
-        rng.shuffle(shuffled)
-        class_test = max(1, int(round(class_members.size * test_ratio)))
-        class_test = min(class_test, class_members.size - 1)
-        test_indices.extend(shuffled[:class_test].tolist())
-        train_indices.extend(shuffled[class_test:].tolist())
-
-    if not train_indices or not test_indices:
-        result["error"] = "failed to create non-empty train/test split"
-        return result
-
-    train_indices = np.asarray(train_indices, dtype=np.int64)
-    test_indices = np.asarray(test_indices, dtype=np.int64)
-
-    train_x = features[train_indices]
-    test_x = features[test_indices]
-    train_y = encoded[train_indices]
-    test_y = encoded[test_indices]
-
-    mean = train_x.mean(axis=0, keepdims=True)
-    std = train_x.std(axis=0, keepdims=True)
-    std = np.where(std < 1e-6, 1.0, std)
-    train_x = (train_x - mean) / std
-    test_x = (test_x - mean) / std
-
-    result["train_size"] = int(train_x.shape[0])
-    result["test_size"] = int(test_x.shape[0])
 
     logistic_regression_cls, import_error = get_logistic_regression_cls()
-    if logistic_regression_cls is not None:
-        try:
-            classifier = logistic_regression_cls(
-                max_iter=1000,
-                random_state=seed,
-            )
-            classifier.fit(train_x, train_y)
-            accuracy = float((classifier.predict(test_x) == test_y).mean())
-            result["accuracy"] = accuracy
-            result["backend"] = "sklearn_logistic_regression"
-            return result
-        except Exception as exc:  # pragma: no cover - depends on local env
-            import_error = f"{type(exc).__name__}: {exc}"
+    accuracies = []
+    backend = "torch_linear_probe_fallback"
 
-    result["accuracy"] = fit_torch_linear_probe(train_x, train_y, test_x, test_y, seed=seed)
-    result["backend"] = "torch_linear_probe_fallback"
+    for repeat_idx, (train_indices, test_indices) in enumerate(split_pairs):
+        train_x = features[train_indices]
+        test_x = features[test_indices]
+        train_y = encoded[train_indices]
+        test_y = encoded[test_indices]
+
+        mean = train_x.mean(axis=0, keepdims=True)
+        std = train_x.std(axis=0, keepdims=True)
+        std = np.where(std < 1e-6, 1.0, std)
+        train_x = (train_x - mean) / std
+        test_x = (test_x - mean) / std
+
+        result["train_size"] = int(train_x.shape[0])
+        result["test_size"] = int(test_x.shape[0])
+
+        if logistic_regression_cls is not None:
+            try:
+                classifier = logistic_regression_cls(
+                    max_iter=1000,
+                    random_state=seed + repeat_idx,
+                )
+                classifier.fit(train_x, train_y)
+                accuracy = float((classifier.predict(test_x) == test_y).mean())
+                backend = "sklearn_logistic_regression"
+            except Exception as exc:  # pragma: no cover - depends on local env
+                import_error = f"{type(exc).__name__}: {exc}"
+                accuracy = fit_torch_linear_probe(
+                    train_x,
+                    train_y,
+                    test_x,
+                    test_y,
+                    seed=seed + repeat_idx,
+                )
+                backend = "torch_linear_probe_fallback"
+        else:
+            accuracy = fit_torch_linear_probe(
+                train_x,
+                train_y,
+                test_x,
+                test_y,
+                seed=seed + repeat_idx,
+            )
+
+        accuracies.append(float(accuracy))
+
+    result["accuracy"] = float(np.mean(accuracies))
+    result["accuracy_std"] = float(np.std(accuracies))
+    result["accuracies"] = accuracies
+    result["backend"] = backend
     result["error"] = import_error
     return result
+
+
+def compute_linear_r2(source: np.ndarray, target: np.ndarray) -> float | None:
+    """Measure how well one representation can linearly reconstruct another."""
+
+    if source.ndim != 2 or target.ndim != 2:
+        return None
+    if source.shape[0] != target.shape[0] or source.shape[0] < 2:
+        return None
+    if source.shape[1] == 0 or target.shape[1] == 0:
+        return None
+
+    design = np.concatenate(
+        [source.astype(np.float64), np.ones((source.shape[0], 1), dtype=np.float64)],
+        axis=1,
+    )
+    weights, *_ = np.linalg.lstsq(design, target.astype(np.float64), rcond=None)
+    target_hat = design @ weights
+    ss_res = float(np.square(target - target_hat).sum())
+    ss_tot = float(np.square(target - target.mean(axis=0, keepdims=True)).sum())
+    if ss_tot <= 1e-12:
+        return None
+    return float(1.0 - ss_res / ss_tot)
+
+
+def pool_group_tensor(
+    outputs: dict,
+    *,
+    pooled_key: str,
+    sequence_key: str,
+    valid_mask: torch.Tensor,
+    require_pooled: bool,
+    empty_feature_dim: int | None = None,
+    force_sequence: bool = False,
+) -> torch.Tensor:
+    """Prefer canonical group-pooled outputs, with fallback for old checkpoints."""
+
+    sequence_tensor = outputs.get(sequence_key)
+
+    if force_sequence:
+        if sequence_tensor is None:
+            raise RuntimeError(f"{sequence_key} is required to recompute canonical rep")
+        return masked_mean_per_sequence(sequence_tensor, valid_mask)
+
+    pooled = outputs.get(pooled_key)
+    if pooled is not None:
+        return pooled
+
+    if require_pooled:
+        raise RuntimeError(f"{pooled_key} is required for early-branch checkpoints")
+
+    if sequence_tensor is None:
+        group_count = int(valid_mask.shape[0])
+        feature_dim = int(empty_feature_dim or 0)
+        return valid_mask.new_zeros((group_count, feature_dim), dtype=torch.float32)
+
+    return masked_mean_per_sequence(sequence_tensor, valid_mask)
 
 
 def collect_group_representations(
@@ -315,6 +433,8 @@ def collect_group_representations(
     loader: DataLoader,
     device: str,
     max_batches: int | None,
+    *,
+    require_canonical_group_reps: bool,
 ) -> dict:
     """Collect round-1 analysis artifacts and code usage in one pass."""
 
@@ -326,6 +446,10 @@ def collect_group_representations(
     free_recon_l1_sum = 0.0
     side_reps = []
     free_reps = []
+    side_latents_raw = []
+    free_latents_raw = []
+    side_latents = []
+    free_latents = []
     private_reps = []
     side_labels = []
     dataset_labels = []
@@ -337,7 +461,7 @@ def collect_group_representations(
         for batch in loader:
             x = batch["images"].to(device)
             valid_mask = batch["valid_mask"].to(device)
-            outputs = model(x)
+            outputs = model(x, return_group_pooled=True)
             decoded_indices = outputs["decoded_indices"]
 
             for level_idx, frame_indices in enumerate(decoded_indices):
@@ -374,19 +498,74 @@ def collect_group_representations(
 
             group_valid_mask = valid_mask.any(dim=1)
             if group_valid_mask.any():
-                group_side_rep = masked_mean_per_sequence(
-                    outputs["side_path_representation"],
-                    valid_mask,
+                group_side_rep = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_side_rep",
+                    sequence_key="side_path_representation",
+                    valid_mask=valid_mask,
+                    require_pooled=require_canonical_group_reps,
+                    force_sequence=True,
                 )
-                group_free_rep = masked_mean_per_sequence(
-                    outputs["free_path_representation"],
-                    valid_mask,
+                group_free_rep = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_free_rep",
+                    sequence_key="free_path_representation",
+                    valid_mask=valid_mask,
+                    require_pooled=require_canonical_group_reps,
                 )
-                group_private_rep = masked_mean_per_sequence(outputs["private_z"], valid_mask)
+                group_private_rep = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_private_rep",
+                    sequence_key="private_z",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                )
+                group_side_latent_raw = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_side_latent_raw",
+                    sequence_key="side_latent_raw",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                    empty_feature_dim=0,
+                )
+                group_free_latent_raw = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_free_latent_raw",
+                    sequence_key="free_latent_raw",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                    empty_feature_dim=0,
+                )
+                group_side_latent = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_side_latent",
+                    sequence_key="side_latent",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                )
+                group_free_latent = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_free_latent",
+                    sequence_key="free_latent",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                )
 
                 selected = group_valid_mask.cpu().numpy().astype(bool)
                 side_reps.append(group_side_rep[group_valid_mask].cpu().numpy().astype(np.float32))
                 free_reps.append(group_free_rep[group_valid_mask].cpu().numpy().astype(np.float32))
+                side_latents_raw.append(
+                    group_side_latent_raw[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                free_latents_raw.append(
+                    group_free_latent_raw[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                side_latents.append(
+                    group_side_latent[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                free_latents.append(
+                    group_free_latent[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
                 private_reps.append(
                     group_private_rep[group_valid_mask].cpu().numpy().astype(np.float32)
                 )
@@ -449,6 +628,10 @@ def collect_group_representations(
         "group_representations": {
             "group_pooled_side_rep": concat_feature_list(side_reps),
             "group_pooled_free_rep": concat_feature_list(free_reps),
+            "group_pooled_side_latent_raw": concat_feature_list(side_latents_raw),
+            "group_pooled_free_latent_raw": concat_feature_list(free_latents_raw),
+            "group_pooled_side_latent": concat_feature_list(side_latents),
+            "group_pooled_free_latent": concat_feature_list(free_latents),
             "group_pooled_private_rep": concat_feature_list(private_reps),
             "side_label": concat_label_list(side_labels),
             "dataset_label": concat_label_list(dataset_labels),
@@ -474,22 +657,32 @@ def build_probe_summary(group_representations: dict, seed: int) -> tuple[dict, d
 
     side_probe = {
         "side_from_side_rep_acc": side_from_side["accuracy"],
+        "side_from_side_rep_acc_std": side_from_side["accuracy_std"],
         "side_from_free_rep_acc": side_from_free["accuracy"],
+        "side_from_free_rep_acc_std": side_from_free["accuracy_std"],
         "side_from_side_rep_backend": side_from_side["backend"],
         "side_from_free_rep_backend": side_from_free["backend"],
         "side_from_side_rep_error": side_from_side["error"],
         "side_from_free_rep_error": side_from_free["error"],
+        "side_from_side_rep_accuracies": side_from_side["accuracies"],
+        "side_from_free_rep_accuracies": side_from_free["accuracies"],
     }
     dataset_probe = {
         "dataset_from_side_rep_acc": dataset_from_side["accuracy"],
+        "dataset_from_side_rep_acc_std": dataset_from_side["accuracy_std"],
         "dataset_from_free_rep_acc": dataset_from_free["accuracy"],
+        "dataset_from_free_rep_acc_std": dataset_from_free["accuracy_std"],
         "dataset_from_private_rep_acc": dataset_from_private["accuracy"],
+        "dataset_from_private_rep_acc_std": dataset_from_private["accuracy_std"],
         "dataset_from_side_rep_backend": dataset_from_side["backend"],
         "dataset_from_free_rep_backend": dataset_from_free["backend"],
         "dataset_from_private_rep_backend": dataset_from_private["backend"],
         "dataset_from_side_rep_error": dataset_from_side["error"],
         "dataset_from_free_rep_error": dataset_from_free["error"],
         "dataset_from_private_rep_error": dataset_from_private["error"],
+        "dataset_from_side_rep_accuracies": dataset_from_side["accuracies"],
+        "dataset_from_free_rep_accuracies": dataset_from_free["accuracies"],
+        "dataset_from_private_rep_accuracies": dataset_from_private["accuracies"],
     }
     return side_probe, dataset_probe
 
@@ -532,10 +725,27 @@ def analyze(
     private_decoder_hidden_dim = config.get("private_decoder_hidden_dim")
     if private_decoder_hidden_dim is not None:
         private_decoder_hidden_dim = int(private_decoder_hidden_dim)
-    levels = tuple(int(v) for v in str(config.get("levels", "2,3,6")).split(","))
+    levels = parse_levels(config.get("levels", "2,3,6"))
     use_dataset_aux = bool(config.get("use_dataset_aux", False))
     side_semantic_enabled = bool(config.get("side_semantic_enabled", False))
     side_basis_count = int(config.get("side_basis_count", 0))
+    side_pooling = str(config.get("side_pooling", "masked_mean"))
+    side_subspace_dim = config.get("side_subspace_dim")
+    if side_subspace_dim is not None:
+        side_subspace_dim = int(side_subspace_dim)
+    side_free_frame_qr = bool(config.get("side_free_frame_qr", False))
+    early_branch_factorization = bool(config.get("early_branch_factorization", False))
+    free_pool_size = int(config.get("free_pool_size", 2))
+    side_pool_size = int(config.get("side_pool_size", 2))
+    private_pool_size = int(config.get("private_pool_size", 1))
+    free_z_dim = config.get("free_z_dim")
+    if free_z_dim is not None:
+        free_z_dim = int(free_z_dim)
+    side_z_dim = config.get("side_z_dim")
+    if side_z_dim is not None:
+        side_z_dim = int(side_z_dim)
+    private_adapter_enabled = bool(config.get("private_adapter_enabled", False))
+    discrete_side_loss_enabled = bool(config.get("discrete_side_loss_enabled", True))
 
     output_dir = Path(output_dir or checkpoint_path.parent / "analysis")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -580,6 +790,16 @@ def analyze(
         use_dataset_aux=use_dataset_aux,
         side_semantic_enabled=side_semantic_enabled,
         side_basis_count=side_basis_count,
+        side_pooling=side_pooling,
+        side_subspace_dim=side_subspace_dim,
+        side_free_frame_qr=side_free_frame_qr,
+        early_branch_factorization=early_branch_factorization,
+        free_pool_size=free_pool_size,
+        side_pool_size=side_pool_size,
+        private_pool_size=private_pool_size,
+        free_z_dim=free_z_dim,
+        side_z_dim=side_z_dim,
+        private_adapter_enabled=private_adapter_enabled,
         action_basis_init_path=None,
         lq_commitment_loss_weight=float(config.get("lq_commitment_loss_weight", 0.1)),
         lq_quantization_loss_weight=float(config.get("lq_quantization_loss_weight", 0.1)),
@@ -587,6 +807,7 @@ def analyze(
         quantizer_type=config.get("quantizer_type", "latent_quantize"),
         fsq_preserve_symmetry=bool(config.get("fsq_preserve_symmetry", True)),
         basis_orthogonalization=config.get("basis_orthogonalization", "normalize"),
+        discrete_side_loss_enabled=discrete_side_loss_enabled,
     ).to(device)
     load_result = model.load_state_dict(ckpt["model"], strict=False)
 
@@ -610,6 +831,7 @@ def analyze(
         loader,
         device,
         max_batches=max_batches,
+        require_canonical_group_reps=early_branch_factorization,
     )
     group_representations = analysis_outputs.pop("group_representations")
     group_artifact_path = output_dir / "group_level_representations.npz"
@@ -617,6 +839,10 @@ def analyze(
         group_artifact_path,
         group_pooled_side_rep=group_representations["group_pooled_side_rep"],
         group_pooled_free_rep=group_representations["group_pooled_free_rep"],
+        group_pooled_side_latent_raw=group_representations["group_pooled_side_latent_raw"],
+        group_pooled_free_latent_raw=group_representations["group_pooled_free_latent_raw"],
+        group_pooled_side_latent=group_representations["group_pooled_side_latent"],
+        group_pooled_free_latent=group_representations["group_pooled_free_latent"],
         group_pooled_private_rep=group_representations["group_pooled_private_rep"],
         side_label=group_representations["side_label"],
         dataset_label=group_representations["dataset_label"],
@@ -642,6 +868,30 @@ def analyze(
         "mean_free_path_usage": analysis_outputs["mean_free_path_usage"],
         "mean_side_recon_l1": analysis_outputs["mean_side_recon_l1"],
         "mean_free_recon_l1": analysis_outputs["mean_free_recon_l1"],
+        "latent_alignment": {
+            "side_latent_dim": int(group_representations["group_pooled_side_latent"].shape[1])
+            if group_representations["group_pooled_side_latent"].ndim == 2
+            else 0,
+            "free_latent_dim": int(group_representations["group_pooled_free_latent"].shape[1])
+            if group_representations["group_pooled_free_latent"].ndim == 2
+            else 0,
+            "raw_linear_r2_free_to_side": compute_linear_r2(
+                group_representations["group_pooled_free_latent_raw"],
+                group_representations["group_pooled_side_latent_raw"],
+            ),
+            "raw_linear_r2_side_to_free": compute_linear_r2(
+                group_representations["group_pooled_side_latent_raw"],
+                group_representations["group_pooled_free_latent_raw"],
+            ),
+            "ortho_linear_r2_free_to_side": compute_linear_r2(
+                group_representations["group_pooled_free_latent"],
+                group_representations["group_pooled_side_latent"],
+            ),
+            "ortho_linear_r2_side_to_free": compute_linear_r2(
+                group_representations["group_pooled_side_latent"],
+                group_representations["group_pooled_free_latent"],
+            ),
+        },
         "mean_side_path_usage_per_basis": analysis_outputs["mean_side_path_usage_per_basis"],
         "mean_free_path_usage_per_basis": analysis_outputs["mean_free_path_usage_per_basis"],
         "side_probe": side_probe,

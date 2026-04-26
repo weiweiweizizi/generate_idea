@@ -1,0 +1,959 @@
+{
+  "metadata": {
+    "checkpoint_path": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/best.pt",
+    "data_roots": "data/win20-step20/IMR,data/win20-step20/TT",
+    "mode": "x",
+    "region": "mouth",
+    "total_groups": 293,
+    "total_subjects": 267,
+    "requested_splits": 5,
+    "resolved_splits": 5,
+    "stratification_mode": "joint_side_dataset",
+    "side_counts": {
+      "Left": 83,
+      "Normal": 111,
+      "Right": 99
+    },
+    "dataset_counts": {
+      "IMR": 228,
+      "TT": 65
+    },
+    "artifacts": {
+      "full_group_level_representations": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/full_group_level_representations.npz",
+      "full_group_side_semantics": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/full_group_side_semantics.csv",
+      "subject_fold_assignments": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/subject_fold_assignments.csv",
+      "fold_summary": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/fold_summary.csv",
+      "probe_summary": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/probe_summary.csv",
+      "probe_predictions": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/probe_predictions.csv",
+      "probe_fold_metrics": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/probe_fold_metrics.csv"
+    }
+  },
+  "tasks": {
+    "side_from_side_rep": {
+      "task_name": "side_from_side_rep",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9215017064846417,
+        "balanced_accuracy": 0.9163051331726031,
+        "macro_precision": 0.9225028058361392,
+        "macro_recall": 0.9163051331726031,
+        "macro_f1": 0.918058863282082,
+        "support": 293,
+        "per_class_precision": [
+          0.9333333333333333,
+          0.9545454545454546,
+          0.8796296296296297
+        ],
+        "per_class_recall": [
+          0.8433734939759037,
+          0.9459459459459459,
+          0.9595959595959596
+        ],
+        "per_class_f1": [
+          0.8860759493670886,
+          0.9502262443438914,
+          0.9178743961352657
+        ]
+      },
+      "fold_accuracies": [
+        0.8813559322033898,
+        0.9310344827586207,
+        0.9482758620689655,
+        0.9322033898305084,
+        0.9152542372881356
+      ],
+      "fold_balanced_accuracies": [
+        0.879055258467023,
+        0.9282446311858076,
+        0.9473484848484848,
+        0.9215686274509803,
+        0.9063405797101449
+      ],
+      "fold_macro_f1": [
+        0.8789892278264371,
+        0.9298208566501249,
+        0.945278365045807,
+        0.9249999999999999,
+        0.9122647978336413
+      ],
+      "confusion_matrix": [
+        [
+          70,
+          4,
+          9
+        ],
+        [
+          2,
+          105,
+          4
+        ],
+        [
+          3,
+          1,
+          95
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.8433734939759037,
+          0.04819277108433735,
+          0.10843373493975904
+        ],
+        [
+          0.018018018018018018,
+          0.9459459459459459,
+          0.036036036036036036
+        ],
+        [
+          0.030303030303030304,
+          0.010101010101010102,
+          0.9595959595959596
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_side_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_side_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_side_rep_confusion.png"
+      }
+    },
+    "side_from_free_rep": {
+      "task_name": "side_from_free_rep",
+      "num_groups": 293,
+      "num_features": 32,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.4061433447098976,
+        "balanced_accuracy": 0.37664937664937664,
+        "macro_precision": 0.27010470385997815,
+        "macro_recall": 0.37664937664937664,
+        "macro_f1": 0.3145659242313517,
+        "support": 293,
+        "per_class_precision": [
+          0.0,
+          0.4177215189873418,
+          0.3925925925925926
+        ],
+        "per_class_recall": [
+          0.0,
+          0.5945945945945946,
+          0.5353535353535354
+        ],
+        "per_class_f1": [
+          0.0,
+          0.4907063197026022,
+          0.452991452991453
+        ]
+      },
+      "fold_accuracies": [
+        0.4067796610169492,
+        0.43103448275862066,
+        0.3620689655172414,
+        0.3728813559322034,
+        0.4576271186440678
+      ],
+      "fold_balanced_accuracies": [
+        0.38181818181818183,
+        0.4039682539682539,
+        0.3333333333333333,
+        0.3493516399694889,
+        0.41739130434782606
+      ],
+      "fold_macro_f1": [
+        0.3168627450980392,
+        0.3307909604519774,
+        0.27991452991452986,
+        0.2899921197793538,
+        0.3519445514054678
+      ],
+      "confusion_matrix": [
+        [
+          0,
+          46,
+          37
+        ],
+        [
+          0,
+          66,
+          45
+        ],
+        [
+          0,
+          46,
+          53
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.0,
+          0.5542168674698795,
+          0.4457831325301205
+        ],
+        [
+          0.0,
+          0.5945945945945946,
+          0.40540540540540543
+        ],
+        [
+          0.0,
+          0.46464646464646464,
+          0.5353535353535354
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_free_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_free_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_free_rep_confusion.png"
+      }
+    },
+    "dataset_from_side_rep": {
+      "task_name": "dataset_from_side_rep",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.8225255972696246,
+        "balanced_accuracy": 0.649493927125506,
+        "macro_precision": 0.7727776409751292,
+        "macro_recall": 0.649493927125506,
+        "macro_f1": 0.6761054421768709,
+        "support": 293,
+        "per_class_precision": [
+          0.8358778625954199,
+          0.7096774193548387
+        ],
+        "per_class_recall": [
+          0.9605263157894737,
+          0.3384615384615385
+        ],
+        "per_class_f1": [
+          0.8938775510204082,
+          0.4583333333333334
+        ]
+      },
+      "fold_accuracies": [
+        0.8305084745762712,
+        0.8448275862068966,
+        0.8103448275862069,
+        0.8305084745762712,
+        0.7966101694915254
+      ],
+      "fold_balanced_accuracies": [
+        0.6429765886287626,
+        0.6811965811965812,
+        0.6042735042735042,
+        0.6429765886287626,
+        0.6764214046822743
+      ],
+      "fold_macro_f1": [
+        0.6722222222222223,
+        0.7167661421595225,
+        0.6209150326797386,
+        0.6722222222222223,
+        0.6861702127659575
+      ],
+      "confusion_matrix": [
+        [
+          219,
+          9
+        ],
+        [
+          43,
+          22
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9605263157894737,
+          0.039473684210526314
+        ],
+        [
+          0.6615384615384615,
+          0.3384615384615385
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_side_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_side_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_side_rep_confusion.png"
+      }
+    },
+    "dataset_from_free_rep": {
+      "task_name": "dataset_from_free_rep",
+      "num_groups": 293,
+      "num_features": 32,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.8122866894197952,
+        "balanced_accuracy": 0.6594129554655871,
+        "macro_precision": 0.7334486166007905,
+        "macro_recall": 0.6594129554655871,
+        "macro_f1": 0.6809226809226809,
+        "support": 293,
+        "per_class_precision": [
+          0.841897233201581,
+          0.625
+        ],
+        "per_class_recall": [
+          0.9342105263157895,
+          0.38461538461538464
+        ],
+        "per_class_f1": [
+          0.8856548856548857,
+          0.4761904761904762
+        ]
+      },
+      "fold_accuracies": [
+        0.7457627118644068,
+        0.8620689655172413,
+        0.8448275862068966,
+        0.7627118644067796,
+        0.847457627118644
+      ],
+      "fold_balanced_accuracies": [
+        0.5886287625418061,
+        0.7196581196581197,
+        0.6538461538461539,
+        0.6270903010033445,
+        0.7090301003344481
+      ],
+      "fold_macro_f1": [
+        0.5949656750572083,
+        0.7583333333333333,
+        0.6898395721925134,
+        0.6338652482269503,
+        0.7393225331369662
+      ],
+      "confusion_matrix": [
+        [
+          213,
+          15
+        ],
+        [
+          40,
+          25
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9342105263157895,
+          0.06578947368421052
+        ],
+        [
+          0.6153846153846154,
+          0.38461538461538464
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_free_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_free_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_free_rep_confusion.png"
+      }
+    },
+    "dataset_from_private_rep": {
+      "task_name": "dataset_from_private_rep",
+      "num_groups": 293,
+      "num_features": 32,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.8873720136518771,
+        "balanced_accuracy": 0.8286437246963563,
+        "macro_precision": 0.8400712191034772,
+        "macro_recall": 0.8286437246963563,
+        "macro_f1": 0.8341310277391796,
+        "support": 293,
+        "per_class_precision": [
+          0.922077922077922,
+          0.7580645161290323
+        ],
+        "per_class_recall": [
+          0.9342105263157895,
+          0.7230769230769231
+        ],
+        "per_class_f1": [
+          0.9281045751633986,
+          0.7401574803149606
+        ]
+      },
+      "fold_accuracies": [
+        0.8305084745762712,
+        0.8620689655172413,
+        0.9482758620689655,
+        0.8813559322033898,
+        0.9152542372881356
+      ],
+      "fold_balanced_accuracies": [
+        0.7533444816053512,
+        0.829059829059829,
+        0.8846153846153846,
+        0.7859531772575251,
+        0.8904682274247492
+      ],
+      "fold_macro_f1": [
+        0.7533444816053512,
+        0.8116883116883117,
+        0.9186535764375877,
+        0.8109839816933639,
+        0.8799348799348798
+      ],
+      "confusion_matrix": [
+        [
+          213,
+          15
+        ],
+        [
+          18,
+          47
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9342105263157895,
+          0.06578947368421052
+        ],
+        [
+          0.27692307692307694,
+          0.7230769230769231
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_private_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_private_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_private_rep_confusion.png"
+      }
+    },
+    "side_from_usage": {
+      "task_name": "side_from_usage",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9249146757679181,
+        "balanced_accuracy": 0.9235665018797549,
+        "macro_precision": 0.9222925284631273,
+        "macro_recall": 0.9235665018797549,
+        "macro_f1": 0.9226328815170538,
+        "support": 293,
+        "per_class_precision": [
+          0.8735632183908046,
+          0.9459459459459459,
+          0.9473684210526315
+        ],
+        "per_class_recall": [
+          0.9156626506024096,
+          0.9459459459459459,
+          0.9090909090909091
+        ],
+        "per_class_f1": [
+          0.8941176470588235,
+          0.9459459459459459,
+          0.9278350515463918
+        ]
+      },
+      "fold_accuracies": [
+        0.8983050847457628,
+        0.9310344827586207,
+        0.9310344827586207,
+        0.9322033898305084,
+        0.9322033898305084
+      ],
+      "fold_balanced_accuracies": [
+        0.8986631016042782,
+        0.9311858076563958,
+        0.9348484848484849,
+        0.9215686274509803,
+        0.9355072463768116
+      ],
+      "fold_macro_f1": [
+        0.8976343799005706,
+        0.9291918560211242,
+        0.9281839979514398,
+        0.9266003837432408,
+        0.9308116839413111
+      ],
+      "confusion_matrix": [
+        [
+          76,
+          5,
+          2
+        ],
+        [
+          3,
+          105,
+          3
+        ],
+        [
+          8,
+          1,
+          90
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9156626506024096,
+          0.060240963855421686,
+          0.024096385542168676
+        ],
+        [
+          0.02702702702702703,
+          0.9459459459459459,
+          0.02702702702702703
+        ],
+        [
+          0.08080808080808081,
+          0.010101010101010102,
+          0.9090909090909091
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_usage_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_usage_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_usage_confusion.png"
+      }
+    },
+    "side_from_coeff": {
+      "task_name": "side_from_coeff",
+      "num_groups": 293,
+      "num_features": 1,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9283276450511946,
+        "balanced_accuracy": 0.9244162015246352,
+        "macro_precision": 0.9366610457873789,
+        "macro_recall": 0.9244162015246352,
+        "macro_f1": 0.9271085461619076,
+        "support": 293,
+        "per_class_precision": [
+          0.9861111111111112,
+          0.9716981132075472,
+          0.8521739130434782
+        ],
+        "per_class_recall": [
+          0.8554216867469879,
+          0.9279279279279279,
+          0.98989898989899
+        ],
+        "per_class_f1": [
+          0.9161290322580645,
+          0.9493087557603687,
+          0.9158878504672896
+        ]
+      },
+      "fold_accuracies": [
+        0.8983050847457628,
+        0.9310344827586207,
+        0.9482758620689655,
+        0.9322033898305084,
+        0.9322033898305084
+      ],
+      "fold_balanced_accuracies": [
+        0.8957219251336898,
+        0.9290382819794584,
+        0.9488636363636364,
+        0.9215686274509803,
+        0.9271739130434783
+      ],
+      "fold_macro_f1": [
+        0.8989588667008022,
+        0.9321969696969697,
+        0.9474206349206349,
+        0.9240731130715562,
+        0.9315389924085576
+      ],
+      "confusion_matrix": [
+        [
+          71,
+          2,
+          10
+        ],
+        [
+          1,
+          103,
+          7
+        ],
+        [
+          0,
+          1,
+          98
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.8554216867469879,
+          0.024096385542168676,
+          0.12048192771084337
+        ],
+        [
+          0.009009009009009009,
+          0.9279279279279279,
+          0.06306306306306306
+        ],
+        [
+          0.0,
+          0.010101010101010102,
+          0.98989898989899
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_coeff_confusion.png"
+      }
+    },
+    "side_from_usage_coeff": {
+      "task_name": "side_from_usage_coeff",
+      "num_groups": 293,
+      "num_features": 4,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9385665529010239,
+        "balanced_accuracy": 0.9370345153477683,
+        "macro_precision": 0.9370345153477683,
+        "macro_recall": 0.9370345153477683,
+        "macro_f1": 0.9370345153477683,
+        "support": 293,
+        "per_class_precision": [
+          0.9156626506024096,
+          0.9459459459459459,
+          0.9494949494949495
+        ],
+        "per_class_recall": [
+          0.9156626506024096,
+          0.9459459459459459,
+          0.9494949494949495
+        ],
+        "per_class_f1": [
+          0.9156626506024096,
+          0.9459459459459459,
+          0.9494949494949495
+        ]
+      },
+      "fold_accuracies": [
+        0.8983050847457628,
+        0.9482758620689655,
+        0.9655172413793104,
+        0.9322033898305084,
+        0.9491525423728814
+      ],
+      "fold_balanced_accuracies": [
+        0.8986631016042782,
+        0.9478524743230624,
+        0.9681818181818181,
+        0.9215686274509803,
+        0.9521739130434783
+      ],
+      "fold_macro_f1": [
+        0.8976343799005706,
+        0.9466318234610918,
+        0.9640932103312405,
+        0.9266003837432408,
+        0.9497652106347759
+      ],
+      "confusion_matrix": [
+        [
+          76,
+          5,
+          2
+        ],
+        [
+          3,
+          105,
+          3
+        ],
+        [
+          4,
+          1,
+          94
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9156626506024096,
+          0.060240963855421686,
+          0.024096385542168676
+        ],
+        [
+          0.02702702702702703,
+          0.9459459459459459,
+          0.02702702702702703
+        ],
+        [
+          0.04040404040404041,
+          0.010101010101010102,
+          0.9494949494949495
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_usage_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_usage_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/side_from_usage_coeff_confusion.png"
+      }
+    },
+    "dataset_from_usage": {
+      "task_name": "dataset_from_usage",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7781569965870307,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.3890784982935154,
+        "macro_recall": 0.5,
+        "macro_f1": 0.43761996161228406,
+        "support": 293,
+        "per_class_precision": [
+          0.7781569965870307,
+          0.0
+        ],
+        "per_class_recall": [
+          1.0,
+          0.0
+        ],
+        "per_class_f1": [
+          0.8752399232245681,
+          0.0
+        ]
+      },
+      "fold_accuracies": [
+        0.7796610169491526,
+        0.7758620689655172,
+        0.7758620689655172,
+        0.7796610169491526,
+        0.7796610169491526
+      ],
+      "fold_balanced_accuracies": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "fold_macro_f1": [
+        0.4380952380952381,
+        0.4368932038834951,
+        0.4368932038834951,
+        0.4380952380952381,
+        0.4380952380952381
+      ],
+      "confusion_matrix": [
+        [
+          228,
+          0
+        ],
+        [
+          65,
+          0
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_usage_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_usage_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_usage_confusion.png"
+      }
+    },
+    "dataset_from_coeff": {
+      "task_name": "dataset_from_coeff",
+      "num_groups": 293,
+      "num_features": 1,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7781569965870307,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.3890784982935154,
+        "macro_recall": 0.5,
+        "macro_f1": 0.43761996161228406,
+        "support": 293,
+        "per_class_precision": [
+          0.7781569965870307,
+          0.0
+        ],
+        "per_class_recall": [
+          1.0,
+          0.0
+        ],
+        "per_class_f1": [
+          0.8752399232245681,
+          0.0
+        ]
+      },
+      "fold_accuracies": [
+        0.7796610169491526,
+        0.7758620689655172,
+        0.7758620689655172,
+        0.7796610169491526,
+        0.7796610169491526
+      ],
+      "fold_balanced_accuracies": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "fold_macro_f1": [
+        0.4380952380952381,
+        0.4368932038834951,
+        0.4368932038834951,
+        0.4380952380952381,
+        0.4380952380952381
+      ],
+      "confusion_matrix": [
+        [
+          228,
+          0
+        ],
+        [
+          65,
+          0
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_coeff_confusion.png"
+      }
+    },
+    "dataset_from_usage_coeff": {
+      "task_name": "dataset_from_usage_coeff",
+      "num_groups": 293,
+      "num_features": 4,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7406143344709898,
+        "balanced_accuracy": 0.48687584345479085,
+        "macro_precision": 0.453357314148681,
+        "macro_recall": 0.48687584345479085,
+        "macro_f1": 0.449901185770751,
+        "support": 293,
+        "per_class_precision": [
+          0.7733812949640287,
+          0.13333333333333333
+        ],
+        "per_class_recall": [
+          0.9429824561403509,
+          0.03076923076923077
+        ],
+        "per_class_f1": [
+          0.849802371541502,
+          0.05
+        ]
+      },
+      "fold_accuracies": [
+        0.7796610169491526,
+        0.7413793103448276,
+        0.7241379310344828,
+        0.6779661016949152,
+        0.7796610169491526
+      ],
+      "fold_balanced_accuracies": [
+        0.5,
+        0.5324786324786325,
+        0.4666666666666667,
+        0.43478260869565216,
+        0.5
+      ],
+      "fold_macro_f1": [
+        0.4380952380952381,
+        0.5279435702658708,
+        0.42,
+        0.40404040404040403,
+        0.4380952380952381
+      ],
+      "confusion_matrix": [
+        [
+          215,
+          13
+        ],
+        [
+          63,
+          2
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9429824561403509,
+          0.05701754385964912
+        ],
+        [
+          0.9692307692307692,
+          0.03076923076923077
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_usage_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_usage_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50/kfold_report/dataset_from_usage_coeff_confusion.png"
+      }
+    }
+  }
+}

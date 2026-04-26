@@ -19,6 +19,22 @@ def build_private_head(pooled_dim: int, hidden_dim: int, private_dim: int) -> nn
     )
 
 
+def build_free_head(pooled_dim: int, hidden_dim: int, free_z_dim: int) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Linear(pooled_dim, hidden_dim),
+        nn.ReLU(inplace=True),
+        nn.Linear(hidden_dim, free_z_dim),
+    )
+
+
+def build_side_head(pooled_dim: int, hidden_dim: int, side_z_dim: int) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Linear(pooled_dim, hidden_dim),
+        nn.ReLU(inplace=True),
+        nn.Linear(hidden_dim, side_z_dim),
+    )
+
+
 def build_shared_coeff_net(shared_dim: int, hidden_dim: int, num_levels: int) -> nn.Sequential:
     return nn.Sequential(
         nn.Linear(shared_dim, hidden_dim),
@@ -76,29 +92,29 @@ def build_private_decoder(
     )
 
 
-def build_side_classifier(shared_dim: int, num_side_classes: int) -> nn.Sequential:
+def build_side_classifier(side_dim: int, num_side_classes: int) -> nn.Sequential:
     return nn.Sequential(
-        nn.Linear(shared_dim, 32),
+        nn.Linear(side_dim, 32),
         nn.ReLU(inplace=True),
         nn.Linear(32, num_side_classes),
     )
 
 
-def build_side_semantic_coeff_head(shared_dim: int, hidden_dim: int) -> nn.Sequential:
+def build_side_semantic_coeff_head(side_dim: int, hidden_dim: int) -> nn.Sequential:
     return nn.Sequential(
-        nn.Linear(shared_dim, hidden_dim),
+        nn.Linear(side_dim, hidden_dim),
         nn.ReLU(inplace=True),
         nn.Linear(hidden_dim, 1),
     )
 
 
 def build_side_semantic_basis_head(
-    shared_dim: int,
+    side_dim: int,
     hidden_dim: int,
     side_basis_count: int,
 ) -> nn.Sequential:
     return nn.Sequential(
-        nn.Linear(shared_dim, hidden_dim),
+        nn.Linear(side_dim, hidden_dim),
         nn.ReLU(inplace=True),
         nn.Linear(hidden_dim, side_basis_count),
     )
@@ -112,6 +128,17 @@ def build_group_side_classifier(
         nn.Linear(side_basis_count, 32),
         nn.ReLU(inplace=True),
         nn.Linear(32, num_side_classes),
+    )
+
+
+def build_group_severity_classifier(
+    severity_input_dim: int,
+    num_severity_classes: int,
+) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Linear(severity_input_dim, 32),
+        nn.ReLU(inplace=True),
+        nn.Linear(32, num_severity_classes),
     )
 
 

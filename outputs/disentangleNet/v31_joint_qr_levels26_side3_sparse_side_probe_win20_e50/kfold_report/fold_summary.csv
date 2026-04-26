@@ -1,0 +1,6 @@
+fold,num_subjects,num_groups,side_counts,dataset_counts
+0,54,59,"{""Left"": 17, ""Normal"": 22, ""Right"": 20}","{""IMR"": 46, ""TT"": 13}"
+1,54,58,"{""Left"": 17, ""Normal"": 21, ""Right"": 20}","{""IMR"": 45, ""TT"": 13}"
+2,54,58,"{""Left"": 16, ""Normal"": 22, ""Right"": 20}","{""IMR"": 45, ""TT"": 13}"
+3,51,59,"{""Left"": 17, ""Normal"": 23, ""Right"": 19}","{""IMR"": 46, ""TT"": 13}"
+4,54,59,"{""Left"": 16, ""Normal"": 23, ""Right"": 20}","{""IMR"": 46, ""TT"": 13}"

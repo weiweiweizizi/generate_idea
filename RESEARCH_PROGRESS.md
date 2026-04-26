@@ -490,3 +490,240 @@ Checkpoint analysis smoke 已完成，并写出：
 - [x] blendshape弱监督是否有效？（第四章 ✓ PC1↔jawOpen, PC2↔mouth动作）
 - [x] PC1码本能否区分数据集/侧别/严重度？（第五章 ✓ 数据集AUC=0.96, 侧别Acc=76%, 严重度Acc≈61%）
 - [ ] 神经网络是否能扩展到多动作类型？
+
+---
+
+## 十一、LQ Early-Branch Factorization（2026-04-20）
+
+### 11.1 结构改动
+
+为解决 `shared_quantized -> split side/free` 的晚切分问题，新增 early-branch 版本：
+
+- `feats -> free_adapter -> free_pool -> free_head -> free_z -> FSQ`
+- `feats -> side_adapter -> side_pool -> side_head -> side_z`
+- `feats -> private_pool/head -> private_z`
+
+其中：
+
+- 只量化 `free_z`
+- `side_z` 直接驱动 side basis 与 side supervision
+- early-branch 下关闭旧的 `subspace_orth` / `free_side_adv` 主损失
+
+### 11.2 训练链路状态
+
+已打通：
+
+- config surface
+- branch builders
+- `DistNet` early-branch forward
+- loss assembly
+- checkpoint analysis
+
+当前 baseline run：
+
+- output: `outputs/lq_x_mouth_v26_early_branch_probe_win20_e50`
+- data: `data/win20-step20/IMR,data/win20-step20/TT`
+- mode: `x`
+- region: `mouth`
+
+### 11.3 50 epoch 结果
+
+best checkpoint:
+
+- `val_loss = 0.7623`
+- `val_recon = 0.2873`
+- `val_side_group = 0.5365`
+
+probe / disentanglement:
+
+- `side_from_side_rep_acc = 0.6500`
+- `side_from_free_rep_acc = 0.3273`
+- `dataset_from_side_rep_acc = 0.8182`
+- `dataset_from_free_rep_acc = 0.8091`
+- `dataset_from_private_rep_acc = 0.8909`
+- `ortho_linear_r2_free_to_side = 0.2754`
+- `ortho_linear_r2_side_to_free = 0.7372`
+
+### 11.4 相对当前 v23 的结论
+
+相比 `v23`，`v26 early-branch` 已经表现出明确结构收益：
+
+- 重建更好：`0.2873 < 0.3342`
+- side group supervision 更好：`0.5365 < 0.7519`
+- side/free probe 分离更明显：`0.6500 > 0.3273`
+- latent 耦合显著下降，不再接近 `R² = 1.0`
+
+当前未解决点：
+
+- `dataset_from_side_rep` 仍然偏高，没有低于既定阈值 `0.7318`
+- 说明 side branch 里仍存在 dataset leakage
+
+### 11.5 当前判断
+
+这轮结果支持继续沿着 early-branch 方向推进。
+
+更准确地说：
+
+- “更早分流”这个结构假设是成立的
+- 它明显优于继续在 late-split latent 上堆 QR / adversarial / orth trick
+- 下一步应优先处理 side branch 的 dataset leakage，而不是回到旧的 split-latent 路线
+
+### 11.6 Side-Basis Rep Tightening Probe（v27）
+
+为验证 “dataset leakage 是否主要藏在 side dense latent 容量里”，
+先固定 early-branch 主结构不动，只做两件事：
+
+- analysis 端把 canonical `side_rep` 明确改为
+  `masked_mean_per_sequence(side_path_representation, valid_mask)`
+- 新增 `v27` baseline，把 `side_z_dim` 从 `32` 收紧到 `8`
+
+比较口径：
+
+- baseline: `outputs/lq_x_mouth_v26_early_branch_probe_win20_e50/best.pt`
+  用新 canonical rule 重跑 analysis
+- candidate: `outputs/lq_x_mouth_v27_side_basis_rep_tight_probe_win20_e50`
+
+`v26` 重新 analysis 后的可比基线：
+
+- `side_from_side_rep_acc = 0.8227`
+- `side_from_free_rep_acc = 0.3273`
+- `dataset_from_side_rep_acc = 0.8182`
+- `val_recon = 0.2873`
+- `val_side_group = 0.5365`
+
+`v27 side_z_dim=8` 50 epoch best checkpoint 结果：
+
+- `val_loss = 0.9467`
+- `val_recon = 0.3268`
+- `val_side_group = 0.8931`
+- `side_from_side_rep_acc = 0.6136`
+- `side_from_free_rep_acc = 0.3636`
+- `dataset_from_side_rep_acc = 0.8318`
+
+结论：
+
+- 单纯缩小 `side_z` 容量没有降低 dataset leakage
+- canonical side probe 反而变弱，且重建 / side_group 都明显劣化
+- 说明 leakage 更可能已经进入 side basis expression 本身，而不是只藏在多余的 dense latent 维度里
+
+因此下一步不建议继续单独压 `side_z_dim`，应转向：
+
+- 直接约束 side basis expression 的统计结构 / 稀疏性 / 使用模式
+- 或从 supervision 设计上限制 shared-side 可编码的数据集信息
+
+### 11.7 Side-Aware Pooling Probe（v28）
+
+为验证 “不改 shared trunk，仅通过更合理的 side pooling 是否能救回 laterality 表达”，
+本轮固定 early-branch 主结构不动，只做联合 probe：
+
+- `side_pooling = fixed_block4_diag`
+- `side_basis_count: 2 -> 4`
+- `side_z_dim` 恢复到 `32`
+
+比较口径：
+
+- baseline: `outputs/lq_x_mouth_v26_early_branch_probe_win20_e50/analysis_v27_side_rep/summary.json`
+- candidate: `outputs/lq_x_mouth_v28_side_aware_pooling_probe_win20_e50/analysis/summary.json`
+
+`v28` 50 epoch best checkpoint 结果：
+
+- `val_loss = 0.8384`
+- `val_recon = 0.2966`
+- `val_side_group = 0.7517`
+- `side_from_side_rep_acc = 0.7500`
+- `side_from_free_rep_acc = 0.3773`
+- `dataset_from_side_rep_acc = 0.9364`
+- `dataset_from_free_rep_acc = 0.8318`
+- `dataset_from_private_rep_acc = 0.9227`
+- `ortho_linear_r2_free_to_side = 0.7998`
+- `ortho_linear_r2_side_to_free = 0.9233`
+
+相对 `v26` 的结论：
+
+- `side_from_side_rep_acc` 下降：`0.7500 < 0.8227`
+- `side_from_free_rep_acc` 上升：`0.3773 > 0.3273`
+- `dataset_from_side_rep_acc` 明显升高：`0.9364 > 0.8182`
+- `val_recon` 仅略差：`0.2966 - 0.2873 = +0.0093`
+- 但 `val_side_group` 明显变差：`0.7517 - 0.5365 = +0.2153`
+- latent 对齐显著升高，说明 `free/side` 耦合反而更强
+
+结论：
+
+- 单靠 side-aware pooling 没有解决 side 分支的核心问题
+- side branch 的 laterality 可分性没有提升，dataset leakage 反而更重
+- 更关键的是，`z_free` 与 `z_side` 的可线性互相解释度显著上升，说明 shared trunk 里混入的 side 信息并没有被后段 pooling 充分纠正
+
+因此下一步不建议继续沿 “只改 pooling” 方向细抠，
+应切换到显式 laterality contrast token 版本，直接把：
+
+- `mouth-left - mouth-right`
+- `around-left - around-right`
+
+作为 side branch 的结构先验，再观察 side probe / dataset leakage 是否真正分离。
+
+### 11.8 Laterality Contrast Token Probe（v29）
+
+为验证 “显式左右差分先验是否比纯 side-aware pooling 更有效”，
+本轮在 `v28` 基础上保持 shared trunk / free branch / private branch / FSQ 不变，
+只把 early side path 的 readout 改成两个显式 contrast token：
+
+- `around-left - around-right`
+- `mouth-left - mouth-right`
+
+实现方式：
+
+- 仍从 `side_adapter(feats) [B*T, 32, 15, 15]` 读取
+- 先池化四个固定区域 token
+- 再拼成两个有符号 contrast token，得到 `64` 维 side readout
+- `side_basis_count` 继续保持 `4`
+
+比较口径：
+
+- baseline 1: `outputs/lq_x_mouth_v26_early_branch_probe_win20_e50/analysis_v27_side_rep/summary.json`
+- baseline 2: `outputs/lq_x_mouth_v28_side_aware_pooling_probe_win20_e50/analysis/summary.json`
+- candidate: `outputs/lq_x_mouth_v29_laterality_contrast_probe_win20_e50/analysis/summary.json`
+
+`v29` 50 epoch best checkpoint 结果：
+
+- `val_loss = 0.6774`
+- `val_recon = 0.2528`
+- `val_side_group = 0.5334`
+- `side_from_side_rep_acc = 0.7091`
+- `side_from_free_rep_acc = 0.4091`
+- `dataset_from_side_rep_acc = 0.8909`
+- `dataset_from_free_rep_acc = 0.8182`
+- `dataset_from_private_rep_acc = 0.9227`
+- `ortho_linear_r2_free_to_side = 0.6899`
+- `ortho_linear_r2_side_to_free = 0.8526`
+
+相对 `v28`：
+
+- `val_loss` 明显更好：`0.6774 < 0.8384`
+- `val_recon` 明显更好：`0.2528 < 0.2966`
+- `val_side_group` 明显更好：`0.5334 < 0.7517`
+- `dataset_from_side_rep_acc` 有所下降：`0.8909 < 0.9364`
+- `free/side` 耦合有所下降：`0.6899 < 0.7998`，`0.8526 < 0.9233`
+- 但 `side_from_side_rep_acc` 反而下降：`0.7091 < 0.7500`
+- 同时 `side_from_free_rep_acc` 上升：`0.4091 > 0.3773`
+
+相对 `v26`：
+
+- `val_loss` 更好：`0.6774 < 0.7623`
+- `val_recon` 更好：`0.2528 < 0.2873`
+- `val_side_group` 基本持平略优：`0.5334 < 0.5365`
+- 但 `side_from_side_rep_acc` 仍偏低：`0.7091 < 0.8227`
+- `dataset_from_side_rep_acc` 仍偏高：`0.8909 > 0.8182`
+- `free/side` 耦合也仍高于 `v26`
+
+结论：
+
+- 显式 laterality contrast token 是有效结构先验
+- 它显著改善了训练质量、重建和 side_group，相比 `v28` 是明确更好的方向
+- 但它并没有把 “side 语义纯度” 单独推到最好，当前 `side_from_side_rep_acc` 仍不如 `v26`
+- 更准确地说，`v29` 更像是把 side branch 从 “弱 readout + 强 leakage” 调整为 “更有用、更参与重建，但仍不够纯”
+
+因此下一步建议：
+
+- 把 `v29 laterality contrast` 作为新的结构 baseline
+- 后续所有“可解释性/监督”探索都基于 `v29` 做
+- 下一阶段不要再回到纯 pooling probe，而应直接在 `v29` 上加强 side branch 的监督与解耦

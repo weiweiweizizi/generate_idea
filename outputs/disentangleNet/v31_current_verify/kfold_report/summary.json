@@ -1,0 +1,959 @@
+{
+  "metadata": {
+    "checkpoint_path": "outputs/disentangleNet/v31_current_verify/best.pt",
+    "data_roots": "data/win20-step20/IMR,data/win20-step20/TT",
+    "mode": "x",
+    "region": "mouth",
+    "total_groups": 293,
+    "total_subjects": 267,
+    "requested_splits": 5,
+    "resolved_splits": 5,
+    "stratification_mode": "joint_side_dataset",
+    "side_counts": {
+      "Left": 83,
+      "Normal": 111,
+      "Right": 99
+    },
+    "dataset_counts": {
+      "IMR": 228,
+      "TT": 65
+    },
+    "artifacts": {
+      "full_group_level_representations": "outputs/disentangleNet/v31_current_verify/kfold_report/full_group_level_representations.npz",
+      "full_group_side_semantics": "outputs/disentangleNet/v31_current_verify/kfold_report/full_group_side_semantics.csv",
+      "subject_fold_assignments": "outputs/disentangleNet/v31_current_verify/kfold_report/subject_fold_assignments.csv",
+      "fold_summary": "outputs/disentangleNet/v31_current_verify/kfold_report/fold_summary.csv",
+      "probe_summary": "outputs/disentangleNet/v31_current_verify/kfold_report/probe_summary.csv",
+      "probe_predictions": "outputs/disentangleNet/v31_current_verify/kfold_report/probe_predictions.csv",
+      "probe_fold_metrics": "outputs/disentangleNet/v31_current_verify/kfold_report/probe_fold_metrics.csv"
+    }
+  },
+  "tasks": {
+    "side_from_side_rep": {
+      "task_name": "side_from_side_rep",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9283276450511946,
+        "balanced_accuracy": 0.9247012620506596,
+        "macro_precision": 0.9314478114478114,
+        "macro_recall": 0.9247012620506596,
+        "macro_f1": 0.9267017025118615,
+        "support": 293,
+        "per_class_precision": [
+          0.96,
+          0.9454545454545454,
+          0.8888888888888888
+        ],
+        "per_class_recall": [
+          0.8674698795180723,
+          0.9369369369369369,
+          0.9696969696969697
+        ],
+        "per_class_f1": [
+          0.9113924050632911,
+          0.9411764705882352,
+          0.927536231884058
+        ]
+      },
+      "fold_accuracies": [
+        0.8983050847457628,
+        0.9310344827586207,
+        0.9482758620689655,
+        0.9322033898305084,
+        0.9322033898305084
+      ],
+      "fold_balanced_accuracies": [
+        0.8957219251336898,
+        0.9282446311858076,
+        0.9530303030303031,
+        0.9215686274509803,
+        0.9271739130434783
+      ],
+      "fold_macro_f1": [
+        0.8963178294573643,
+        0.9315476190476191,
+        0.9478524743230626,
+        0.9249999999999999,
+        0.9315389924085576
+      ],
+      "confusion_matrix": [
+        [
+          72,
+          4,
+          7
+        ],
+        [
+          2,
+          104,
+          5
+        ],
+        [
+          1,
+          2,
+          96
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.8674698795180723,
+          0.04819277108433735,
+          0.08433734939759036
+        ],
+        [
+          0.018018018018018018,
+          0.9369369369369369,
+          0.04504504504504504
+        ],
+        [
+          0.010101010101010102,
+          0.020202020202020204,
+          0.9696969696969697
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_side_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_side_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_side_rep_confusion.png"
+      }
+    },
+    "side_from_free_rep": {
+      "task_name": "side_from_free_rep",
+      "num_groups": 293,
+      "num_features": 32,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.4709897610921502,
+        "balanced_accuracy": 0.43986374106856035,
+        "macro_precision": 0.41426663627894333,
+        "macro_recall": 0.43986374106856035,
+        "macro_f1": 0.39658859963993515,
+        "support": 293,
+        "per_class_precision": [
+          0.2777777777777778,
+          0.49044585987261147,
+          0.4745762711864407
+        ],
+        "per_class_recall": [
+          0.060240963855421686,
+          0.6936936936936937,
+          0.5656565656565656
+        ],
+        "per_class_f1": [
+          0.09900990099009901,
+          0.5746268656716417,
+          0.5161290322580646
+        ]
+      },
+      "fold_accuracies": [
+        0.5254237288135594,
+        0.3620689655172414,
+        0.5,
+        0.4745762711864407,
+        0.4915254237288136
+      ],
+      "fold_balanced_accuracies": [
+        0.49830659536541894,
+        0.34262371615312787,
+        0.46174242424242423,
+        0.44241037376048814,
+        0.45489130434782615
+      ],
+      "fold_macro_f1": [
+        0.4617196220969806,
+        0.3114796614796615,
+        0.41383647798742135,
+        0.37229437229437234,
+        0.4138089278264497
+      ],
+      "confusion_matrix": [
+        [
+          5,
+          42,
+          36
+        ],
+        [
+          8,
+          77,
+          26
+        ],
+        [
+          5,
+          38,
+          56
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.060240963855421686,
+          0.5060240963855421,
+          0.43373493975903615
+        ],
+        [
+          0.07207207207207207,
+          0.6936936936936937,
+          0.23423423423423423
+        ],
+        [
+          0.050505050505050504,
+          0.3838383838383838,
+          0.5656565656565656
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_free_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_free_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_free_rep_confusion.png"
+      }
+    },
+    "dataset_from_side_rep": {
+      "task_name": "dataset_from_side_rep",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7713310580204779,
+        "balanced_accuracy": 0.5286099865047234,
+        "macro_precision": 0.6085509472606246,
+        "macro_recall": 0.5286099865047234,
+        "macro_f1": 0.5098744163982722,
+        "support": 293,
+        "per_class_precision": [
+          0.7885304659498208,
+          0.42857142857142855
+        ],
+        "per_class_recall": [
+          0.9649122807017544,
+          0.09230769230769231
+        ],
+        "per_class_f1": [
+          0.8678500986193294,
+          0.1518987341772152
+        ]
+      },
+      "fold_accuracies": [
+        0.7796610169491526,
+        0.7586206896551724,
+        0.7931034482758621,
+        0.7966101694915254,
+        0.7288135593220338
+      ],
+      "fold_balanced_accuracies": [
+        0.5,
+        0.5162393162393163,
+        0.5384615384615384,
+        0.5384615384615384,
+        0.5501672240802675
+      ],
+      "fold_macro_f1": [
+        0.4380952380952381,
+        0.4925,
+        0.5126050420168067,
+        0.5137362637362637,
+        0.553030303030303
+      ],
+      "confusion_matrix": [
+        [
+          220,
+          8
+        ],
+        [
+          59,
+          6
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9649122807017544,
+          0.03508771929824561
+        ],
+        [
+          0.9076923076923077,
+          0.09230769230769231
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_side_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_side_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_side_rep_confusion.png"
+      }
+    },
+    "dataset_from_free_rep": {
+      "task_name": "dataset_from_free_rep",
+      "num_groups": 293,
+      "num_features": 32,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7986348122866894,
+        "balanced_accuracy": 0.6451417004048583,
+        "macro_precision": 0.7040409789413773,
+        "macro_recall": 0.6451417004048583,
+        "macro_f1": 0.662712426589663,
+        "support": 293,
+        "per_class_precision": [
+          0.8366533864541833,
+          0.5714285714285714
+        ],
+        "per_class_recall": [
+          0.9210526315789473,
+          0.36923076923076925
+        ],
+        "per_class_f1": [
+          0.8768267223382045,
+          0.4485981308411215
+        ]
+      },
+      "fold_accuracies": [
+        0.7627118644067796,
+        0.8103448275862069,
+        0.8275862068965517,
+        0.7627118644067796,
+        0.8305084745762712
+      ],
+      "fold_balanced_accuracies": [
+        0.5994983277591973,
+        0.6863247863247863,
+        0.6153846153846154,
+        0.6270903010033445,
+        0.6981605351170569
+      ],
+      "fold_macro_f1": [
+        0.6089015151515151,
+        0.7017297802711547,
+        0.6375,
+        0.6338652482269503,
+        0.7206439393939394
+      ],
+      "confusion_matrix": [
+        [
+          210,
+          18
+        ],
+        [
+          41,
+          24
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9210526315789473,
+          0.07894736842105263
+        ],
+        [
+          0.6307692307692307,
+          0.36923076923076925
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_free_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_free_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_free_rep_confusion.png"
+      }
+    },
+    "dataset_from_private_rep": {
+      "task_name": "dataset_from_private_rep",
+      "num_groups": 293,
+      "num_features": 32,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.8839590443686007,
+        "balanced_accuracy": 0.8099527665317139,
+        "macro_precision": 0.8414733868569729,
+        "macro_recall": 0.8099527665317139,
+        "macro_f1": 0.8240178066704352,
+        "support": 293,
+        "per_class_precision": [
+          0.9110169491525424,
+          0.7719298245614035
+        ],
+        "per_class_recall": [
+          0.9429824561403509,
+          0.676923076923077
+        ],
+        "per_class_f1": [
+          0.9267241379310344,
+          0.7213114754098361
+        ]
+      },
+      "fold_accuracies": [
+        0.8135593220338984,
+        0.8620689655172413,
+        0.9137931034482759,
+        0.8983050847457628,
+        0.9322033898305084
+      ],
+      "fold_balanced_accuracies": [
+        0.7424749163879598,
+        0.8017094017094017,
+        0.8076923076923077,
+        0.7968227424749164,
+        0.9013377926421404
+      ],
+      "fold_macro_f1": [
+        0.7358567358567359,
+        0.8017094017094017,
+        0.8546365914786969,
+        0.8323863636363638,
+        0.9013377926421404
+      ],
+      "confusion_matrix": [
+        [
+          215,
+          13
+        ],
+        [
+          21,
+          44
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9429824561403509,
+          0.05701754385964912
+        ],
+        [
+          0.3230769230769231,
+          0.676923076923077
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_private_rep_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_private_rep_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_private_rep_confusion.png"
+      }
+    },
+    "side_from_usage": {
+      "task_name": "side_from_usage",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9283276450511946,
+        "balanced_accuracy": 0.9289596277548084,
+        "macro_precision": 0.9290154068147985,
+        "macro_recall": 0.9289596277548084,
+        "macro_f1": 0.928786205203731,
+        "support": 293,
+        "per_class_precision": [
+          0.9176470588235294,
+          0.911504424778761,
+          0.9578947368421052
+        ],
+        "per_class_recall": [
+          0.9397590361445783,
+          0.9279279279279279,
+          0.9191919191919192
+        ],
+        "per_class_f1": [
+          0.9285714285714286,
+          0.9196428571428571,
+          0.9381443298969072
+        ]
+      },
+      "fold_accuracies": [
+        0.8813559322033898,
+        0.9482758620689655,
+        0.9310344827586207,
+        0.9322033898305084,
+        0.9491525423728814
+      ],
+      "fold_balanced_accuracies": [
+        0.8835115864527628,
+        0.9507936507936509,
+        0.9363636363636364,
+        0.9236326109391125,
+        0.9521739130434783
+      ],
+      "fold_macro_f1": [
+        0.8801587301587301,
+        0.9480646059593427,
+        0.9339549339549341,
+        0.9297899125694419,
+        0.9530823786142936
+      ],
+      "confusion_matrix": [
+        [
+          78,
+          4,
+          1
+        ],
+        [
+          5,
+          103,
+          3
+        ],
+        [
+          2,
+          6,
+          91
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9397590361445783,
+          0.04819277108433735,
+          0.012048192771084338
+        ],
+        [
+          0.04504504504504504,
+          0.9279279279279279,
+          0.02702702702702703
+        ],
+        [
+          0.020202020202020204,
+          0.06060606060606061,
+          0.9191919191919192
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_usage_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_usage_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_usage_confusion.png"
+      }
+    },
+    "side_from_coeff": {
+      "task_name": "side_from_coeff",
+      "num_groups": 293,
+      "num_features": 1,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9351535836177475,
+        "balanced_accuracy": 0.9314352687846664,
+        "macro_precision": 0.941840207951195,
+        "macro_recall": 0.9314352687846664,
+        "macro_f1": 0.933911221776896,
+        "support": 293,
+        "per_class_precision": [
+          0.9863013698630136,
+          0.9719626168224299,
+          0.8672566371681416
+        ],
+        "per_class_recall": [
+          0.8674698795180723,
+          0.9369369369369369,
+          0.98989898989899
+        ],
+        "per_class_f1": [
+          0.923076923076923,
+          0.9541284403669725,
+          0.9245283018867925
+        ]
+      },
+      "fold_accuracies": [
+        0.9152542372881356,
+        0.9310344827586207,
+        0.9655172413793104,
+        0.9152542372881356,
+        0.9491525423728814
+      ],
+      "fold_balanced_accuracies": [
+        0.9153297682709448,
+        0.9253034547152194,
+        0.9696969696969697,
+        0.9019607843137255,
+        0.9480072463768116
+      ],
+      "fold_macro_f1": [
+        0.9171176046176046,
+        0.9293088238800277,
+        0.9658958927251611,
+        0.9036905053045917,
+        0.9503643143023295
+      ],
+      "confusion_matrix": [
+        [
+          72,
+          2,
+          9
+        ],
+        [
+          1,
+          104,
+          6
+        ],
+        [
+          0,
+          1,
+          98
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.8674698795180723,
+          0.024096385542168676,
+          0.10843373493975904
+        ],
+        [
+          0.009009009009009009,
+          0.9369369369369369,
+          0.05405405405405406
+        ],
+        [
+          0.0,
+          0.010101010101010102,
+          0.98989898989899
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_coeff_confusion.png"
+      }
+    },
+    "side_from_usage_coeff": {
+      "task_name": "side_from_usage_coeff",
+      "num_groups": 293,
+      "num_features": 4,
+      "num_classes": 3,
+      "label_names": [
+        "Left",
+        "Normal",
+        "Right"
+      ],
+      "metrics": {
+        "accuracy": 0.9419795221843004,
+        "balanced_accuracy": 0.9416996404948211,
+        "macro_precision": 0.9416114383897889,
+        "macro_recall": 0.9416996404948211,
+        "macro_f1": 0.9416051214127067,
+        "support": 293,
+        "per_class_precision": [
+          0.9285714285714286,
+          0.9375,
+          0.9587628865979382
+        ],
+        "per_class_recall": [
+          0.9397590361445783,
+          0.9459459459459459,
+          0.9393939393939394
+        ],
+        "per_class_f1": [
+          0.9341317365269461,
+          0.9417040358744394,
+          0.9489795918367346
+        ]
+      },
+      "fold_accuracies": [
+        0.8983050847457628,
+        0.9655172413793104,
+        0.9310344827586207,
+        0.9491525423728814,
+        0.9661016949152542
+      ],
+      "fold_balanced_accuracies": [
+        0.8986631016042782,
+        0.9666666666666667,
+        0.9363636363636364,
+        0.9411764705882352,
+        0.9688405797101449
+      ],
+      "fold_macro_f1": [
+        0.8969545957918051,
+        0.9651803928425716,
+        0.9314953172682312,
+        0.9453060380479735,
+        0.9688405797101449
+      ],
+      "confusion_matrix": [
+        [
+          78,
+          4,
+          1
+        ],
+        [
+          3,
+          105,
+          3
+        ],
+        [
+          3,
+          3,
+          93
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9397590361445783,
+          0.04819277108433735,
+          0.012048192771084338
+        ],
+        [
+          0.02702702702702703,
+          0.9459459459459459,
+          0.02702702702702703
+        ],
+        [
+          0.030303030303030304,
+          0.030303030303030304,
+          0.9393939393939394
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_usage_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_usage_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/side_from_usage_coeff_confusion.png"
+      }
+    },
+    "dataset_from_usage": {
+      "task_name": "dataset_from_usage",
+      "num_groups": 293,
+      "num_features": 3,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7781569965870307,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.3890784982935154,
+        "macro_recall": 0.5,
+        "macro_f1": 0.43761996161228406,
+        "support": 293,
+        "per_class_precision": [
+          0.7781569965870307,
+          0.0
+        ],
+        "per_class_recall": [
+          1.0,
+          0.0
+        ],
+        "per_class_f1": [
+          0.8752399232245681,
+          0.0
+        ]
+      },
+      "fold_accuracies": [
+        0.7796610169491526,
+        0.7758620689655172,
+        0.7758620689655172,
+        0.7796610169491526,
+        0.7796610169491526
+      ],
+      "fold_balanced_accuracies": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "fold_macro_f1": [
+        0.4380952380952381,
+        0.4368932038834951,
+        0.4368932038834951,
+        0.4380952380952381,
+        0.4380952380952381
+      ],
+      "confusion_matrix": [
+        [
+          228,
+          0
+        ],
+        [
+          65,
+          0
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_usage_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_usage_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_usage_confusion.png"
+      }
+    },
+    "dataset_from_coeff": {
+      "task_name": "dataset_from_coeff",
+      "num_groups": 293,
+      "num_features": 1,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7781569965870307,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.3890784982935154,
+        "macro_recall": 0.5,
+        "macro_f1": 0.43761996161228406,
+        "support": 293,
+        "per_class_precision": [
+          0.7781569965870307,
+          0.0
+        ],
+        "per_class_recall": [
+          1.0,
+          0.0
+        ],
+        "per_class_f1": [
+          0.8752399232245681,
+          0.0
+        ]
+      },
+      "fold_accuracies": [
+        0.7796610169491526,
+        0.7758620689655172,
+        0.7758620689655172,
+        0.7796610169491526,
+        0.7796610169491526
+      ],
+      "fold_balanced_accuracies": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "fold_macro_f1": [
+        0.4380952380952381,
+        0.4368932038834951,
+        0.4368932038834951,
+        0.4380952380952381,
+        0.4380952380952381
+      ],
+      "confusion_matrix": [
+        [
+          228,
+          0
+        ],
+        [
+          65,
+          0
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_coeff_confusion.png"
+      }
+    },
+    "dataset_from_usage_coeff": {
+      "task_name": "dataset_from_usage_coeff",
+      "num_groups": 293,
+      "num_features": 4,
+      "num_classes": 2,
+      "label_names": [
+        "IMR",
+        "TT"
+      ],
+      "metrics": {
+        "accuracy": 0.7508532423208191,
+        "balanced_accuracy": 0.4879554655870445,
+        "macro_precision": 0.4369257950530035,
+        "macro_recall": 0.4879554655870445,
+        "macro_f1": 0.44190476190476186,
+        "support": 293,
+        "per_class_precision": [
+          0.773851590106007,
+          0.1
+        ],
+        "per_class_recall": [
+          0.9605263157894737,
+          0.015384615384615385
+        ],
+        "per_class_f1": [
+          0.8571428571428571,
+          0.02666666666666667
+        ]
+      },
+      "fold_accuracies": [
+        0.7627118644067796,
+        0.7931034482758621,
+        0.7586206896551724,
+        0.6610169491525424,
+        0.7796610169491526
+      ],
+      "fold_balanced_accuracies": [
+        0.4891304347826087,
+        0.5384615384615384,
+        0.4888888888888889,
+        0.42391304347826086,
+        0.5
+      ],
+      "fold_macro_f1": [
+        0.4326923076923077,
+        0.5126050420168067,
+        0.4313725490196078,
+        0.39795918367346944,
+        0.4380952380952381
+      ],
+      "confusion_matrix": [
+        [
+          219,
+          9
+        ],
+        [
+          64,
+          1
+        ]
+      ],
+      "normalized_confusion_matrix": [
+        [
+          0.9605263157894737,
+          0.039473684210526314
+        ],
+        [
+          0.9846153846153847,
+          0.015384615384615385
+        ]
+      ],
+      "artifacts": {
+        "confusion_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_usage_coeff_confusion.csv",
+        "confusion_normalized_csv": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_usage_coeff_confusion_normalized.csv",
+        "confusion_png": "outputs/disentangleNet/v31_current_verify/kfold_report/dataset_from_usage_coeff_confusion.png"
+      }
+    }
+  }
+}

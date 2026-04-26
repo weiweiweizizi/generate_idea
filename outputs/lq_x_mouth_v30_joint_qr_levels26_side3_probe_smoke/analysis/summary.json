@@ -1,0 +1,262 @@
+{
+  "checkpoint_path": "outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_smoke/best.pt",
+  "analysis_split": "val",
+  "basis_shape": [
+    8,
+    119,
+    119
+  ],
+  "levels": [
+    2,
+    6
+  ],
+  "side_basis_shape": [
+    3,
+    119,
+    119
+  ],
+  "train_metrics": {
+    "loss": 1.0582178235054016,
+    "recon": 0.3622867166996002,
+    "shared_recon": 0.36230698227882385,
+    "lq": 0.0,
+    "orth": 5.29102433930893e-14,
+    "basis_l1": 0.005202180473133922,
+    "residual": 0.03995268978178501,
+    "scaled_residual": 0.001997634652070701,
+    "subspace_orth": 0.0,
+    "recon_frames": 236.75,
+    "supervision_frames": 92.5,
+    "side": 1.0951844453811646,
+    "side_cont": 1.0951844453811646,
+    "side_group": 1.0920762419700623,
+    "free_side_adv": 0.0
+  },
+  "val_metrics": {
+    "loss": 1.0622321367263794,
+    "recon": 0.3635168671607971,
+    "shared_recon": 0.3635272979736328,
+    "lq": 0.0,
+    "orth": 4.158300223253142e-14,
+    "basis_l1": 0.004950309172272682,
+    "residual": 0.039991360157728195,
+    "scaled_residual": 0.0019995681941509247,
+    "subspace_orth": 0.0,
+    "recon_frames": 227.0,
+    "supervision_frames": 80.0,
+    "side": 1.094530701637268,
+    "side_cont": 1.094530701637268,
+    "side_group": 1.0981261730194092,
+    "free_side_adv": 0.0
+  },
+  "model_load": {
+    "strict": false,
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "code_usage": {
+    "total_valid_frames": 80,
+    "levels": [
+      {
+        "level_index": 0,
+        "size": 2,
+        "counts": [
+          0,
+          80
+        ],
+        "fractions": [
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "level_index": 1,
+        "size": 6,
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          80,
+          0
+        ],
+        "fractions": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ]
+      }
+    ]
+  },
+  "mean_side_path_usage": 0.3333333432674408,
+  "mean_free_path_usage": 0.2499999701976776,
+  "mean_side_recon_l1": 0.00022879585158079862,
+  "mean_free_recon_l1": 0.0011729680001735688,
+  "latent_alignment": {
+    "side_latent_dim": 32,
+    "free_latent_dim": 32,
+    "raw_linear_r2_free_to_side": null,
+    "raw_linear_r2_side_to_free": null,
+    "ortho_linear_r2_free_to_side": 2.0647961007647098e-08,
+    "ortho_linear_r2_side_to_free": 1.0
+  },
+  "mean_side_path_usage_per_basis": [
+    0.34849417209625244,
+    0.32204923033714294,
+    0.329456627368927
+  ],
+  "mean_free_path_usage_per_basis": [
+    0.1448085755109787,
+    0.8551912307739258,
+    0.0,
+    0.0,
+    0.15286339819431305,
+    0.0,
+    0.8471366167068481,
+    0.0
+  ],
+  "side_probe": {
+    "side_from_side_rep_acc": 0.759090918302536,
+    "side_from_side_rep_acc_std": 0.11948582351609918,
+    "side_from_free_rep_acc": 0.3636363744735718,
+    "side_from_free_rep_acc_std": 0.0,
+    "side_from_side_rep_backend": "torch_linear_probe_fallback",
+    "side_from_free_rep_backend": "torch_linear_probe_fallback",
+    "side_from_side_rep_error": "ImportError: numpy.core.multiarray failed to import",
+    "side_from_free_rep_error": "ImportError: numpy.core.multiarray failed to import",
+    "side_from_side_rep_accuracies": [
+      0.6363636255264282,
+      0.5454545617103577,
+      0.9090909361839294,
+      0.7272727489471436,
+      0.8181818127632141,
+      0.6363636255264282,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.7272727489471436,
+      0.9090909361839294,
+      0.9090909361839294,
+      0.7272727489471436,
+      0.6363636255264282,
+      0.9090909361839294,
+      0.9090909361839294,
+      0.7272727489471436,
+      0.6363636255264282,
+      0.9090909361839294,
+      0.6363636255264282,
+      0.6363636255264282
+    ],
+    "side_from_free_rep_accuracies": [
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718,
+      0.3636363744735718
+    ]
+  },
+  "dataset_probe": {
+    "dataset_from_side_rep_acc": 0.8045454531908035,
+    "dataset_from_side_rep_acc_std": 0.032461028637415124,
+    "dataset_from_free_rep_acc": 0.8181818127632141,
+    "dataset_from_free_rep_acc_std": 0.0,
+    "dataset_from_private_rep_acc": 0.8590909212827682,
+    "dataset_from_private_rep_acc_std": 0.12017549289616435,
+    "dataset_from_side_rep_backend": "torch_linear_probe_fallback",
+    "dataset_from_free_rep_backend": "torch_linear_probe_fallback",
+    "dataset_from_private_rep_backend": "torch_linear_probe_fallback",
+    "dataset_from_side_rep_error": "ImportError: numpy.core.multiarray failed to import",
+    "dataset_from_free_rep_error": "ImportError: numpy.core.multiarray failed to import",
+    "dataset_from_private_rep_error": "ImportError: numpy.core.multiarray failed to import",
+    "dataset_from_side_rep_accuracies": [
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.7272727489471436,
+      0.7272727489471436,
+      0.7272727489471436,
+      0.8181818127632141
+    ],
+    "dataset_from_free_rep_accuracies": [
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141,
+      0.8181818127632141
+    ],
+    "dataset_from_private_rep_accuracies": [
+      1.0,
+      0.9090909361839294,
+      1.0,
+      0.9090909361839294,
+      0.8181818127632141,
+      0.8181818127632141,
+      1.0,
+      0.8181818127632141,
+      0.7272727489471436,
+      0.9090909361839294,
+      1.0,
+      0.9090909361839294,
+      0.9090909361839294,
+      0.5454545617103577,
+      0.9090909361839294,
+      0.9090909361839294,
+      0.9090909361839294,
+      0.6363636255264282,
+      0.8181818127632141,
+      0.7272727489471436
+    ]
+  },
+  "artifacts": {
+    "basis_bank": "outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_smoke/analysis/basis_bank.npy",
+    "basis_bank_heatmap": "outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_smoke/analysis/basis_bank_heatmap.png",
+    "side_basis_bank": "outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_smoke/analysis/side_basis_bank.npy",
+    "side_basis_bank_heatmap": "outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_smoke/analysis/side_basis_bank_heatmap.png",
+    "group_level_representations": "outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_smoke/analysis/group_level_representations.npz"
+  }
+}

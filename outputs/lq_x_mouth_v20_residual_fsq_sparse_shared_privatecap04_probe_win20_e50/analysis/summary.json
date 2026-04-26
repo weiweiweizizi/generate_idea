@@ -1,0 +1,89 @@
+{
+  "checkpoint_path": "outputs/lq_x_mouth_v20_residual_fsq_sparse_shared_privatecap04_probe_win20_e50/best.pt",
+  "analysis_split": "val",
+  "basis_shape": [
+    11,
+    119,
+    119
+  ],
+  "levels": [
+    2,
+    3,
+    6
+  ],
+  "train_metrics": {
+    "loss": 0.6819474101066589,
+    "recon": 0.3288618251681328,
+    "shared_recon": 0.3435593470931053,
+    "lq": 0.0,
+    "orth": 2.1700952124691086e-12,
+    "basis_l1": 0.0025290680932812393,
+    "residual": 0.349856935441494,
+    "scaled_residual": 0.017492847051471472,
+    "recon_frames": 236.75,
+    "supervision_frames": 92.5
+  },
+  "val_metrics": {
+    "loss": 0.6851511001586914,
+    "recon": 0.330980509519577,
+    "shared_recon": 0.3448118269443512,
+    "lq": 0.0,
+    "orth": 2.1837807170216328e-12,
+    "basis_l1": 0.002517696935683489,
+    "residual": 0.3420524299144745,
+    "scaled_residual": 0.017102623358368874,
+    "recon_frames": 227.0,
+    "supervision_frames": 80.0
+  },
+  "code_usage": {
+    "total_valid_frames": 80,
+    "levels": [
+      {
+        "level_index": 0,
+        "size": 2,
+        "counts": [
+          22,
+          58
+        ],
+        "fractions": [
+          0.275,
+          0.725
+        ]
+      },
+      {
+        "level_index": 1,
+        "size": 3,
+        "counts": [
+          57,
+          1,
+          22
+        ],
+        "fractions": [
+          0.7125,
+          0.0125,
+          0.275
+        ]
+      },
+      {
+        "level_index": 2,
+        "size": 6,
+        "counts": [
+          57,
+          1,
+          0,
+          2,
+          17,
+          3
+        ],
+        "fractions": [
+          0.7125,
+          0.0125,
+          0.0,
+          0.025,
+          0.2125,
+          0.0375
+        ]
+      }
+    ]
+  }
+}

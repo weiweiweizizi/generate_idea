@@ -40,3 +40,19 @@ def build_motion_encoder(hidden_dim: int, pool_size: int):
     layer3 = BasicBlock(hidden_dim, hidden_dim)
     avg_pool = nn.AdaptiveAvgPool2d((pool_size, pool_size))
     return initial_conv, layer1, layer2, layer3, avg_pool
+
+
+def build_branch_adapter(hidden_dim: int) -> nn.Sequential:
+    """Construct a lightweight feature adapter for an early factorized branch."""
+
+    return nn.Sequential(
+        nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1, bias=False),
+        nn.BatchNorm2d(hidden_dim),
+        nn.ReLU(inplace=True),
+    )
+
+
+def build_branch_pool(pool_size: int) -> nn.AdaptiveAvgPool2d:
+    """Construct branch-local spatial pooling used before branch heads."""
+
+    return nn.AdaptiveAvgPool2d((pool_size, pool_size))

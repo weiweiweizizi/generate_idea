@@ -34,6 +34,14 @@ else:
     )
 
 
+def parse_levels(levels) -> tuple[int, ...]:
+    if isinstance(levels, str):
+        return tuple(int(v) for v in levels.split(",") if str(v).strip())
+    if isinstance(levels, (tuple, list)):
+        return tuple(int(v) for v in levels)
+    raise TypeError(f"Unsupported levels value: {levels!r}")
+
+
 def train(
     data_roots="data/win20-step20/IMR,data/win20-step20/TT",
     epochs=20,
@@ -52,6 +60,14 @@ def train(
     levels="2,3,6",
     hidden_dim=32,
     pool_size=1,
+    early_branch_factorization=False,
+    free_pool_size=2,
+    side_pool_size=2,
+    private_pool_size=1,
+    free_z_dim=None,
+    side_z_dim=None,
+    private_adapter_enabled=False,
+    side_basis_init_path=None,
     shared_dim=None,
     private_dim=32,
     private_decoder_hidden_dim=None,
@@ -68,6 +84,12 @@ def train(
     side_basis_count=0,
     side_pooling="masked_mean",
     side_loss_weight=0.0,
+    side_subspace_dim=None,
+    side_free_frame_qr=False,
+    subspace_orth_weight=0.0,
+    free_side_adv_weight=0.0,
+    free_side_grl_lambda=1.0,
+    severity_loss_weight=0.0,
     dataset_private_weight=0.3,
     dataset_adv_weight=0.3,
     private_residual_weight=0.25,
@@ -84,6 +106,7 @@ def train(
     quantizer_type="latent_quantize",
     fsq_preserve_symmetry=True,
     basis_orthogonalization="normalize",
+    discrete_side_loss_enabled=True,
     require_basis_init=True,
     validate_batch_memory=True,
     num_workers=0,
@@ -113,14 +136,23 @@ def train(
     )
 
     model = DistNet(
-        levels=tuple(int(v) for v in config["levels"].split(",")),
+        levels=parse_levels(config["levels"]),
         basis_size=config["basis_size"],
         hidden_dim=config["hidden_dim"],
         pool_size=config["pool_size"],
+        early_branch_factorization=config["early_branch_factorization"],
+        free_pool_size=config["free_pool_size"],
+        side_pool_size=config["side_pool_size"],
+        private_pool_size=config["private_pool_size"],
+        free_z_dim=config["free_z_dim"],
+        side_z_dim=config["side_z_dim"],
+        private_adapter_enabled=config["private_adapter_enabled"],
+        side_basis_init_path=config["side_basis_init_path"],
         shared_dim=config["shared_dim"],
         private_dim=config["private_dim"],
         private_decoder_hidden_dim=config["private_decoder_hidden_dim"],
         num_side_classes=3,
+        num_severity_classes=3,
         num_dataset_classes=len(specs),
         private_residual_weight=config["private_residual_weight"],
         private_residual_max_l1=config["private_residual_max_l1"],
@@ -130,6 +162,9 @@ def train(
         side_semantic_enabled=config["side_semantic_enabled"],
         side_basis_count=config["side_basis_count"],
         side_pooling=config["side_pooling"],
+        side_subspace_dim=config["side_subspace_dim"],
+        side_free_frame_qr=config["side_free_frame_qr"],
+        free_side_grl_lambda=config["free_side_grl_lambda"],
         grl_lambda=config["grl_lambda"],
         use_dataset_aux=config["use_dataset_aux"],
         action_basis_init_path=config["action_basis_init_path"],
@@ -139,6 +174,7 @@ def train(
         quantizer_type=config["quantizer_type"],
         fsq_preserve_symmetry=config["fsq_preserve_symmetry"],
         basis_orthogonalization=config["basis_orthogonalization"],
+        discrete_side_loss_enabled=config["discrete_side_loss_enabled"],
     ).to(device)
 
     optimizer = AdamW(
@@ -156,6 +192,9 @@ def train(
         "side_cont": config["side_cont_weight"],
         "side_disc": config["side_disc_weight"],
         "side_group": config["side_loss_weight"],
+        "severity_group": config["severity_loss_weight"],
+        "subspace_orth": config["subspace_orth_weight"],
+        "free_side_adv": config["free_side_adv_weight"],
         "dataset_private": config["dataset_private_weight"],
         "dataset_adv": config["dataset_adv_weight"],
     }

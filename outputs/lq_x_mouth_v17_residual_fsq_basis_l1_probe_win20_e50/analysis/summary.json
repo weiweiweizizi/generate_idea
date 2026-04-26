@@ -1,0 +1,89 @@
+{
+  "checkpoint_path": "outputs/lq_x_mouth_v17_residual_fsq_basis_l1_probe_win20_e50/best.pt",
+  "analysis_split": "val",
+  "basis_shape": [
+    11,
+    119,
+    119
+  ],
+  "levels": [
+    2,
+    3,
+    6
+  ],
+  "train_metrics": {
+    "loss": 0.326098196208477,
+    "recon": 0.3075633943080902,
+    "shared_recon": 0.34151294082403183,
+    "lq": 0.0,
+    "orth": 2.1631680279486643e-12,
+    "basis_l1": 0.002400688885245472,
+    "residual": 0.8067058026790619,
+    "scaled_residual": 0.040335290133953094,
+    "recon_frames": 236.75,
+    "supervision_frames": 92.5
+  },
+  "val_metrics": {
+    "loss": 0.32906627655029297,
+    "recon": 0.3109440803527832,
+    "shared_recon": 0.34232035279273987,
+    "lq": 0.0,
+    "orth": 2.2447096265088007e-12,
+    "basis_l1": 0.0023869990836828947,
+    "residual": 0.7867610454559326,
+    "scaled_residual": 0.03933805227279663,
+    "recon_frames": 227.0,
+    "supervision_frames": 80.0
+  },
+  "code_usage": {
+    "total_valid_frames": 80,
+    "levels": [
+      {
+        "level_index": 0,
+        "size": 2,
+        "counts": [
+          22,
+          58
+        ],
+        "fractions": [
+          0.275,
+          0.725
+        ]
+      },
+      {
+        "level_index": 1,
+        "size": 3,
+        "counts": [
+          50,
+          8,
+          22
+        ],
+        "fractions": [
+          0.625,
+          0.1,
+          0.275
+        ]
+      },
+      {
+        "level_index": 2,
+        "size": 6,
+        "counts": [
+          55,
+          2,
+          1,
+          3,
+          13,
+          6
+        ],
+        "fractions": [
+          0.6875,
+          0.025,
+          0.0125,
+          0.0375,
+          0.1625,
+          0.075
+        ]
+      }
+    ]
+  }
+}

@@ -32,6 +32,25 @@ def load_action_basis_init(
         action_basis_bank.copy_(basis)
 
 
+def load_side_basis_init(
+    side_basis_bank: torch.nn.Parameter,
+    *,
+    init_path: str,
+    side_basis_count: int,
+    basis_size: int,
+) -> None:
+    """Load a prebuilt `(side_basis_count, H, W)` side-basis tensor from disk."""
+
+    basis = torch.from_numpy(np.load(init_path)).float()
+    expected_shape = (side_basis_count, basis_size, basis_size)
+    if tuple(basis.shape) != expected_shape:
+        raise ValueError(
+            f"Side basis init shape mismatch: got {tuple(basis.shape)}, expected {expected_shape}"
+        )
+    with torch.no_grad():
+        side_basis_bank.copy_(basis)
+
+
 def qr_orthogonalize_rows(basis_flat: torch.Tensor) -> torch.Tensor:
     """Orthonormalize row vectors with a differentiable QR projection."""
 
@@ -79,6 +98,53 @@ def get_structured_basis(
         return basis_flat.reshape(total_basis_num, basis_size, basis_size)
 
     raise ValueError(f"Unsupported basis_orthogonalization: {basis_orthogonalization}")
+
+
+def get_joint_structured_basis(
+    action_basis_bank: torch.Tensor,
+    side_basis_bank: torch.Tensor,
+    *,
+    levels: tuple[int, ...],
+    total_basis_num: int,
+    side_basis_count: int,
+    basis_size: int,
+    basis_orthogonalization: str,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Return jointly-orthogonalized shared / side basis banks when configured.
+
+    `joint_global_qr` projects all shared and side bases into one common
+    orthonormal basis family so no pair across the two banks can collapse.
+    """
+
+    shared_basis = enforce_matrix_constraints(action_basis_bank)
+    side_basis = enforce_matrix_constraints(side_basis_bank)
+
+    if basis_orthogonalization != "joint_global_qr" or side_basis_count <= 0:
+        shared_structured = get_structured_basis(
+            shared_basis,
+            levels=levels,
+            total_basis_num=total_basis_num,
+            basis_size=basis_size,
+            basis_orthogonalization=basis_orthogonalization,
+        )
+        side_flat = F.normalize(side_basis.reshape(side_basis_count, -1), dim=1, eps=1e-8)
+        return shared_structured, side_flat.reshape(side_basis_count, basis_size, basis_size)
+
+    joint_flat = torch.cat(
+        [
+            shared_basis.reshape(total_basis_num, -1),
+            side_basis.reshape(side_basis_count, -1),
+        ],
+        dim=0,
+    )
+    joint_flat = qr_orthogonalize_rows(joint_flat)
+    shared_flat = joint_flat[:total_basis_num]
+    side_flat = joint_flat[total_basis_num:]
+    return (
+        shared_flat.reshape(total_basis_num, basis_size, basis_size),
+        side_flat.reshape(side_basis_count, basis_size, basis_size),
+    )
 
 
 def orthogonality_loss(basis: torch.Tensor, total_basis_num: int) -> torch.Tensor:

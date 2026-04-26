@@ -1,0 +1,5 @@
+Saved basis bank: outputs/disentangleNet/v31_internal_compact_verify_e50/analysis/basis_bank.npy
+Saved basis heatmap: outputs/disentangleNet/v31_internal_compact_verify_e50/analysis/basis_bank_heatmap.png
+Saved side basis heatmap: outputs/disentangleNet/v31_internal_compact_verify_e50/analysis/side_basis_bank_heatmap.png
+Saved group representations: outputs/disentangleNet/v31_internal_compact_verify_e50/analysis/group_level_representations.npz
+Saved summary: outputs/disentangleNet/v31_internal_compact_verify_e50/analysis/summary.json

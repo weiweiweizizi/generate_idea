@@ -1,0 +1,3 @@
+Saved side basis stats: outputs/disentangleNet/v31_internal_compact_verify_e50/side_interpretability/side_basis_stats.csv
+Saved group side semantics: outputs/disentangleNet/v31_internal_compact_verify_e50/side_interpretability/group_side_semantics.csv
+Saved summary: outputs/disentangleNet/v31_internal_compact_verify_e50/side_interpretability/summary.json

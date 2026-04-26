@@ -31,18 +31,13 @@ from .basis import (
 )
 from .encoder import build_branch_adapter, build_branch_pool, build_motion_encoder
 from .heads import (
-    build_discrete_side_classifier,
     build_free_head,
-    build_group_severity_classifier,
     build_group_side_classifier,
-    build_private_dataset_classifier,
     build_private_decoder,
     build_private_head,
     build_shared_basis_heads,
     build_shared_coeff_heads,
     build_shared_coeff_net,
-    build_shared_dataset_adversary,
-    build_shared_head,
     build_side_classifier,
     build_side_head,
     build_side_semantic_basis_head,
@@ -53,25 +48,6 @@ from .quantizers import (
     decode_latent_indices,
     quantize_shared_latent,
 )
-
-
-class GradientReversalFn(torch.autograd.Function):
-    """Straightforward gradient reversal layer used by the optional dataset head."""
-
-    @staticmethod
-    def forward(ctx, x: torch.Tensor, lambd: float) -> torch.Tensor:
-        ctx.lambd = lambd
-        return x.view_as(x)
-
-    @staticmethod
-    def backward(ctx, grad_output: torch.Tensor):
-        return -ctx.lambd * grad_output, None
-
-
-def grad_reverse(x: torch.Tensor, lambd: float = 1.0) -> torch.Tensor:
-    """Convenience wrapper for optional adversarial dataset supervision."""
-
-    return GradientReversalFn.apply(x, lambd)
 
 
 class DistNet(nn.Module):
@@ -156,7 +132,7 @@ class DistNet(nn.Module):
         self.num_dataset_classes = num_dataset_classes
         self.private_residual_weight = private_residual_weight
         self.grl_lambda = grl_lambda
-        self.use_dataset_aux = use_dataset_aux
+        self.use_dataset_aux = bool(use_dataset_aux)
         self.action_basis_init_path = action_basis_init_path
         self.side_basis_init_path = side_basis_init_path
         self.lq_commitment_loss_weight = lq_commitment_loss_weight
@@ -186,30 +162,25 @@ class DistNet(nn.Module):
             side_z_dim if side_z_dim is not None else hidden_dim
         )
         self.private_adapter_enabled = bool(private_adapter_enabled)
-        if self.early_branch_factorization:
-            self.shared_dim = self.free_z_dim
-            self.side_subspace_dim = self.side_z_dim
-            self.free_subspace_dim = self.free_z_dim
-            self.side_classifier_dim = self.side_z_dim
-        else:
-            if side_subspace_dim is None:
-                side_subspace_dim = self.shared_dim // 2 if self.side_semantic_enabled else 0
-            self.side_subspace_dim = int(side_subspace_dim)
-            if self.side_semantic_enabled:
-                if self.side_subspace_dim <= 0 or self.side_subspace_dim >= self.shared_dim:
-                    raise ValueError(
-                        "side_subspace_dim must satisfy 0 < side_subspace_dim < shared_dim"
-                    )
-            else:
-                self.side_subspace_dim = max(min(self.side_subspace_dim, self.shared_dim), 0)
-            self.free_subspace_dim = self.shared_dim - self.side_subspace_dim
-            self.side_classifier_dim = (
-                self.side_subspace_dim if self.side_semantic_enabled else self.shared_dim
+
+        if self.use_dataset_aux:
+            raise ValueError("disentangleNet v31 does not support dataset auxiliary heads")
+        if self.quantizer_type != "residual_fsq":
+            raise ValueError(
+                "disentangleNet v31 requires quantizer_type='residual_fsq', got "
+                f"{self.quantizer_type!r}"
             )
-            if self.side_free_frame_qr and self.side_subspace_dim != self.free_subspace_dim:
-                raise ValueError(
-                    "side_free_frame_qr requires side_subspace_dim == free_subspace_dim"
-                )
+        if self.discrete_side_loss_enabled:
+            raise ValueError("disentangleNet v31 requires discrete_side_loss_enabled=False")
+        if not self.early_branch_factorization:
+            raise ValueError("disentangleNet v31 requires early_branch_factorization=True")
+        if not self.side_semantic_enabled:
+            raise ValueError("disentangleNet v31 requires side_semantic_enabled=True")
+
+        self.shared_dim = self.free_z_dim
+        self.side_subspace_dim = self.side_z_dim
+        self.free_subspace_dim = self.free_z_dim
+        self.side_classifier_dim = self.side_z_dim
 
         if self.side_basis_count < 0:
             raise ValueError("side_basis_count must be >= 0")
@@ -228,53 +199,38 @@ class DistNet(nn.Module):
             self.avg_pool,
         ) = build_motion_encoder(hidden_dim, pool_size)
 
-        if self.early_branch_factorization:
-            self.free_adapter = build_branch_adapter(hidden_dim)
-            self.side_adapter = build_branch_adapter(hidden_dim)
-            self.private_adapter = (
-                build_branch_adapter(hidden_dim) if self.private_adapter_enabled else None
-            )
-            self.free_pool = build_branch_pool(self.free_pool_size)
-            self.side_pool = build_branch_pool(self.side_pool_size)
-            self.private_pool = build_branch_pool(self.private_pool_size)
-            self.free_pooled_dim = hidden_dim * self.free_pool_size * self.free_pool_size
-            if self.side_pooling == "fixed_block4_diag":
-                self.side_pooled_dim = hidden_dim * 4
-            elif self.side_pooling == "fixed_region2_contrast":
-                self.side_pooled_dim = hidden_dim * 2
-            else:
-                self.side_pooled_dim = hidden_dim * self.side_pool_size * self.side_pool_size
-            self.private_pooled_dim = hidden_dim * self.private_pool_size * self.private_pool_size
-            self.shared_head = None
-            self.free_head = build_free_head(
-                self.free_pooled_dim,
-                hidden_dim,
-                self.free_z_dim,
-            )
-            self.side_head = build_side_head(
-                self.side_pooled_dim,
-                hidden_dim,
-                self.side_z_dim,
-            )
-            self.private_head = build_private_head(
-                self.private_pooled_dim,
-                hidden_dim,
-                private_dim,
-            )
+        self.free_adapter = build_branch_adapter(hidden_dim)
+        self.side_adapter = build_branch_adapter(hidden_dim)
+        self.private_adapter = (
+            build_branch_adapter(hidden_dim) if self.private_adapter_enabled else None
+        )
+        self.free_pool = build_branch_pool(self.free_pool_size)
+        self.side_pool = build_branch_pool(self.side_pool_size)
+        self.private_pool = build_branch_pool(self.private_pool_size)
+        self.free_pooled_dim = hidden_dim * self.free_pool_size * self.free_pool_size
+        if self.side_pooling == "fixed_block4_diag":
+            self.side_pooled_dim = hidden_dim * 4
+        elif self.side_pooling == "fixed_region2_contrast":
+            self.side_pooled_dim = hidden_dim * 2
         else:
-            self.free_adapter = None
-            self.side_adapter = None
-            self.private_adapter = None
-            self.free_pool = None
-            self.side_pool = None
-            self.private_pool = None
-            self.free_pooled_dim = None
-            self.side_pooled_dim = None
-            self.private_pooled_dim = None
-            self.free_head = None
-            self.side_head = None
-            self.shared_head = build_shared_head(self.pooled_dim, hidden_dim, self.shared_dim)
-            self.private_head = build_private_head(self.pooled_dim, hidden_dim, private_dim)
+            self.side_pooled_dim = hidden_dim * self.side_pool_size * self.side_pool_size
+        self.private_pooled_dim = hidden_dim * self.private_pool_size * self.private_pool_size
+        self.shared_head = None
+        self.free_head = build_free_head(
+            self.free_pooled_dim,
+            hidden_dim,
+            self.free_z_dim,
+        )
+        self.side_head = build_side_head(
+            self.side_pooled_dim,
+            hidden_dim,
+            self.side_z_dim,
+        )
+        self.private_head = build_private_head(
+            self.private_pooled_dim,
+            hidden_dim,
+            private_dim,
+        )
         self.lq, self.residual_fsq_layers = build_shared_quantizer(
             quantizer_type=quantizer_type,
             levels=self.levels,
@@ -328,31 +284,17 @@ class DistNet(nn.Module):
             if self.side_basis_count > 0
             else None
         )
-        self.group_severity_classifier = (
-            build_group_severity_classifier(self.levels[1], num_severity_classes)
-            if len(self.levels) >= 2
-            else None
-        )
         self.private_decoder = build_private_decoder(
             private_dim=private_dim,
             private_decoder_hidden_dim=self.private_decoder_hidden_dim,
             basis_size=basis_size,
         )
         self.side_classifier = build_side_classifier(self.side_classifier_dim, num_side_classes)
-        self.free_side_adversary = (
-            build_side_classifier(self.free_subspace_dim, num_side_classes)
-            if self.free_subspace_dim > 0
-            else None
-        )
-        self.discrete_side_classifier = build_discrete_side_classifier(
-            self.levels[1], num_side_classes
-        )
-        self.private_dataset_classifier = build_private_dataset_classifier(
-            private_dim, num_dataset_classes
-        )
-        self.shared_dataset_adversary = build_shared_dataset_adversary(
-            self.shared_dim, num_dataset_classes
-        )
+        self.group_severity_classifier = None
+        self.free_side_adversary = None
+        self.discrete_side_classifier = None
+        self.private_dataset_classifier = None
+        self.shared_dataset_adversary = None
 
     def _enforce_matrix_constraints(self, mats: torch.Tensor) -> torch.Tensor:
         return enforce_matrix_constraints(mats)
@@ -475,48 +417,6 @@ class DistNet(nn.Module):
         around_contrast = around_left - around_right
         mouth_contrast = mouth_left - mouth_right
         return torch.cat([around_contrast, mouth_contrast], dim=1)
-
-    def _split_side_free_latent(
-        self,
-        latent: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Split a shared latent tensor into dedicated side and free subspaces."""
-
-        if latent.shape[-1] != self.shared_dim:
-            raise ValueError(
-                f"Expected latent dim {self.shared_dim}, got shape {tuple(latent.shape)}"
-            )
-
-        side_latent = latent[..., : self.side_subspace_dim]
-        free_latent = latent[..., self.side_subspace_dim :]
-        return side_latent, free_latent
-
-    def _orthogonalize_side_free_latent(
-        self,
-        side_latent: torch.Tensor,
-        free_latent: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Force per-frame side/free latents to become orthonormal via batched QR."""
-
-        if not self.side_free_frame_qr:
-            return side_latent, free_latent
-        if side_latent.shape != free_latent.shape:
-            raise ValueError(
-                "side_free_frame_qr expects side/free latents with identical shapes, got "
-                f"{tuple(side_latent.shape)} vs {tuple(free_latent.shape)}"
-            )
-
-        side_unit = F.normalize(side_latent, dim=-1, eps=1e-8)
-        free_unit = F.normalize(free_latent, dim=-1, eps=1e-8)
-        stacked = torch.stack([side_unit, free_unit], dim=-1)
-        q, r = torch.linalg.qr(stacked, mode="reduced")
-
-        # Fix QR column-sign ambiguity so the orthonormal frame keeps stable orientation.
-        diag = torch.diagonal(r, dim1=-2, dim2=-1)
-        signs = torch.where(diag < 0, -torch.ones_like(diag), torch.ones_like(diag))
-        q = q * signs.unsqueeze(-2)
-
-        return q[..., 0], q[..., 1]
 
     def orthogonality_loss(
         self,
@@ -654,13 +554,6 @@ class DistNet(nn.Module):
             raise RuntimeError("group_side_classifier is unavailable when side_basis_count=0")
         return self.group_side_classifier(group_rep)
 
-    def classify_severity_group(self, group_rep: torch.Tensor) -> torch.Tensor:
-        """Predict group-level severity labels from pooled free stage-2 usage."""
-
-        if self.group_severity_classifier is None:
-            raise RuntimeError("group_severity_classifier is unavailable when len(levels) < 2")
-        return self.group_severity_classifier(group_rep)
-
     def forward(
         self,
         x,
@@ -675,7 +568,6 @@ class DistNet(nn.Module):
         - frame batch: `(B, 1, H, W)`
         - grouped sequence batch: `(B, T, 1, H, W)`
         """
-
         x, sequence_shape = self._flatten_sequence_input(x)
         side_labels = self._flatten_sequence_labels(side_labels, sequence_shape)
         dataset_labels = self._flatten_sequence_labels(dataset_labels, sequence_shape)
@@ -685,374 +577,14 @@ class DistNet(nn.Module):
         feats = self.layer2(feats)
         feats = self.layer3(feats)
 
-        if self.early_branch_factorization:
-            return self._forward_early_branch(
-                x=x,
-                feats=feats,
-                side_labels=side_labels,
-                dataset_labels=dataset_labels,
-                sequence_shape=sequence_shape,
-                return_group_pooled=return_group_pooled,
-            )
-
-        pooled = self.avg_pool(feats).flatten(1)
-        shared_raw = self.shared_head(pooled)
-        private_z = self.private_head(pooled)
-
-        shared_quantized, indices, stage_quantized = self._quantize_shared(shared_raw)
-        side_latent_raw, free_latent_raw = self._split_side_free_latent(shared_quantized)
-        side_latent, free_latent = self._orthogonalize_side_free_latent(
-            side_latent_raw,
-            free_latent_raw,
+        return self._forward_early_branch(
+            x=x,
+            feats=feats,
+            side_labels=side_labels,
+            dataset_labels=dataset_labels,
+            sequence_shape=sequence_shape,
+            return_group_pooled=return_group_pooled,
         )
-        basis, side_basis = self._get_structured_basis_pair()
-        basis_list = self.split_basis(basis)
-        d_list = self.decode_indices(indices)
-
-        coeffs = None if stage_quantized is not None else self.shared_coeff_net(free_latent)
-        level_quantized_list = (
-            [
-                self._orthogonalize_side_free_latent(
-                    *self._split_side_free_latent(stage_quantized[:, i])
-                )[1]
-                for i in range(stage_quantized.shape[1])
-            ]
-            if stage_quantized is not None
-            else [free_latent for _ in self.levels]
-        )
-        shared_free_recon = torch.zeros(
-            x.shape[0], self.basis_size, self.basis_size, device=x.device, dtype=x.dtype
-        )
-        free_path_coeff_levels = []
-        free_path_usage_levels = []
-        free_path_rep_levels = []
-
-        for level_idx, (basis_i, d_i, level_quantized_i) in enumerate(
-            zip(basis_list, d_list, level_quantized_list)
-        ):
-            if self.shared_basis_soft_mixing:
-                level_logits = self.shared_basis_heads[level_idx](level_quantized_i)
-                if self.shared_basis_anchor_bias != 0.0:
-                    anchor = F.one_hot(d_i, num_classes=basis_i.shape[0]).to(level_logits.dtype)
-                    level_logits = level_logits + self.shared_basis_anchor_bias * anchor
-                level_logits = self._apply_sparse_basis_topk(level_logits)
-                level_weights = F.softmax(level_logits, dim=-1)
-                selected_basis = torch.einsum("bl,lxy->bxy", level_weights, basis_i)
-            else:
-                level_weights = F.one_hot(d_i, num_classes=basis_i.shape[0]).to(
-                    device=x.device,
-                    dtype=shared_quantized.dtype,
-                )
-                selected_basis = basis_i[d_i]
-            if coeffs is None:
-                coeff = self.shared_coeff_heads[level_idx](level_quantized_i)
-                coeff = coeff.view(x.shape[0], 1, 1)
-            else:
-                coeff = coeffs[:, level_idx].view(x.shape[0], 1, 1)
-            shared_free_recon = shared_free_recon + coeff * selected_basis
-            free_path_coeff_levels.append(coeff.view(x.shape[0], 1))
-            free_path_usage_levels.append(level_weights)
-            free_path_rep_levels.append(level_weights * coeff.view(x.shape[0], 1))
-
-        free_path_coefficients = torch.cat(free_path_coeff_levels, dim=1)
-        free_path_usage = torch.cat(free_path_usage_levels, dim=1)
-        free_path_rep = torch.cat(free_path_rep_levels, dim=1)
-        free_level2_usage = free_path_usage_levels[1] if len(free_path_usage_levels) >= 2 else None
-        free_level2_rep = free_path_rep_levels[1] if len(free_path_rep_levels) >= 2 else None
-        free_level2_coefficients = (
-            free_path_coeff_levels[1] if len(free_path_coeff_levels) >= 2 else None
-        )
-
-        shared_side_recon = torch.zeros_like(shared_free_recon)
-        side_path_usage = shared_quantized.new_zeros((x.shape[0], self.side_basis_count))
-        side_path_rep = shared_quantized.new_zeros((x.shape[0], self.side_basis_count))
-        side_path_coefficients = shared_quantized.new_zeros((x.shape[0], 1))
-        side_basis_logits = None
-        if self.side_semantic_enabled and self.side_basis_count > 0:
-            side_basis_logits = self.side_semantic_basis_head(side_latent)
-            side_path_usage = F.softmax(side_basis_logits, dim=-1)
-            side_coeff = self.side_semantic_coeff_head(side_latent).view(x.shape[0], 1, 1)
-            side_path_coefficients = side_coeff.view(x.shape[0], 1)
-            side_path_rep = side_path_usage * side_path_coefficients
-            selected_side_basis = torch.einsum("bs,sxy->bxy", side_path_usage, side_basis)
-            shared_side_recon = side_coeff * selected_side_basis
-
-        shared_recon = shared_side_recon + shared_free_recon
-
-        id_nuisance_residual = self.private_decoder(private_z).reshape(
-            x.shape[0], self.basis_size, self.basis_size
-        )
-        id_nuisance_residual = self._enforce_matrix_constraints(id_nuisance_residual)
-        id_nuisance_residual = self._limit_private_residual(id_nuisance_residual)
-        recon = shared_recon + self.private_residual_weight * id_nuisance_residual
-        recon = self._enforce_matrix_constraints(recon).unsqueeze(1)
-
-        commitment_loss_per_sample = F.mse_loss(
-            shared_raw.detach(),
-            shared_quantized,
-            reduction="none",
-        ).mean(dim=1)
-        quantization_loss_per_sample = F.mse_loss(
-            shared_quantized.detach(),
-            shared_raw,
-            reduction="none",
-        ).mean(dim=1)
-        if self.quantizer_type == "latent_quantize":
-            lq_loss_per_sample = (
-                self.lq.commitment_loss_weight * commitment_loss_per_sample
-                + self.lq.quantization_loss_weight * quantization_loss_per_sample
-            )
-        else:
-            lq_loss_per_sample = shared_raw.new_zeros(shared_raw.shape[0])
-        lq_loss = lq_loss_per_sample.mean()
-
-        side_logits = None
-        discrete_side_logits = None
-        side_loss = None
-        side_loss_cont = None
-        side_loss_disc = None
-        side_loss_per_sample = None
-        side_loss_cont_per_sample = None
-        side_loss_disc_per_sample = None
-        free_side_logits = None
-        free_side_adv_loss = None
-        free_side_adv_loss_per_sample = None
-        if side_labels is not None:
-            side_classifier_input = side_latent if self.side_semantic_enabled else shared_quantized
-            side_logits = self.side_classifier(side_classifier_input)
-            side_loss_cont_per_sample = F.cross_entropy(
-                side_logits, side_labels, reduction="none"
-            )
-            side_loss_cont = side_loss_cont_per_sample.mean()
-            if self.discrete_side_loss_enabled:
-                discrete_side_logits = self.discrete_side_classifier(d_list[1])
-                side_loss_disc_per_sample = F.cross_entropy(
-                    discrete_side_logits, side_labels, reduction="none"
-                )
-                side_loss_disc = side_loss_disc_per_sample.mean()
-                side_loss_per_sample = side_loss_cont_per_sample + side_loss_disc_per_sample
-                side_loss = side_loss_cont + side_loss_disc
-            else:
-                side_loss_per_sample = side_loss_cont_per_sample
-                side_loss = side_loss_cont
-            if self.free_side_adversary is not None and free_latent.shape[-1] > 0:
-                free_side_logits = self.free_side_adversary(
-                    grad_reverse(free_latent, self.free_side_grl_lambda)
-                )
-                free_side_adv_loss_per_sample = F.cross_entropy(
-                    free_side_logits,
-                    side_labels,
-                    reduction="none",
-                )
-                free_side_adv_loss = free_side_adv_loss_per_sample.mean()
-
-        private_dataset_logits = None
-        shared_dataset_logits = None
-        dataset_private_loss = None
-        dataset_adv_loss = None
-        dataset_private_loss_per_sample = None
-        dataset_adv_loss_per_sample = None
-        if self.use_dataset_aux and dataset_labels is not None:
-            private_dataset_logits = self.private_dataset_classifier(private_z)
-            dataset_private_loss_per_sample = F.cross_entropy(
-                private_dataset_logits,
-                dataset_labels,
-                reduction="none",
-            )
-            dataset_private_loss = dataset_private_loss_per_sample.mean()
-
-            shared_dataset_logits = self.shared_dataset_adversary(
-                grad_reverse(shared_quantized, self.grl_lambda)
-            )
-            dataset_adv_loss_per_sample = F.cross_entropy(
-                shared_dataset_logits,
-                dataset_labels,
-                reduction="none",
-            )
-            dataset_adv_loss = dataset_adv_loss_per_sample.mean()
-
-        orth_loss = self.orthogonality_loss(basis, side_basis)
-        shared_basis_l1, side_basis_l1, basis_l1 = self.basis_l1_components(
-            basis,
-            side_basis,
-        )
-        residual_l1_per_sample = id_nuisance_residual.abs().mean(dim=(1, 2))
-        residual_l1 = residual_l1_per_sample.mean()
-
-        reconstructed = self._reshape_sequence_tensor(recon, sequence_shape)
-        action_reconstruction = self._reshape_sequence_tensor(
-            self._enforce_matrix_constraints(shared_recon).unsqueeze(1),
-            sequence_shape,
-        )
-        shared_side_reconstruction = self._reshape_sequence_tensor(
-            self._enforce_matrix_constraints(shared_side_recon).unsqueeze(1),
-            sequence_shape,
-        )
-        shared_free_reconstruction = self._reshape_sequence_tensor(
-            self._enforce_matrix_constraints(shared_free_recon).unsqueeze(1),
-            sequence_shape,
-        )
-        private_residual = self._reshape_sequence_tensor(
-            id_nuisance_residual.unsqueeze(1),
-            sequence_shape,
-        )
-        shared_quantized = self._reshape_sequence_tensor(shared_quantized, sequence_shape)
-        side_latent_raw = self._reshape_sequence_tensor(side_latent_raw, sequence_shape)
-        free_latent_raw = self._reshape_sequence_tensor(free_latent_raw, sequence_shape)
-        side_latent = self._reshape_sequence_tensor(side_latent, sequence_shape)
-        free_latent = self._reshape_sequence_tensor(free_latent, sequence_shape)
-        private_z = self._reshape_sequence_tensor(private_z, sequence_shape)
-        indices = self._reshape_sequence_tensor(indices, sequence_shape)
-        decoded_indices = self._reshape_sequence_index_list(d_list, sequence_shape)
-        side_path_usage = self._reshape_sequence_tensor(side_path_usage, sequence_shape)
-        free_path_usage = self._reshape_sequence_tensor(free_path_usage, sequence_shape)
-        side_path_rep = self._reshape_sequence_tensor(side_path_rep, sequence_shape)
-        free_path_rep = self._reshape_sequence_tensor(free_path_rep, sequence_shape)
-        side_path_coefficients = self._reshape_sequence_tensor(
-            side_path_coefficients,
-            sequence_shape,
-        )
-        free_path_coefficients = self._reshape_sequence_tensor(
-            free_path_coefficients,
-            sequence_shape,
-        )
-        free_level2_usage = self._reshape_sequence_tensor(free_level2_usage, sequence_shape)
-        free_level2_rep = self._reshape_sequence_tensor(free_level2_rep, sequence_shape)
-        free_level2_coefficients = self._reshape_sequence_tensor(
-            free_level2_coefficients,
-            sequence_shape,
-        )
-        side_basis_logits = self._reshape_sequence_tensor(side_basis_logits, sequence_shape)
-        side_logits = self._reshape_sequence_tensor(side_logits, sequence_shape)
-        free_side_logits = self._reshape_sequence_tensor(free_side_logits, sequence_shape)
-        discrete_side_logits = self._reshape_sequence_tensor(
-            discrete_side_logits, sequence_shape
-        )
-        private_dataset_logits = self._reshape_sequence_tensor(
-            private_dataset_logits, sequence_shape
-        )
-        shared_dataset_logits = self._reshape_sequence_tensor(
-            shared_dataset_logits, sequence_shape
-        )
-        lq_loss_per_sample = self._reshape_sequence_tensor(lq_loss_per_sample, sequence_shape)
-        residual_l1_per_sample = self._reshape_sequence_tensor(
-            residual_l1_per_sample, sequence_shape
-        )
-        side_loss_per_sample = self._reshape_sequence_tensor(
-            side_loss_per_sample, sequence_shape
-        )
-        side_loss_cont_per_sample = self._reshape_sequence_tensor(
-            side_loss_cont_per_sample, sequence_shape
-        )
-        side_loss_disc_per_sample = self._reshape_sequence_tensor(
-            side_loss_disc_per_sample, sequence_shape
-        )
-        free_side_adv_loss_per_sample = self._reshape_sequence_tensor(
-            free_side_adv_loss_per_sample,
-            sequence_shape,
-        )
-        dataset_private_loss_per_sample = self._reshape_sequence_tensor(
-            dataset_private_loss_per_sample, sequence_shape
-        )
-        dataset_adv_loss_per_sample = self._reshape_sequence_tensor(
-            dataset_adv_loss_per_sample, sequence_shape
-        )
-        group_pooled_side_rep = (
-            self._mean_pool_sequence_tensor(side_path_rep, sequence_shape)
-            if return_group_pooled
-            else None
-        )
-        group_pooled_free_rep = (
-            self._mean_pool_sequence_tensor(free_path_rep, sequence_shape)
-            if return_group_pooled
-            else None
-        )
-        group_pooled_side_latent = (
-            self._mean_pool_sequence_tensor(side_latent, sequence_shape)
-            if return_group_pooled
-            else None
-        )
-        group_pooled_free_latent = (
-            self._mean_pool_sequence_tensor(free_latent, sequence_shape)
-            if return_group_pooled
-            else None
-        )
-        group_pooled_side_latent_raw = (
-            self._mean_pool_sequence_tensor(side_latent_raw, sequence_shape)
-            if return_group_pooled
-            else None
-        )
-        group_pooled_free_latent_raw = (
-            self._mean_pool_sequence_tensor(free_latent_raw, sequence_shape)
-            if return_group_pooled
-            else None
-        )
-
-        return {
-            "reconstructed": reconstructed,
-            "action_reconstruction": action_reconstruction,
-            "shared_reconstruction": action_reconstruction,
-            "shared_side_reconstruction": shared_side_reconstruction,
-            "shared_free_reconstruction": shared_free_reconstruction,
-            "id_nuisance_residual": private_residual,
-            "private_residual": private_residual,
-            "shared_quantized": shared_quantized,
-            "side_latent_raw": side_latent_raw,
-            "free_latent_raw": free_latent_raw,
-            "side_latent": side_latent,
-            "free_latent": free_latent,
-            "private_z": private_z,
-            "indices": indices,
-            "decoded_indices": decoded_indices,
-            "action_basis": basis,
-            "basis": basis,
-            "side_basis": side_basis,
-            "lq_loss": lq_loss,
-            "lq_loss_per_sample": lq_loss_per_sample,
-            "orth_loss": orth_loss,
-            "shared_basis_l1": shared_basis_l1,
-            "side_basis_l1": side_basis_l1,
-            "basis_l1": basis_l1,
-            "residual_l1": residual_l1,
-            "residual_l1_per_sample": residual_l1_per_sample,
-            "side_path_usage": side_path_usage,
-            "free_path_usage": free_path_usage,
-            "free_level2_usage": free_level2_usage,
-            "side_path_representation": side_path_rep,
-            "free_path_representation": free_path_rep,
-            "free_level2_representation": free_level2_rep,
-            "side_path_coefficients": side_path_coefficients,
-            "free_path_coefficients": free_path_coefficients,
-            "free_level2_coefficients": free_level2_coefficients,
-            "side_basis_logits": side_basis_logits,
-            "group_pooled_side_rep": group_pooled_side_rep,
-            "group_pooled_free_rep": group_pooled_free_rep,
-            "group_pooled_side_latent_raw": group_pooled_side_latent_raw,
-            "group_pooled_free_latent_raw": group_pooled_free_latent_raw,
-            "group_pooled_side_latent": group_pooled_side_latent,
-            "group_pooled_free_latent": group_pooled_free_latent,
-            "side_loss": {
-                "side_loss": side_loss,
-                "side_loss_cont": side_loss_cont,
-                "side_loss_disc": side_loss_disc,
-                "side_loss_per_sample": side_loss_per_sample,
-                "side_loss_cont_per_sample": side_loss_cont_per_sample,
-                "side_loss_disc_per_sample": side_loss_disc_per_sample,
-                "free_side_adv_loss": free_side_adv_loss,
-                "free_side_adv_loss_per_sample": free_side_adv_loss_per_sample,
-            },
-            "dataset_loss": {
-                "private_dataset_loss": dataset_private_loss,
-                "shared_dataset_adv_loss": dataset_adv_loss,
-                "private_dataset_loss_per_sample": dataset_private_loss_per_sample,
-                "shared_dataset_adv_loss_per_sample": dataset_adv_loss_per_sample,
-            },
-            "side_logits": side_logits,
-            "free_side_logits": free_side_logits,
-            "discrete_side_logits": discrete_side_logits,
-            "private_dataset_logits": private_dataset_logits,
-            "shared_dataset_logits": shared_dataset_logits,
-        }
 
     def _forward_early_branch(
         self,
@@ -1160,33 +692,14 @@ class DistNet(nn.Module):
         recon = shared_recon + self.private_residual_weight * id_nuisance_residual
         recon = self._enforce_matrix_constraints(recon).unsqueeze(1)
 
-        commitment_loss_per_sample = F.mse_loss(
-            free_raw.detach(),
-            free_quantized,
-            reduction="none",
-        ).mean(dim=1)
-        quantization_loss_per_sample = F.mse_loss(
-            free_quantized.detach(),
-            free_raw,
-            reduction="none",
-        ).mean(dim=1)
-        if self.quantizer_type == "latent_quantize":
-            lq_loss_per_sample = (
-                self.lq.commitment_loss_weight * commitment_loss_per_sample
-                + self.lq.quantization_loss_weight * quantization_loss_per_sample
-            )
-        else:
-            lq_loss_per_sample = free_raw.new_zeros(free_raw.shape[0])
+        lq_loss_per_sample = free_raw.new_zeros(free_raw.shape[0])
         lq_loss = lq_loss_per_sample.mean()
 
         side_logits = None
-        discrete_side_logits = None
         side_loss = None
         side_loss_cont = None
-        side_loss_disc = None
         side_loss_per_sample = None
         side_loss_cont_per_sample = None
-        side_loss_disc_per_sample = None
         free_side_logits = None
         free_side_adv_loss = None
         free_side_adv_loss_per_sample = None
@@ -1198,16 +711,6 @@ class DistNet(nn.Module):
             side_loss_cont = side_loss_cont_per_sample.mean()
             side_loss_per_sample = side_loss_cont_per_sample
             side_loss = side_loss_cont
-            if self.free_side_adversary is not None and free_latent.shape[-1] > 0:
-                free_side_logits = self.free_side_adversary(
-                    grad_reverse(free_latent, self.free_side_grl_lambda)
-                )
-                free_side_adv_loss_per_sample = F.cross_entropy(
-                    free_side_logits,
-                    side_labels,
-                    reduction="none",
-                )
-                free_side_adv_loss = free_side_adv_loss_per_sample.mean()
 
         private_dataset_logits = None
         shared_dataset_logits = None
@@ -1215,24 +718,6 @@ class DistNet(nn.Module):
         dataset_adv_loss = None
         dataset_private_loss_per_sample = None
         dataset_adv_loss_per_sample = None
-        if self.use_dataset_aux and dataset_labels is not None:
-            private_dataset_logits = self.private_dataset_classifier(private_z)
-            dataset_private_loss_per_sample = F.cross_entropy(
-                private_dataset_logits,
-                dataset_labels,
-                reduction="none",
-            )
-            dataset_private_loss = dataset_private_loss_per_sample.mean()
-
-            shared_dataset_logits = self.shared_dataset_adversary(
-                grad_reverse(free_quantized, self.grl_lambda)
-            )
-            dataset_adv_loss_per_sample = F.cross_entropy(
-                shared_dataset_logits,
-                dataset_labels,
-                reduction="none",
-            )
-            dataset_adv_loss = dataset_adv_loss_per_sample.mean()
 
         orth_loss = self.orthogonality_loss(basis, side_basis)
         shared_basis_l1, side_basis_l1, basis_l1 = self.basis_l1_components(
@@ -1301,9 +786,6 @@ class DistNet(nn.Module):
         )
         side_loss_cont_per_sample = self._reshape_sequence_tensor(
             side_loss_cont_per_sample, sequence_shape
-        )
-        side_loss_disc_per_sample = self._reshape_sequence_tensor(
-            side_loss_disc_per_sample, sequence_shape
         )
         free_side_adv_loss_per_sample = self._reshape_sequence_tensor(
             free_side_adv_loss_per_sample,
@@ -1376,10 +858,10 @@ class DistNet(nn.Module):
             "side_loss": {
                 "side_loss": side_loss,
                 "side_loss_cont": side_loss_cont,
-                "side_loss_disc": side_loss_disc,
+                "side_loss_disc": None,
                 "side_loss_per_sample": side_loss_per_sample,
                 "side_loss_cont_per_sample": side_loss_cont_per_sample,
-                "side_loss_disc_per_sample": side_loss_disc_per_sample,
+                "side_loss_disc_per_sample": None,
                 "free_side_adv_loss": free_side_adv_loss,
                 "free_side_adv_loss_per_sample": free_side_adv_loss_per_sample,
             },
@@ -1391,7 +873,7 @@ class DistNet(nn.Module):
             },
             "side_logits": side_logits,
             "free_side_logits": free_side_logits,
-            "discrete_side_logits": discrete_side_logits,
+            "discrete_side_logits": None,
             "private_dataset_logits": private_dataset_logits,
             "shared_dataset_logits": shared_dataset_logits,
         }

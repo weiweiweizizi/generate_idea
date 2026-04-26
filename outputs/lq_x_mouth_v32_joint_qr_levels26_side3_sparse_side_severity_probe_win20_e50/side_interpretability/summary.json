@@ -1,0 +1,603 @@
+{
+  "checkpoint_path": "outputs/lq_x_mouth_v32_joint_qr_levels26_side3_sparse_side_severity_probe_win20_e50/best.pt",
+  "analysis_split": "val",
+  "mode": "x",
+  "region": "mouth",
+  "data_roots": "data/win20-step20/IMR,data/win20-step20/TT",
+  "side_pooling": "fixed_region2_contrast",
+  "side_basis_count": 3,
+  "group_semantics": {
+    "num_groups": 56,
+    "side_label_counts": {
+      "Left": 16,
+      "Normal": 20,
+      "Right": 20
+    },
+    "dataset_counts": {
+      "IMR": 44,
+      "TT": 12
+    },
+    "coeff_overall": {
+      "mean": 0.5075159336972449,
+      "std": 14.16784765201524,
+      "mean_abs": 9.644543185098362
+    },
+    "probe_summary": {
+      "side_from_usage_acc": 0.8090909153223038,
+      "dataset_from_usage_acc": 0.7636363610625267,
+      "side_from_coeff_acc": 0.7227272778749466,
+      "dataset_from_coeff_acc": 0.8181818127632141,
+      "side_from_usage_coeff_acc": 0.7954545557498932,
+      "dataset_from_usage_coeff_acc": 0.7227272823452949
+    },
+    "usage_means_by_side": {
+      "Left": {
+        "usage_b0": 0.03141962562983586,
+        "usage_b1": 0.12267204416475463,
+        "usage_b2": 0.8459083307534456
+      },
+      "Normal": {
+        "usage_b0": 0.060448190476745364,
+        "usage_b1": 0.4030175098218024,
+        "usage_b2": 0.536534309387207
+      },
+      "Right": {
+        "usage_b0": 0.3113010168075562,
+        "usage_b1": 0.30146682560443877,
+        "usage_b2": 0.3872321590781212
+      }
+    },
+    "usage_means_by_dataset": {
+      "IMR": {
+        "usage_b0": 0.16280163892567737,
+        "usage_b1": 0.2781610483660184,
+        "usage_b2": 0.5590373203158379
+      },
+      "TT": {
+        "usage_b0": 0.06453550358613332,
+        "usage_b1": 0.3177794405880074,
+        "usage_b2": 0.6176850472887357
+      }
+    },
+    "coeff_means_by_side": {
+      "Left": {
+        "mean": 14.181859031319618,
+        "mean_abs": 18.264585480093956,
+        "std": 15.859116722948857
+      },
+      "Normal": {
+        "mean": -9.476744872331619,
+        "mean_abs": 11.870321160554886,
+        "std": 10.400620424966084
+      },
+      "Right": {
+        "mean": -0.44769773837178944,
+        "mean_abs": 0.5227313736453653,
+        "std": 1.5709690387713084
+      }
+    },
+    "coeff_means_by_dataset": {
+      "IMR": {
+        "mean": 1.867899489419704,
+        "mean_abs": 9.934905899265273,
+        "std": 14.972196420603682
+      },
+      "TT": {
+        "mean": -4.480557103951772,
+        "mean_abs": 8.579879899819693,
+        "std": 9.116974672723268
+      }
+    },
+    "rep_means_by_side": {
+      "Left": {
+        "rep_b0": -0.17677920361901167,
+        "rep_b1": -1.2592780255558438,
+        "rep_b2": 15.617916334420443
+      },
+      "Normal": {
+        "rep_b0": -0.3553970046341419,
+        "rep_b1": -5.83345068693161,
+        "rep_b2": -3.287897366285324
+      },
+      "Right": {
+        "rep_b0": -0.05985081337857991,
+        "rep_b1": -0.19634086446021684,
+        "rep_b2": -0.191506061097607
+      }
+    },
+    "basis_coeff_correlations": {
+      "b0": -0.1236190465928459,
+      "b1": -0.9529829432015826,
+      "b2": 0.7761901442591361
+    },
+    "top_groups_by_usage": {
+      "b0": [
+        {
+          "group_id": "IMR:00521:x:group043",
+          "dataset_name": "IMR",
+          "subject": "00521",
+          "side_label_name": "Right",
+          "usage_b0": 0.3675730228424072,
+          "side_coeff_mean": -0.10497266799211502,
+          "rep_b0": -0.0385851226747036
+        },
+        {
+          "group_id": "IMR:00330:x:group019",
+          "dataset_name": "IMR",
+          "subject": "00330",
+          "side_label_name": "Right",
+          "usage_b0": 0.34927162528038025,
+          "side_coeff_mean": -0.051879338920116425,
+          "rep_b0": -0.01811998151242733
+        },
+        {
+          "group_id": "IMR:00281:x:group008",
+          "dataset_name": "IMR",
+          "subject": "00281",
+          "side_label_name": "Right",
+          "usage_b0": 0.3491889536380768,
+          "side_coeff_mean": -0.06591328978538513,
+          "rep_b0": -0.02301619201898575
+        },
+        {
+          "group_id": "IMR:00396:x:group037",
+          "dataset_name": "IMR",
+          "subject": "00396",
+          "side_label_name": "Right",
+          "usage_b0": 0.3450329303741455,
+          "side_coeff_mean": -0.02581765502691269,
+          "rep_b0": -0.008907941170036793
+        },
+        {
+          "group_id": "IMR:00299:x:group010",
+          "dataset_name": "IMR",
+          "subject": "00299",
+          "side_label_name": "Right",
+          "usage_b0": 0.34435418248176575,
+          "side_coeff_mean": -0.06092866510152817,
+          "rep_b0": -0.020981039851903915
+        }
+      ],
+      "b1": [
+        {
+          "group_id": "IMR:00271:x:group007",
+          "dataset_name": "IMR",
+          "subject": "00271",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5791709423065186,
+          "side_coeff_mean": -18.99016571044922,
+          "rep_b1": -10.998552322387695
+        },
+        {
+          "group_id": "IMR:00256:x:group006",
+          "dataset_name": "IMR",
+          "subject": "00256",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5610536932945251,
+          "side_coeff_mean": -20.605714797973633,
+          "rep_b1": -11.560912132263184
+        },
+        {
+          "group_id": "IMR:00235:x:group000",
+          "dataset_name": "IMR",
+          "subject": "00235",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5603583455085754,
+          "side_coeff_mean": -15.505084991455078,
+          "rep_b1": -8.688404083251953
+        },
+        {
+          "group_id": "TT:847397:x:group004",
+          "dataset_name": "TT",
+          "subject": "847397",
+          "side_label_name": "Left",
+          "usage_b1": 0.5499770045280457,
+          "side_coeff_mean": -17.888519287109375,
+          "rep_b1": -9.838274002075195
+        },
+        {
+          "group_id": "IMR:00551:x:group044",
+          "dataset_name": "IMR",
+          "subject": "00551",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5495672821998596,
+          "side_coeff_mean": -21.543498992919922,
+          "rep_b1": -11.83960247039795
+        }
+      ],
+      "b2": [
+        {
+          "group_id": "IMR:00321:x:group016",
+          "dataset_name": "IMR",
+          "subject": "00321",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999998807907104,
+          "side_coeff_mean": 34.14814376831055,
+          "rep_b2": 34.14813995361328
+        },
+        {
+          "group_id": "IMR:00312:x:group015",
+          "dataset_name": "IMR",
+          "subject": "00312",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999995231628418,
+          "side_coeff_mean": 31.478965759277344,
+          "rep_b2": 31.47895050048828
+        },
+        {
+          "group_id": "IMR:00370:x:group031",
+          "dataset_name": "IMR",
+          "subject": "00370",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999988079071045,
+          "side_coeff_mean": 29.157976150512695,
+          "rep_b2": 29.157941818237305
+        },
+        {
+          "group_id": "IMR:00310:x:group014",
+          "dataset_name": "IMR",
+          "subject": "00310",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999986886978149,
+          "side_coeff_mean": 28.887954711914062,
+          "rep_b2": 28.887916564941406
+        },
+        {
+          "group_id": "IMR:00301:x:group011",
+          "dataset_name": "IMR",
+          "subject": "00301",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999955892562866,
+          "side_coeff_mean": 26.415157318115234,
+          "rep_b2": 26.415040969848633
+        }
+      ]
+    },
+    "top_groups_by_positive_rep": {
+      "b0": [
+        {
+          "group_id": "IMR:00381:x:group034",
+          "dataset_name": "IMR",
+          "subject": "00381",
+          "side_label_name": "Normal",
+          "usage_b0": 0.06335239857435226,
+          "side_coeff_mean": 4.117761135101318,
+          "rep_b0": 0.2608700394630432
+        },
+        {
+          "group_id": "IMR:00406:x:group039",
+          "dataset_name": "IMR",
+          "subject": "00406",
+          "side_label_name": "Right",
+          "usage_b0": 0.2127111554145813,
+          "side_coeff_mean": 0.5453857779502869,
+          "rep_b0": 0.11600963771343231
+        },
+        {
+          "group_id": "TT:861649:x:group011",
+          "dataset_name": "TT",
+          "subject": "861649",
+          "side_label_name": "Normal",
+          "usage_b0": 0.017124956473708153,
+          "side_coeff_mean": 15.116087913513184,
+          "rep_b0": 0.10078513622283936
+        },
+        {
+          "group_id": "IMR:00373:x:group032",
+          "dataset_name": "IMR",
+          "subject": "00373",
+          "side_label_name": "Right",
+          "usage_b0": 0.3288858234882355,
+          "side_coeff_mean": 0.1318514347076416,
+          "rep_b0": 0.04336406663060188
+        },
+        {
+          "group_id": "IMR:00514:x:group042",
+          "dataset_name": "IMR",
+          "subject": "00514",
+          "side_label_name": "Right",
+          "usage_b0": 0.3220820128917694,
+          "side_coeff_mean": 0.06660940498113632,
+          "rep_b0": 0.02145369164645672
+        }
+      ],
+      "b1": [
+        {
+          "group_id": "IMR:00381:x:group034",
+          "dataset_name": "IMR",
+          "subject": "00381",
+          "side_label_name": "Normal",
+          "usage_b1": 0.10930708050727844,
+          "side_coeff_mean": 4.117761135101318,
+          "rep_b1": 0.45010045170783997
+        },
+        {
+          "group_id": "TT:861649:x:group011",
+          "dataset_name": "TT",
+          "subject": "861649",
+          "side_label_name": "Normal",
+          "usage_b1": 0.02670660801231861,
+          "side_coeff_mean": 15.116087913513184,
+          "rep_b1": 0.15726238489151
+        },
+        {
+          "group_id": "IMR:00406:x:group039",
+          "dataset_name": "IMR",
+          "subject": "00406",
+          "side_label_name": "Right",
+          "usage_b1": 0.2757371664047241,
+          "side_coeff_mean": 0.5453857779502869,
+          "rep_b1": 0.1503831297159195
+        },
+        {
+          "group_id": "IMR:00373:x:group032",
+          "dataset_name": "IMR",
+          "subject": "00373",
+          "side_label_name": "Right",
+          "usage_b1": 0.2803609371185303,
+          "side_coeff_mean": 0.1318514347076416,
+          "rep_b1": 0.0369659923017025
+        },
+        {
+          "group_id": "IMR:00514:x:group042",
+          "dataset_name": "IMR",
+          "subject": "00514",
+          "side_label_name": "Right",
+          "usage_b1": 0.307085245847702,
+          "side_coeff_mean": 0.06660940498113632,
+          "rep_b1": 0.02045476622879505
+        }
+      ],
+      "b2": [
+        {
+          "group_id": "IMR:00321:x:group016",
+          "dataset_name": "IMR",
+          "subject": "00321",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999998807907104,
+          "side_coeff_mean": 34.14814376831055,
+          "rep_b2": 34.14813995361328
+        },
+        {
+          "group_id": "IMR:00312:x:group015",
+          "dataset_name": "IMR",
+          "subject": "00312",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999995231628418,
+          "side_coeff_mean": 31.478965759277344,
+          "rep_b2": 31.47895050048828
+        },
+        {
+          "group_id": "IMR:00370:x:group031",
+          "dataset_name": "IMR",
+          "subject": "00370",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999988079071045,
+          "side_coeff_mean": 29.157976150512695,
+          "rep_b2": 29.157941818237305
+        },
+        {
+          "group_id": "IMR:00310:x:group014",
+          "dataset_name": "IMR",
+          "subject": "00310",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999986886978149,
+          "side_coeff_mean": 28.887954711914062,
+          "rep_b2": 28.887916564941406
+        },
+        {
+          "group_id": "IMR:00301:x:group011",
+          "dataset_name": "IMR",
+          "subject": "00301",
+          "side_label_name": "Left",
+          "usage_b2": 0.9999955892562866,
+          "side_coeff_mean": 26.415157318115234,
+          "rep_b2": 26.415040969848633
+        }
+      ]
+    },
+    "top_groups_by_negative_rep": {
+      "b0": [
+        {
+          "group_id": "TT:851367:x:group009",
+          "dataset_name": "TT",
+          "subject": "851367",
+          "side_label_name": "Left",
+          "usage_b0": 0.12065300345420837,
+          "side_coeff_mean": -8.498639106750488,
+          "rep_b0": -1.0253863334655762
+        },
+        {
+          "group_id": "IMR:00350:x:group027",
+          "dataset_name": "IMR",
+          "subject": "00350",
+          "side_label_name": "Normal",
+          "usage_b0": 0.12471421808004379,
+          "side_coeff_mean": -6.9045023918151855,
+          "rep_b0": -0.8610896468162537
+        },
+        {
+          "group_id": "IMR:00351:x:group028",
+          "dataset_name": "IMR",
+          "subject": "00351",
+          "side_label_name": "Normal",
+          "usage_b0": 0.17837044596672058,
+          "side_coeff_mean": -4.372478485107422,
+          "rep_b0": -0.7799209356307983
+        },
+        {
+          "group_id": "IMR:00251:x:group005",
+          "dataset_name": "IMR",
+          "subject": "00251",
+          "side_label_name": "Normal",
+          "usage_b0": 0.04622884467244148,
+          "side_coeff_mean": -13.736170768737793,
+          "rep_b0": -0.6350073218345642
+        },
+        {
+          "group_id": "TT:845408:x:group002",
+          "dataset_name": "TT",
+          "subject": "845408",
+          "side_label_name": "Right",
+          "usage_b0": 0.09867557883262634,
+          "side_coeff_mean": -7.192436218261719,
+          "rep_b0": -0.6231454610824585
+        }
+      ],
+      "b1": [
+        {
+          "group_id": "IMR:00245:x:group004",
+          "dataset_name": "IMR",
+          "subject": "00245",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5448422431945801,
+          "side_coeff_mean": -24.076343536376953,
+          "rep_b1": -13.117809295654297
+        },
+        {
+          "group_id": "IMR:00380:x:group033",
+          "dataset_name": "IMR",
+          "subject": "00380",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5431721806526184,
+          "side_coeff_mean": -23.360275268554688,
+          "rep_b1": -12.688652038574219
+        },
+        {
+          "group_id": "IMR:00551:x:group044",
+          "dataset_name": "IMR",
+          "subject": "00551",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5495672821998596,
+          "side_coeff_mean": -21.543498992919922,
+          "rep_b1": -11.83960247039795
+        },
+        {
+          "group_id": "IMR:00256:x:group006",
+          "dataset_name": "IMR",
+          "subject": "00256",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5610536932945251,
+          "side_coeff_mean": -20.605714797973633,
+          "rep_b1": -11.560912132263184
+        },
+        {
+          "group_id": "IMR:00271:x:group007",
+          "dataset_name": "IMR",
+          "subject": "00271",
+          "side_label_name": "Normal",
+          "usage_b1": 0.5791709423065186,
+          "side_coeff_mean": -18.99016571044922,
+          "rep_b1": -10.998552322387695
+        }
+      ],
+      "b2": [
+        {
+          "group_id": "IMR:00245:x:group004",
+          "dataset_name": "IMR",
+          "subject": "00245",
+          "side_label_name": "Normal",
+          "usage_b2": 0.445391982793808,
+          "side_coeff_mean": -24.076343536376953,
+          "rep_b2": -10.723410606384277
+        },
+        {
+          "group_id": "IMR:00380:x:group033",
+          "dataset_name": "IMR",
+          "subject": "00380",
+          "side_label_name": "Normal",
+          "usage_b2": 0.4456101059913635,
+          "side_coeff_mean": -23.360275268554688,
+          "rep_b2": -10.409574508666992
+        },
+        {
+          "group_id": "IMR:00551:x:group044",
+          "dataset_name": "IMR",
+          "subject": "00551",
+          "side_label_name": "Normal",
+          "usage_b2": 0.4367542564868927,
+          "side_coeff_mean": -21.543498992919922,
+          "rep_b2": -9.409214973449707
+        },
+        {
+          "group_id": "IMR:00256:x:group006",
+          "dataset_name": "IMR",
+          "subject": "00256",
+          "side_label_name": "Normal",
+          "usage_b2": 0.42336103320121765,
+          "side_coeff_mean": -20.605714797973633,
+          "rep_b2": -8.72365665435791
+        },
+        {
+          "group_id": "IMR:00271:x:group007",
+          "dataset_name": "IMR",
+          "subject": "00271",
+          "side_label_name": "Normal",
+          "usage_b2": 0.4034966230392456,
+          "side_coeff_mean": -18.99016571044922,
+          "rep_b2": -7.662467956542969
+        }
+      ]
+    }
+  },
+  "basis_summary": {
+    "mean_swap_cosine": -0.09635628899559379,
+    "max_pairwise_cosine_offdiag": 1.6298145055770874e-09,
+    "basis_rows": [
+      {
+        "basis_index": 0,
+        "fro_norm": 1.0,
+        "l1_sum": 17.541324615478516,
+        "mean_abs": 0.0012387066381052136,
+        "max_abs": 0.15142229199409485,
+        "swap_cosine": 0.00585052790120244,
+        "swap_delta_l1_mean": 0.0023299523163586855,
+        "diag_block_mass_ratio": 0.12639000168509815,
+        "offdiag_block_mass_ratio": 0.8736099348826382,
+        "around_left_left_mass_ratio": 0.011979385941248259,
+        "around_right_right_mass_ratio": 0.01304671102420776,
+        "mouth_left_left_mass_ratio": 0.07749984065965332,
+        "mouth_right_right_mass_ratio": 0.023864064059988824,
+        "around_lr_cross_mass_ratio": 0.021876011898750127,
+        "mouth_lr_cross_mass_ratio": 0.1991388206229425,
+        "around_to_mouth_mass_ratio": 0.6525951023609455
+      },
+      {
+        "basis_index": 1,
+        "fro_norm": 1.0000001192092896,
+        "l1_sum": 16.679401397705078,
+        "mean_abs": 0.0011778406333178282,
+        "max_abs": 0.23044821619987488,
+        "swap_cosine": 0.00935340579599142,
+        "swap_delta_l1_mean": 0.0019223382696509361,
+        "diag_block_mass_ratio": 0.18996484403366534,
+        "offdiag_block_mass_ratio": 0.8100352125435638,
+        "around_left_left_mass_ratio": 0.021916549631735182,
+        "around_right_right_mass_ratio": 0.014687694034861155,
+        "mouth_left_left_mass_ratio": 0.06776997580790092,
+        "mouth_right_right_mass_ratio": 0.08559062455916808,
+        "around_lr_cross_mass_ratio": 0.042023783224526816,
+        "mouth_lr_cross_mass_ratio": 0.4250016864599422,
+        "around_to_mouth_mass_ratio": 0.3430097428590948
+      },
+      {
+        "basis_index": 2,
+        "fro_norm": 0.9999999403953552,
+        "l1_sum": 91.02367401123047,
+        "mean_abs": 0.006427771411836147,
+        "max_abs": 0.03028125874698162,
+        "swap_cosine": -0.3042728006839752,
+        "swap_delta_l1_mean": 0.010746242478489876,
+        "diag_block_mass_ratio": 0.23065122993646878,
+        "offdiag_block_mass_ratio": 0.769348824959032,
+        "around_left_left_mass_ratio": 0.02872210808730563,
+        "around_right_right_mass_ratio": 0.026406979538456846,
+        "mouth_left_left_mass_ratio": 0.10328189230722257,
+        "mouth_right_right_mass_ratio": 0.07224025000348375,
+        "around_lr_cross_mass_ratio": 0.061662959822338104,
+        "mouth_lr_cross_mass_ratio": 0.15999748126069258,
+        "around_to_mouth_mass_ratio": 0.5476883838760013
+      }
+    ]
+  }
+}

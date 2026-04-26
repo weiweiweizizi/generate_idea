@@ -1,0 +1,89 @@
+{
+  "checkpoint_path": "outputs/lq_x_mouth_v3_no_disc_side_stronger_lq/best.pt",
+  "analysis_split": "val",
+  "basis_shape": [
+    11,
+    119,
+    119
+  ],
+  "levels": [
+    2,
+    3,
+    6
+  ],
+  "train_metrics": {
+    "loss": 0.4257573898021991,
+    "recon": 0.23594005062029913,
+    "lq": 0.0008520287542174069,
+    "orth": 1.6479756193523197e-06,
+    "residual": 0.8890698047784659,
+    "recon_frames": 249.23076923076923,
+    "supervision_frames": 249.23076923076923,
+    "side": 2.2796685695648193,
+    "side_cont": 1.0901032044337347,
+    "side_disc": 1.1895653926409209
+  },
+  "val_metrics": {
+    "loss": 0.4413582384586334,
+    "recon": 0.2530593201518059,
+    "lq": 0.0006698899960611016,
+    "orth": 1.0820455145221786e-06,
+    "residual": 0.8167749643325806,
+    "recon_frames": 228.25,
+    "supervision_frames": 228.25,
+    "side": 2.4659693241119385,
+    "side_cont": 1.1017626821994781,
+    "side_disc": 1.364206701517105
+  },
+  "code_usage": {
+    "total_valid_frames": 913,
+    "levels": [
+      {
+        "level_index": 0,
+        "size": 2,
+        "counts": [
+          0,
+          913
+        ],
+        "fractions": [
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "level_index": 1,
+        "size": 3,
+        "counts": [
+          0,
+          913,
+          0
+        ],
+        "fractions": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "level_index": 2,
+        "size": 6,
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          903,
+          10
+        ],
+        "fractions": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9890470974808324,
+          0.01095290251916758
+        ]
+      }
+    ]
+  }
+}
