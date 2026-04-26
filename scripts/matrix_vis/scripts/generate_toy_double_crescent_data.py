@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 import numpy as np
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
+from scripts.matrix_vis.qp.constraints import build_order_indices
 
 
 OUTPUT_DIR = Path("data/toy/matrix_vis/double_crescent_mouth_opening")
@@ -45,14 +51,29 @@ def build_double_crescent_mesh() -> np.ndarray:
 
 def build_open_mouth_trajectory(mesh_2d: np.ndarray, num_steps: int = 25) -> np.ndarray:
     coordinates = np.repeat(mesh_2d[None, :, :], num_steps, axis=0)
-    midpoint = mesh_2d.shape[0] // 2
-    amplitudes = np.linspace(0.0, 0.75, num_steps, dtype=np.float32)
-    stretch_profile = np.abs(mesh_2d[:, 0]) / max(float(np.abs(mesh_2d[:, 0]).max()), 1e-6)
+
+    x_order = build_order_indices(mesh_2d[:, 0])
+    y_order = build_order_indices(mesh_2d[:, 1])
+
+    x_profile_sorted = np.linspace(-0.18, 0.18, mesh_2d.shape[0], dtype=np.float32)
+    y_profile_sorted = np.linspace(-0.82, 0.82, mesh_2d.shape[0], dtype=np.float32)
+
+    x_displacement = np.zeros(mesh_2d.shape[0], dtype=np.float32)
+    y_displacement = np.zeros(mesh_2d.shape[0], dtype=np.float32)
+    x_displacement[x_order] = x_profile_sorted
+    y_displacement[y_order] = y_profile_sorted
+
+    # Keep point 0 fixed while preserving monotonicity: subtracting a constant
+    # from the whole displacement vector does not change sorted-order monotonicity.
+    x_displacement -= x_displacement[0]
+    y_displacement -= y_displacement[0]
+
+    time = np.linspace(0.0, 1.0, num_steps, dtype=np.float32)
+    amplitudes = 0.5 * (1.0 - np.cos(np.pi * time))
 
     for step_idx, amplitude in enumerate(amplitudes):
-        coordinates[step_idx, :midpoint, 1] += amplitude * 0.45
-        coordinates[step_idx, midpoint:, 1] -= amplitude
-        coordinates[step_idx, :, 0] += np.sign(mesh_2d[:, 0]) * stretch_profile * amplitude * 0.16
+        coordinates[step_idx, :, 0] = mesh_2d[:, 0] + amplitude * x_displacement
+        coordinates[step_idx, :, 1] = mesh_2d[:, 1] + amplitude * y_displacement
         coordinates[step_idx, 0, :] = mesh_2d[0]
     return coordinates.astype(np.float32)
 

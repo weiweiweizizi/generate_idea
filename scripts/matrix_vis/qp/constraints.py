@@ -4,6 +4,14 @@ import cvxpy as cp
 import numpy as np
 
 
+def build_order_indices(initial_positions: np.ndarray) -> np.ndarray:
+    initial_positions = np.asarray(initial_positions, dtype=np.float32)
+    if initial_positions.ndim != 1:
+        raise ValueError("initial_positions must be 1D")
+    # Stable sort keeps deterministic behavior for ties.
+    return np.argsort(initial_positions, kind="mergesort").astype(np.int64)
+
+
 def build_constraints(
     x_var: cp.Variable,
     *,
@@ -19,8 +27,9 @@ def build_constraints(
     ]
 
     if enforce_order:
-        for idx in range(x_var.shape[0] - 1):
-            constraints.append(x_var[idx, :] <= x_var[idx + 1, :])
+        order_indices = build_order_indices(initial_positions)
+        for left_idx, right_idx in zip(order_indices[:-1], order_indices[1:]):
+            constraints.append(x_var[int(left_idx), :] <= x_var[int(right_idx), :])
 
     if max_displacement is not None:
         centered = x_var - initial_positions[:, None]

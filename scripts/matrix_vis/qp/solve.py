@@ -15,7 +15,13 @@ class AxisQPSolveResult:
 
 
 def solve_axis_qp(bundle: AxisQPBundle) -> AxisQPSolveResult:
-    bundle.problem.solve(solver="OSQP", verbose=False)
+    bundle.problem.solve(
+        solver="OSQP",
+        verbose=False,
+        eps_abs=1e-8,
+        eps_rel=1e-8,
+        polish=True,
+    )
     if bundle.x_var.value is None:
         raise RuntimeError(f"QP solve failed with status {bundle.problem.status!r}")
 

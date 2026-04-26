@@ -5,6 +5,7 @@ import pandas as pd
 
 from scripts.matrix_vis.core.types import QPConfig
 from scripts.matrix_vis.qp.builder import build_axis_qp
+from scripts.matrix_vis.qp.constraints import build_order_indices
 
 
 def test_build_axis_qp_returns_expected_layout() -> None:
@@ -35,3 +36,8 @@ def test_build_axis_qp_returns_expected_layout() -> None:
     assert bundle.layout.shape == (3, 5)
     assert bundle.anchor_local_index == 0
     assert bundle.time_grid.tolist() == [0.0, 0.25, 0.5, 0.75, 1.0]
+
+
+def test_build_order_indices_uses_initial_axis_positions_not_input_order() -> None:
+    order_indices = build_order_indices(np.asarray([4.0, -1.0, 3.0, -1.0], dtype=np.float32))
+    assert order_indices.tolist() == [1, 3, 2, 0]
