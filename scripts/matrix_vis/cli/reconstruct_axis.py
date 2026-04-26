@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 
 import fire
+import numpy as np
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -26,7 +27,45 @@ from scripts.matrix_vis.io.save_results import (
 )
 from scripts.matrix_vis.qp.builder import build_axis_qp
 from scripts.matrix_vis.qp.solve import solve_axis_qp
-from scripts.matrix_vis.viz.axis_plots import save_axis_trajectory_plot
+from scripts.matrix_vis.viz.axis_plots import (
+    save_axis_ground_truth_comparison_plot,
+    save_axis_trajectory_plot,
+)
+
+
+def _load_ground_truth_axis_trajectory(
+    *,
+    mesh,
+    projection,
+    basis_source: Path,
+    target_time_grid: np.ndarray,
+) -> np.ndarray | None:
+    trajectory_path = basis_source.parent / "trajectory_2d.npy"
+    if not trajectory_path.exists():
+        return None
+
+    trajectory_2d = np.load(trajectory_path).astype(np.float32, copy=False)
+    if trajectory_2d.ndim != 3:
+        raise ValueError(f"Expected ground truth trajectory with shape [T, N, D], got {trajectory_2d.shape}")
+    if trajectory_2d.shape[1] != mesh.points.shape[0]:
+        raise ValueError(
+            "Ground truth trajectory point count does not match mesh: "
+            f"{trajectory_2d.shape[1]} vs {mesh.points.shape[0]}"
+        )
+
+    axis_positions = trajectory_2d[:, :, projection.source_axis_index]
+    point_id_to_index = {int(point_id): idx for idx, point_id in enumerate(mesh.point_ids.tolist())}
+    subset_indices = [point_id_to_index[int(point_id)] for point_id in projection.subset_point_ids.tolist()]
+    subset_axis = axis_positions[:, subset_indices].T
+
+    source_time = np.linspace(0.0, 1.0, trajectory_2d.shape[0], dtype=np.float32)
+    if trajectory_2d.shape[0] == target_time_grid.shape[0] and np.allclose(source_time, target_time_grid):
+        return subset_axis.astype(np.float32, copy=False)
+
+    resampled = np.empty((subset_axis.shape[0], target_time_grid.shape[0]), dtype=np.float32)
+    for idx in range(subset_axis.shape[0]):
+        resampled[idx] = np.interp(target_time_grid, source_time, subset_axis[idx]).astype(np.float32)
+    return resampled
 
 
 def reconstruct(
@@ -77,6 +116,7 @@ def reconstruct(
         )
 
     plot_warning = None
+    comparison_plot_warning = None
     if cfg.export.save_axis_plot:
         plot_warning = save_axis_trajectory_plot(
             output_dir=out_dir,
@@ -85,6 +125,32 @@ def reconstruct(
             point_ids=projection.subset_point_ids,
             axis=cfg.projection.axis,
         )
+        ground_truth = _load_ground_truth_axis_trajectory(
+            mesh=mesh,
+            projection=projection,
+            basis_source=cfg.basis.source,
+            target_time_grid=bundle.time_grid,
+        )
+        if ground_truth is not None:
+            comparison_plot_warning = save_axis_ground_truth_comparison_plot(
+                output_dir=out_dir,
+                time_grid=bundle.time_grid,
+                reconstructed=solve_result.trajectory,
+                ground_truth=ground_truth,
+                point_ids=projection.subset_point_ids,
+                axis=cfg.projection.axis,
+            )
+            comparison_metrics = {
+                "ground_truth_rmse": float(np.sqrt(np.mean((solve_result.trajectory - ground_truth) ** 2))),
+                "ground_truth_mae": float(np.mean(np.abs(solve_result.trajectory - ground_truth))),
+                "ground_truth_max_abs_error": float(
+                    np.max(np.abs(solve_result.trajectory - ground_truth))
+                ),
+            }
+        else:
+            comparison_metrics = None
+    else:
+        comparison_metrics = None
 
     summary = {
         "experiment_name": cfg.experiment.name,
@@ -94,6 +160,8 @@ def reconstruct(
         "num_pairwise_observations": int(observation_table.shape[0]),
         "anchor_point_id": int(projection.anchor_point_id),
         "plot_warning": plot_warning,
+        "comparison_plot_warning": comparison_plot_warning,
+        "comparison_metrics": comparison_metrics,
         "diagnostics": solve_result.diagnostics,
     }
     if cfg.export.save_json_summary:
