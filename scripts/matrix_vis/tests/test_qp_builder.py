@@ -27,11 +27,11 @@ def test_build_axis_qp_returns_expected_layout() -> None:
     bundle = build_axis_qp(
         subset_point_ids=np.asarray([10, 11, 12], dtype=np.int64),
         initial_positions=np.asarray([0.0, 1.0, 2.0], dtype=np.float32),
-        anchor_point_id=10,
+        anchor_point_ids=np.asarray([10, 12], dtype=np.int64),
         observations=observations,
         solver_config=solver,
     )
 
     assert bundle.layout.shape == (3, 5)
-    assert bundle.anchor_local_index == 0
+    assert bundle.anchor_local_indices.tolist() == [0, 2]
     assert bundle.time_grid.tolist() == [0.0, 0.25, 0.5, 0.75, 1.0]

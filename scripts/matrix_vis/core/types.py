@@ -34,7 +34,11 @@ class ProjectionConfig:
     axis: str
     source_axis_index: int
     subset_point_ids: tuple[int, ...]
-    anchor_point_id: int
+    anchor_point_ids: tuple[int, ...]
+
+    @property
+    def anchor_point_id(self) -> int:
+        return self.anchor_point_ids[0]
 
 
 @dataclass(frozen=True)
@@ -91,7 +95,11 @@ class AxisProjection:
     full_axis_positions: np.ndarray
     subset_point_ids: np.ndarray
     subset_positions: np.ndarray
-    anchor_point_id: int
+    anchor_point_ids: np.ndarray
+
+    @property
+    def anchor_point_id(self) -> int:
+        return int(self.anchor_point_ids[0])
 
 
 @dataclass(frozen=True)
@@ -107,9 +115,13 @@ class TrajectorySolution:
     time_grid: np.ndarray
     initial_positions: np.ndarray
     trajectory: np.ndarray
-    anchor_point_id: int
+    anchor_point_ids: np.ndarray
     basis_matrix: np.ndarray
     diagnostics: dict[str, Any]
+
+    @property
+    def anchor_point_id(self) -> int:
+        return int(self.anchor_point_ids[0])
 
 
 @dataclass(frozen=True)

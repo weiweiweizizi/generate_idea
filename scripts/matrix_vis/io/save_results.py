@@ -42,16 +42,18 @@ def save_solution_npz(
     time_grid: np.ndarray,
     initial_positions: np.ndarray,
     trajectory: np.ndarray,
-    anchor_point_id: int,
+    anchor_point_ids: np.ndarray,
     basis_observation: BasisObservation,
 ) -> None:
+    anchor_point_ids = np.asarray(anchor_point_ids, dtype=np.int64)
     np.savez(
         output_dir / "solution.npz",
         point_ids=np.asarray(point_ids, dtype=np.int64),
         time_grid=np.asarray(time_grid, dtype=np.float32),
         initial_positions=np.asarray(initial_positions, dtype=np.float32),
         trajectory=np.asarray(trajectory, dtype=np.float32),
-        anchor_point_id=np.asarray(anchor_point_id, dtype=np.int64),
+        anchor_point_ids=anchor_point_ids,
+        anchor_point_id=anchor_point_ids[0],
         basis_matrix=np.asarray(basis_observation.basis_matrix, dtype=np.float32),
     )
 

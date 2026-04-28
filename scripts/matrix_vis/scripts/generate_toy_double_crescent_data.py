@@ -58,18 +58,12 @@ def build_open_mouth_trajectory(mesh_2d: np.ndarray, num_steps: int = 25) -> np.
     return coordinates.astype(np.float32)
 
 
-def pairwise_axis_delta_average(trajectory: np.ndarray, axis_index: int) -> np.ndarray:
+def pairwise_axis_distance_matrix_diff(trajectory: np.ndarray, axis_index: int) -> np.ndarray:
     axis_positions = trajectory[:, :, axis_index]
     initial = axis_positions[0]
-    time_mean = axis_positions.mean(axis=0)
-    delta = time_mean - initial
-    pairwise = np.zeros((delta.shape[0], delta.shape[0]), dtype=np.float32)
-    for i in range(delta.shape[0]):
-        for j in range(i + 1, delta.shape[0]):
-            value = float(delta[j] - delta[i])
-            pairwise[i, j] = value
-            pairwise[j, i] = value
-    return pairwise
+    next_distance = np.abs(axis_positions[:, :, None] - axis_positions[:, None, :]).mean(axis=0)
+    prev_distance = np.abs(initial[:, None] - initial[None, :])
+    return (next_distance - prev_distance).astype(np.float32)
 
 
 def main() -> None:
@@ -77,8 +71,8 @@ def main() -> None:
 
     mesh_2d = build_flat_leaf_mesh()
     trajectory_2d = build_open_mouth_trajectory(mesh_2d)
-    basis_x = pairwise_axis_delta_average(trajectory_2d, axis_index=0)
-    basis_y = pairwise_axis_delta_average(trajectory_2d, axis_index=1)
+    basis_x = pairwise_axis_distance_matrix_diff(trajectory_2d, axis_index=0)
+    basis_y = pairwise_axis_distance_matrix_diff(trajectory_2d, axis_index=1)
 
     np.save(OUTPUT_DIR / "mesh_2d.npy", mesh_2d)
     np.save(OUTPUT_DIR / "trajectory_2d.npy", trajectory_2d)

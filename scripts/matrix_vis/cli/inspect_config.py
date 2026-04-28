@@ -38,6 +38,7 @@ def inspect(config: str) -> dict:
         "source_axis_index": int(cfg.projection.source_axis_index),
         "subset_point_ids": projection.subset_point_ids.tolist(),
         "num_subset_points": int(projection.subset_point_ids.shape[0]),
+        "anchor_point_ids": projection.anchor_point_ids.astype(int).tolist(),
         "anchor_point_id": int(projection.anchor_point_id),
         "basis_path": str(cfg.basis.source),
         "basis_shape": list(basis_observation.basis_matrix.shape),

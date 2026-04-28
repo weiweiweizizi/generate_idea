@@ -22,7 +22,7 @@ projection:
   axis: x
   source_axis_index: 0
   subset_point_ids: [10, 11, 12, 13]
-  anchor_point_id: 10
+  anchor_point_ids: [10, 13]
 
 basis:
   source: toy/basis_x.npy
@@ -65,6 +65,7 @@ def test_load_config_parses_valid_minimal_config(tmp_path: Path) -> None:
     assert config.mesh.dimension == "2d"
     assert config.projection.axis == "x"
     assert config.projection.subset_point_ids == (10, 11, 12, 13)
+    assert config.projection.anchor_point_ids == (10, 13)
     assert config.projection.anchor_point_id == 10
     assert config.solver.num_time_steps == 25
     assert config.basis.value_semantics == "mean_distance_delta"
@@ -72,9 +73,9 @@ def test_load_config_parses_valid_minimal_config(tmp_path: Path) -> None:
 
 
 def test_load_config_rejects_anchor_outside_subset(tmp_path: Path) -> None:
-    invalid = VALID_CONFIG.replace("anchor_point_id: 10", "anchor_point_id: 99")
+    invalid = VALID_CONFIG.replace("anchor_point_ids: [10, 13]", "anchor_point_ids: [10, 99]")
 
-    with pytest.raises(ValueError, match="anchor_point_id"):
+    with pytest.raises(ValueError, match="anchor_point_ids"):
         load_config(write_config(tmp_path, invalid))
 
 
@@ -83,3 +84,11 @@ def test_load_config_rejects_invalid_axis_index_for_2d_mesh(tmp_path: Path) -> N
 
     with pytest.raises(ValueError, match="source_axis_index=2"):
         load_config(write_config(tmp_path, invalid))
+
+
+def test_load_config_supports_legacy_single_anchor_key(tmp_path: Path) -> None:
+    legacy = VALID_CONFIG.replace("anchor_point_ids: [10, 13]", "anchor_point_id: 10")
+
+    config = load_config(write_config(tmp_path, legacy))
+
+    assert config.projection.anchor_point_ids == (10,)

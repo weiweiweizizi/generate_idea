@@ -28,5 +28,5 @@ def project_mesh_to_axis(
         full_axis_positions=full_axis_positions,
         subset_point_ids=subset_point_ids,
         subset_positions=subset_positions,
-        anchor_point_id=projection_config.anchor_point_id,
+        anchor_point_ids=np.asarray(projection_config.anchor_point_ids, dtype=np.int64),
     )

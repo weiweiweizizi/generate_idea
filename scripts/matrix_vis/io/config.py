@@ -81,6 +81,31 @@ def _parse_subset_point_ids(value: Any) -> tuple[int, ...]:
     return point_ids
 
 
+def _parse_anchor_point_ids(section: dict[str, Any], subset_point_ids: tuple[int, ...]) -> tuple[int, ...]:
+    if "anchor_point_ids" in section:
+        value = section.get("anchor_point_ids")
+        if not isinstance(value, list) or not value:
+            raise ValueError(
+                "projection.anchor_point_ids must be a non-empty list of integers"
+            )
+        if any(isinstance(item, bool) or not isinstance(item, int) for item in value):
+            raise ValueError("projection.anchor_point_ids must contain only integers")
+        anchor_point_ids = tuple(value)
+        if len(set(anchor_point_ids)) != len(anchor_point_ids):
+            raise ValueError("projection.anchor_point_ids must not contain duplicates")
+    else:
+        anchor_point_ids = (_require_int(section, "anchor_point_id"),)
+
+    subset_point_id_set = set(subset_point_ids)
+    missing_anchor_ids = [point_id for point_id in anchor_point_ids if point_id not in subset_point_id_set]
+    if missing_anchor_ids:
+        raise ValueError(
+            "projection.anchor_point_ids must be included in projection.subset_point_ids: "
+            f"{missing_anchor_ids}"
+        )
+    return anchor_point_ids
+
+
 def _validate_projection_axis(axis: str, source_axis_index: int, dimension: str) -> None:
     if axis not in SUPPORTED_AXES:
         raise ValueError(f"Unsupported projection.axis: {axis!r}")
@@ -144,9 +169,7 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
     )
 
     subset_point_ids = _parse_subset_point_ids(projection_section.get("subset_point_ids"))
-    anchor_point_id = _require_int(projection_section, "anchor_point_id")
-    if anchor_point_id not in subset_point_ids:
-        raise ValueError("projection.anchor_point_id must be included in projection.subset_point_ids")
+    anchor_point_ids = _parse_anchor_point_ids(projection_section, subset_point_ids)
     source_axis_index = _require_int(projection_section, "source_axis_index")
     axis = _require_str(projection_section, "axis")
     _validate_projection_axis(axis, source_axis_index, mesh.dimension)
@@ -154,7 +177,7 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
         axis=axis,
         source_axis_index=source_axis_index,
         subset_point_ids=subset_point_ids,
-        anchor_point_id=anchor_point_id,
+        anchor_point_ids=anchor_point_ids,
     )
 
     matrix_shape = _require_str(basis_section, "matrix_shape")

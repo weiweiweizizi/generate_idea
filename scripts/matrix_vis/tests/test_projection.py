@@ -22,13 +22,14 @@ def test_project_mesh_to_axis_extracts_subset_and_anchor() -> None:
         axis="y",
         source_axis_index=1,
         subset_point_ids=(10, 12, 13),
-        anchor_point_id=12,
+        anchor_point_ids=(10, 12),
     )
 
     projection = project_mesh_to_axis(mesh, config)
 
     assert projection.axis == "y"
-    assert projection.anchor_point_id == 12
+    assert projection.anchor_point_ids.tolist() == [10, 12]
+    assert projection.anchor_point_id == 10
     assert projection.subset_point_ids.tolist() == [10, 12, 13]
     assert projection.full_axis_positions.tolist() == [1.0, 2.0, 4.0, 8.0]
     assert projection.subset_positions.tolist() == [1.0, 4.0, 8.0]

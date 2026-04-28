@@ -10,17 +10,24 @@ def build_data_term(
     *,
     initial_positions: np.ndarray,
     observations: pd.DataFrame,
+    distance_signs: cp.Parameter,
+    pair_weights: np.ndarray,
 ) -> cp.Expression:
     if observations.empty:
         return cp.Constant(0.0)
 
+    pair_weights = np.asarray(pair_weights, dtype=np.float32).reshape(-1)
+    if pair_weights.shape[0] != observations.shape[0]:
+        raise ValueError("pair_weights length must match number of observations")
+
     residuals = []
     num_time_steps = x_var.shape[1]
-    for row in observations.itertuples(index=False):
-        initial_distance = float(initial_positions[row.j] - initial_positions[row.i])
-        mean_distance = cp.sum(x_var[row.j, :] - x_var[row.i, :]) / num_time_steps
+    for obs_idx, row in enumerate(observations.itertuples(index=False)):
+        initial_distance = float(abs(initial_positions[row.j] - initial_positions[row.i]))
+        signed_gap = cp.multiply(distance_signs[obs_idx, :], x_var[row.j, :] - x_var[row.i, :])
+        mean_distance = cp.sum(signed_gap) / num_time_steps
         predicted_value = mean_distance - initial_distance
-        residuals.append(predicted_value - float(row.value))
+        residuals.append(np.sqrt(float(pair_weights[obs_idx])) * (predicted_value - float(row.value)))
     return cp.sum_squares(cp.hstack(residuals))
 
 
@@ -35,4 +42,5 @@ def build_velocity_change_term(x_var: cp.Variable) -> cp.Expression:
     if x_var.shape[1] < 2:
         return cp.Constant(0.0)
     velocity = x_var[:, 1:] - x_var[:, :-1]
-    return cp.sum_squares(velocity)
+    mean_velocity = cp.sum(velocity, axis=1, keepdims=True) / velocity.shape[1]
+    return cp.sum_squares(velocity - mean_velocity)

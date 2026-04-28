@@ -67,7 +67,6 @@ def _load_ground_truth_axis_trajectory(
         resampled[idx] = np.interp(target_time_grid, source_time, subset_axis[idx]).astype(np.float32)
     return resampled
 
-
 def reconstruct(
     config: str,
     axis: str | None = None,
@@ -95,7 +94,7 @@ def reconstruct(
     bundle = build_axis_qp(
         subset_point_ids=projection.subset_point_ids,
         initial_positions=projection.subset_positions,
-        anchor_point_id=projection.anchor_point_id,
+        anchor_point_ids=projection.anchor_point_ids,
         observations=observation_table,
         solver_config=cfg.solver,
     )
@@ -111,7 +110,7 @@ def reconstruct(
             time_grid=bundle.time_grid,
             initial_positions=projection.subset_positions,
             trajectory=solve_result.trajectory,
-            anchor_point_id=projection.anchor_point_id,
+            anchor_point_ids=projection.anchor_point_ids,
             basis_observation=basis_observation,
         )
 
@@ -158,6 +157,7 @@ def reconstruct(
         "axis": cfg.projection.axis,
         "num_subset_points": int(projection.subset_point_ids.shape[0]),
         "num_pairwise_observations": int(observation_table.shape[0]),
+        "anchor_point_ids": projection.anchor_point_ids.astype(int).tolist(),
         "anchor_point_id": int(projection.anchor_point_id),
         "plot_warning": plot_warning,
         "comparison_plot_warning": comparison_plot_warning,
