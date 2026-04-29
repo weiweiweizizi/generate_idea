@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from scripts.matrix_vis.core.landmark_layout import resolve_subset_layout
 from scripts.matrix_vis.core.types import (
     BasisConfig,
     ExportConfig,
@@ -15,9 +16,12 @@ from scripts.matrix_vis.core.types import (
     SUPPORTED_MATRIX_SHAPES,
     SUPPORTED_MESH_DIMENSIONS,
     SUPPORTED_MESH_FORMATS,
+    SUPPORTED_NORMALIZATION_SCOPES,
     SUPPORTED_QP_BACKENDS,
+    SUPPORTED_SUBSET_LAYOUTS,
     SUPPORTED_VALUE_SEMANTICS,
 )
+from scripts.matrix_vis.io.paths import resolve_input_path, resolve_output_path
 
 try:
     import yaml
@@ -81,6 +85,60 @@ def _parse_subset_point_ids(value: Any) -> tuple[int, ...]:
     return point_ids
 
 
+def _parse_projection_subset(
+    *,
+    projection_section: dict[str, Any],
+    config_path: Path,
+) -> tuple[tuple[int, ...], str | None, Path | None, str | None, tuple[str, ...] | None]:
+    subset_layout_raw = projection_section.get("subset_layout")
+    if subset_layout_raw is None:
+        subset_point_ids = _parse_subset_point_ids(projection_section.get("subset_point_ids"))
+        return subset_point_ids, None, None, None, None
+
+    layout_name, layout_source, extractor_name, region_names = _parse_layout_spec(
+        layout_raw=subset_layout_raw,
+        config_path=config_path,
+        section_name="projection.subset_layout",
+    )
+    subset_point_ids = resolve_subset_layout(
+        subset_layout=layout_name,
+        subset_layout_source=layout_source,
+        subset_layout_extractor_name=extractor_name,
+        subset_layout_region_names=list(region_names) if region_names is not None else None,
+    )
+    return subset_point_ids, layout_name, layout_source, extractor_name, region_names
+
+
+def _parse_layout_spec(
+    *,
+    layout_raw: Any,
+    config_path: Path,
+    section_name: str,
+) -> tuple[str, Path, str, tuple[str, ...] | None]:
+    if not isinstance(layout_raw, dict):
+        raise ValueError(f"{section_name} must be a mapping when provided")
+
+    layout_name = _require_str(layout_raw, "name")
+    if layout_name not in SUPPORTED_SUBSET_LAYOUTS:
+        raise ValueError(f"Unsupported {section_name}.name: {layout_name!r}")
+    layout_source = resolve_input_path(config_path, Path(_require_str(layout_raw, "source")))
+    extractor_name = layout_raw.get("extractor_name", "mediapipe")
+    if not isinstance(extractor_name, str) or not extractor_name.strip():
+        raise ValueError(f"{section_name}.extractor_name must be a non-empty string")
+    region_names_raw = layout_raw.get("region_names")
+    region_names: tuple[str, ...] | None = None
+    if region_names_raw is not None:
+        if not isinstance(region_names_raw, list) or not region_names_raw:
+            raise ValueError(f"{section_name}.region_names must be a non-empty list of strings")
+        parsed_region_names: list[str] = []
+        for item in region_names_raw:
+            if not isinstance(item, str) or not item.strip():
+                raise ValueError(f"{section_name}.region_names must contain only non-empty strings")
+            parsed_region_names.append(item.strip())
+        region_names = tuple(parsed_region_names)
+    return layout_name, layout_source, extractor_name.strip(), region_names
+
+
 def _parse_anchor_point_ids(section: dict[str, Any], subset_point_ids: tuple[int, ...]) -> tuple[int, ...]:
     if "anchor_point_ids" in section:
         value = section.get("anchor_point_ids")
@@ -116,20 +174,6 @@ def _validate_projection_axis(axis: str, source_axis_index: int, dimension: str)
         )
 
 
-def _resolve_input_path(config_path: Path, candidate: Path) -> Path:
-    if candidate.is_absolute():
-        return candidate
-
-    config_relative = (config_path.parent / candidate).resolve()
-    if config_relative.exists():
-        return config_relative
-    return candidate.resolve()
-
-
-def _resolve_output_path(candidate: Path) -> Path:
-    return candidate if candidate.is_absolute() else candidate.resolve()
-
-
 def load_config(config_path: str | Path) -> MatrixVisConfig:
     config_path = Path(config_path).resolve()
     if not config_path.exists():
@@ -152,7 +196,7 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
 
     experiment = ExperimentConfig(
         name=_require_str(experiment_section, "name"),
-        output_dir=_resolve_output_path(Path(_require_str(experiment_section, "output_dir"))),
+        output_dir=resolve_output_path(Path(_require_str(experiment_section, "output_dir"))),
     )
 
     mesh_format = _require_str(mesh_section, "format")
@@ -161,14 +205,25 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
     mesh_dimension = _require_str(mesh_section, "dimension")
     if mesh_dimension not in SUPPORTED_MESH_DIMENSIONS:
         raise ValueError(f"Unsupported mesh.dimension: {mesh_dimension!r}")
+    normalization_scope = mesh_section.get("normalization_scope")
+    if normalization_scope is not None:
+        if not isinstance(normalization_scope, str) or normalization_scope not in SUPPORTED_NORMALIZATION_SCOPES:
+            raise ValueError(
+                "mesh.normalization_scope must be one of "
+                f"{SUPPORTED_NORMALIZATION_SCOPES}, got {normalization_scope!r}"
+            )
     mesh = MeshConfig(
-        source=_resolve_input_path(config_path, Path(_require_str(mesh_section, "source"))),
+        source=resolve_input_path(config_path, Path(_require_str(mesh_section, "source"))),
         format=mesh_format,
         dimension=mesh_dimension,
         point_ids=_parse_point_ids(mesh_section.get("point_ids")),
+        normalization_scope=normalization_scope,
     )
 
-    subset_point_ids = _parse_subset_point_ids(projection_section.get("subset_point_ids"))
+    subset_point_ids, subset_layout_name, subset_layout_source, subset_layout_extractor_name, subset_layout_region_names = _parse_projection_subset(
+        projection_section=projection_section,
+        config_path=config_path,
+    )
     anchor_point_ids = _parse_anchor_point_ids(projection_section, subset_point_ids)
     source_axis_index = _require_int(projection_section, "source_axis_index")
     axis = _require_str(projection_section, "axis")
@@ -178,6 +233,10 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
         source_axis_index=source_axis_index,
         subset_point_ids=subset_point_ids,
         anchor_point_ids=anchor_point_ids,
+        subset_layout=subset_layout_name,
+        subset_layout_source=subset_layout_source,
+        subset_layout_extractor_name=subset_layout_extractor_name,
+        subset_layout_region_names=subset_layout_region_names,
     )
 
     matrix_shape = _require_str(basis_section, "matrix_shape")
@@ -186,11 +245,44 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
     value_semantics = _require_str(basis_section, "value_semantics")
     if value_semantics not in SUPPORTED_VALUE_SEMANTICS:
         raise ValueError(f"Unsupported basis.value_semantics: {value_semantics!r}")
+    source_raw = basis_section.get("source")
+    prev_source_raw = basis_section.get("prev_source")
+    next_source_raw = basis_section.get("next_source")
+    if source_raw is not None and (prev_source_raw is not None or next_source_raw is not None):
+        raise ValueError("basis.source is mutually exclusive with basis.prev_source / basis.next_source")
+    if source_raw is None:
+        if prev_source_raw is None or next_source_raw is None:
+            raise ValueError("basis must define either source or both prev_source and next_source")
+        basis_source = None
+        prev_source = resolve_input_path(config_path, Path(_require_str(basis_section, "prev_source")))
+        next_source = resolve_input_path(config_path, Path(_require_str(basis_section, "next_source")))
+    else:
+        basis_source = resolve_input_path(config_path, Path(_require_str(basis_section, "source")))
+        prev_source = None
+        next_source = None
+    matrix_layout_raw = basis_section.get("matrix_layout")
+    if matrix_layout_raw is None:
+        matrix_layout = None
+        matrix_layout_source = None
+        matrix_layout_extractor_name = None
+        matrix_layout_region_names = None
+    else:
+        matrix_layout, matrix_layout_source, matrix_layout_extractor_name, matrix_layout_region_names = _parse_layout_spec(
+            layout_raw=matrix_layout_raw,
+            config_path=config_path,
+            section_name="basis.matrix_layout",
+        )
     basis = BasisConfig(
-        source=_resolve_input_path(config_path, Path(_require_str(basis_section, "source"))),
+        source=basis_source,
         basis_index=_require_int(basis_section, "basis_index"),
         matrix_shape=matrix_shape,
         value_semantics=value_semantics,
+        prev_source=prev_source,
+        next_source=next_source,
+        matrix_layout=matrix_layout,
+        matrix_layout_source=matrix_layout_source,
+        matrix_layout_extractor_name=matrix_layout_extractor_name,
+        matrix_layout_region_names=matrix_layout_region_names,
     )
 
     qp_backend = _require_str(solver_section, "qp_backend")
@@ -209,11 +301,17 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
         enforce_order=_require_bool(solver_section, "enforce_order", True),
         max_displacement=float(max_displacement) if max_displacement is not None else None,
         qp_backend=qp_backend,
+        max_observations=solver_section.get("max_observations"),
     )
     if solver.num_time_steps < 2:
         raise ValueError("solver.num_time_steps must be >= 2")
     if solver.lambda_data < 0 or solver.lambda_acc < 0 or solver.lambda_vel < 0:
         raise ValueError("solver weights must be >= 0")
+    if solver.max_observations is not None:
+        if isinstance(solver.max_observations, bool) or not isinstance(solver.max_observations, int):
+            raise ValueError("solver.max_observations must be null or integer")
+        if solver.max_observations <= 0:
+            raise ValueError("solver.max_observations must be > 0 when provided")
 
     export = ExportConfig(
         save_projected_mesh=_require_bool(export_section, "save_projected_mesh", True),

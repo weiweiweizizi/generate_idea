@@ -1,0 +1,24 @@
+experiment:
+  name: imr_00228_win001_minus_win000_compose_xy
+  output_dir: outputs/matrix_vis/real/imr_00228_win001_minus_win000_compose_xy
+
+mesh:
+  source: /home/weizilin/code_reproduction/canonical_face/canonical_face_model.obj
+  format: mediapipe_canonical_obj
+  dimension: 3d
+  point_ids: auto
+  normalization_scope: face_regions
+
+inputs:
+  x_solution: outputs/matrix_vis/real/imr_00228_win001_minus_win000_axis_x/solution.npz
+  y_solution: outputs/matrix_vis/real/imr_00228_win001_minus_win000_axis_y/solution.npz
+
+compose:
+  subset_policy: intersection
+  keep_non_subset_static: true
+
+export:
+  save_npz: true
+  save_json_summary: true
+  save_static_preview: true
+  save_animation_preview: true

@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-
-def _load_matplotlib():
-    mpl_dir = Path("outputs/matrix_vis/.mplconfig").resolve()
-    mpl_dir.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("MPLCONFIGDIR", str(mpl_dir))
-    import matplotlib.pyplot as plt
-
-    return plt
+from scripts.matrix_vis.viz._matplotlib import load_matplotlib
 
 
 def save_motion_snapshot(
@@ -23,7 +15,7 @@ def save_motion_snapshot(
     animated_points: np.ndarray,
     title: str,
 ) -> None:
-    plt = _load_matplotlib()
+    plt = load_matplotlib()
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.scatter(static_points[:, 0], static_points[:, 1], s=28, c="#c7c7c7", label="static mesh")
     closed = np.concatenate([animated_points, animated_points[:1]], axis=0)
@@ -45,7 +37,7 @@ def save_motion_frames(
     subset_mask: np.ndarray,
 ) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    plt = _load_matplotlib()
+    plt = load_matplotlib()
     frames: list[Path] = []
     x_min = float(coordinates[:, :, 0].min())
     x_max = float(coordinates[:, :, 0].max())

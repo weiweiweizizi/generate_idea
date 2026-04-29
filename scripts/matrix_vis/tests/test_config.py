@@ -92,3 +92,150 @@ def test_load_config_supports_legacy_single_anchor_key(tmp_path: Path) -> None:
     config = load_config(write_config(tmp_path, legacy))
 
     assert config.projection.anchor_point_ids == (10,)
+
+
+def test_load_config_resolves_grouped_face_region_subset_and_diff_sources(tmp_path: Path) -> None:
+    toy_dir = tmp_path / "toy"
+    toy_dir.mkdir(parents=True, exist_ok=True)
+    (toy_dir / "double_crescent_mesh.npy").write_bytes(b"")
+    (toy_dir / "win_prev.npy").write_bytes(b"")
+    (toy_dir / "win_next.npy").write_bytes(b"")
+    extractor = tmp_path / "extractors.yaml"
+    extractor.write_text(
+        """
+mediapipe:
+  symmetric_pairs: [(10, 110), (11, 111)]
+  face_regions:
+    forehead: [10, 12]
+    mouth: [61, 0, 291]
+""".strip(),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"""
+experiment:
+  name: real_like
+  output_dir: outputs/matrix_vis/real_like
+
+mesh:
+  source: toy/double_crescent_mesh.npy
+  format: numpy
+  dimension: 2d
+  point_ids: auto
+  normalization_scope: face_regions
+
+projection:
+  axis: x
+  source_axis_index: 0
+  subset_layout:
+    name: face_regions_grouped
+    source: {extractor.name}
+  anchor_point_ids: [12]
+
+basis:
+  prev_source: toy/win_prev.npy
+  next_source: toy/win_next.npy
+  basis_index: 0
+  matrix_shape: square
+  value_semantics: mean_distance_delta
+
+solver:
+  num_time_steps: 20
+  lambda_data: 1.0
+  lambda_acc: 10.0
+  lambda_vel: 1.0
+  enforce_order: false
+  max_displacement: null
+  qp_backend: osqp
+
+export:
+  save_projected_mesh: true
+  save_qp_diagnostics: true
+  save_axis_plot: true
+  save_npz: true
+  save_json_summary: true
+""".strip(),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert config.mesh.normalization_scope == "face_regions"
+    assert config.projection.subset_layout == "face_regions_grouped"
+    assert config.projection.subset_point_ids == (10, 12, 110, 61, 0, 291)
+    assert config.basis.source is None
+    assert config.basis.prev_source == (toy_dir / "win_prev.npy").resolve()
+    assert config.basis.next_source == (toy_dir / "win_next.npy").resolve()
+
+
+def test_load_config_filters_grouped_subset_by_region_names(tmp_path: Path) -> None:
+    toy_dir = tmp_path / "toy"
+    toy_dir.mkdir(parents=True, exist_ok=True)
+    (toy_dir / "double_crescent_mesh.npy").write_bytes(b"")
+    (toy_dir / "win_prev.npy").write_bytes(b"")
+    (toy_dir / "win_next.npy").write_bytes(b"")
+    extractor = tmp_path / "extractors.yaml"
+    extractor.write_text(
+        """
+mediapipe:
+  symmetric_pairs: [(10, 110), (61, 291)]
+  face_regions:
+    forehead: [10, 12]
+    around_mouth: [164, 18]
+    mouth: [61, 0]
+""".strip(),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"""
+experiment:
+  name: local_regions
+  output_dir: outputs/matrix_vis/local_regions
+
+mesh:
+  source: toy/double_crescent_mesh.npy
+  format: numpy
+  dimension: 2d
+  point_ids: auto
+
+projection:
+  axis: x
+  source_axis_index: 0
+  subset_layout:
+    name: face_regions_grouped
+    source: {extractor.name}
+    region_names: [around_mouth, mouth]
+  anchor_point_ids: [18]
+
+basis:
+  prev_source: toy/win_prev.npy
+  next_source: toy/win_next.npy
+  basis_index: 0
+  matrix_shape: square
+  value_semantics: mean_distance_delta
+
+solver:
+  num_time_steps: 20
+  lambda_data: 1.0
+  lambda_acc: 10.0
+  lambda_vel: 1.0
+  enforce_order: false
+  max_displacement: null
+  qp_backend: osqp
+
+export:
+  save_projected_mesh: true
+  save_qp_diagnostics: true
+  save_axis_plot: true
+  save_npz: true
+  save_json_summary: true
+""".strip(),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert config.projection.subset_layout_region_names == ("around_mouth", "mouth")
+    assert config.projection.subset_point_ids == (164, 18, 61, 0, 291)

@@ -58,6 +58,28 @@ def save_solution_npz(
     )
 
 
+def load_solution_npz(path: Path) -> dict[str, np.ndarray]:
+    data = np.load(path)
+    return {key: data[key] for key in data.files}
+
+
+def save_composed_motion_npz(
+    *,
+    output_dir: Path,
+    point_ids: np.ndarray,
+    time_grid: np.ndarray,
+    coordinates: np.ndarray,
+    subset_point_ids: np.ndarray,
+) -> None:
+    np.savez(
+        output_dir / "composed_motion.npz",
+        point_ids=np.asarray(point_ids, dtype=np.int64),
+        time_grid=np.asarray(time_grid, dtype=np.float32),
+        coordinates=np.asarray(coordinates, dtype=np.float32),
+        subset_point_ids=np.asarray(subset_point_ids, dtype=np.int64),
+    )
+
+
 def save_json(path: Path, payload: dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)

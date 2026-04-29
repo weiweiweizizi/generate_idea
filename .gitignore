@@ -1,2 +1,6 @@
 data/
 .claude
+.superpowers/
+__pycache__/
+*.pyc
+outputs/matrix_vis/.mplconfig/

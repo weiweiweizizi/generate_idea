@@ -1,5 +1,4 @@
 # Example config only.
-# This compose schema is provisional until the implementation lands.
 # It assumes toy single-axis results generated from a closed flat-leaf
 # contour deforming toward a near-rectangular mouth-opening shape.
 
@@ -19,10 +18,8 @@ inputs:
 
 compose:
   subset_policy: intersection
-  keep_non_subset_static: true
 
 export:
   save_npz: true
   save_json_summary: true
-  save_static_preview: true
   save_animation_preview: true

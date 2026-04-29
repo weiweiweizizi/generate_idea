@@ -1,18 +1,8 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import numpy as np
 
-
-def _load_matplotlib():
-    mpl_dir = Path("outputs/matrix_vis/.mplconfig").resolve()
-    mpl_dir.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("MPLCONFIGDIR", str(mpl_dir))
-    import matplotlib.pyplot as plt
-
-    return plt
+from scripts.matrix_vis.viz._matplotlib import load_matplotlib
 
 
 def save_axis_trajectory_plot(
@@ -23,7 +13,7 @@ def save_axis_trajectory_plot(
     point_ids: np.ndarray,
     axis: str,
 ) -> str | None:
-    plt = _load_matplotlib()
+    plt = load_matplotlib()
     fig, ax = plt.subplots(figsize=(10, 6))
     for idx, point_id in enumerate(point_ids.tolist()):
         ax.plot(time_grid, trajectory[idx], linewidth=1.5, alpha=0.9, label=f"p{point_id}")
@@ -50,7 +40,7 @@ def save_axis_ground_truth_comparison_plot(
 ) -> str | None:
     if reconstructed.shape != ground_truth.shape:
         return "ground truth shape does not match reconstructed trajectory; skipped comparison plot"
-    plt = _load_matplotlib()
+    plt = load_matplotlib()
     num_points = reconstructed.shape[0]
     cols = 4
     rows = int(np.ceil(num_points / cols))
