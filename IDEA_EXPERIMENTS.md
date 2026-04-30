@@ -2,520 +2,617 @@
 
 [TOC]
 
-**Last Updated**: 2026-03-31
+**Last Updated**: 2026-04-29
 
-> 📌 **脚本与结果目录映射**
-> | 实验 | 脚本 | 结果目录 |
-> |------|------|---------|
-> | Idea 1 单患者验证 | `scripts/svd_single_patient.py` | `data/win20-step20/svd_single_patient_results/` |
-> | Idea 1 多患者联合 | `scripts/svd_multi_patient.py` | `data/win20-step20/svd_multi_patient_results/` |
-> | Idea 3 RAW vs DIFF | `scripts/svd_single_patient_raw.py` | `data/win20-step20/svd_single_patient_raw_results/` |
-> | Idea 4 Grassmann | `scripts/grassmann_cross_analysis.py` | `data/win20-step20/grassmann_cross_analysis_results/` |
-> | 早期Grassmann | `scripts/grassmann_analysis.py` | `data/win20-step20/grassmann_analysis_results/` |
-> | blendshape相关性 | `scripts/blendshape_correlation_analysis.py` | `data/win20-step20/blendshape_correlation_results/` |
-> | NMF基线(失败) | `scripts/nmf_baseline_x_y.py` | `data/win20-step20/nmf_results/` |
-> | Tucker尝试 | `scripts/tucker_multi_patient.py` | `data/win20-step20/tucker_multi_patient_results/` |
-> | Idea 1* DMD单患者 | `scripts/dmd_single_patient.py` | `data/win5-step5/dmd_single_patient_results/` |
-> | Idea 1* DMD多患者 | `scripts/dmd_multi_patient.py` | `data/win5-step5/dmd_multi_patient_results/` |
-> | Idea 1* DMD与blendshape相关性 | `scripts/dmd_blendshape_correlation.py` | `data/win5-step5/dmd_blendshape_correlation_results/` |
+## 0. 文档定位
 
----
+这份文档是当前研究最详细的实验账本，只保留与当前主线直接相关的内容：
 
-## Idea 1 验证：SVD差分基线（2026-03-28）
+- `scripts/lq`
+  - 作为 `disentangleNet` 之前的结构探索与消融试验场
+- `scripts/disentangleNet`
+  - 作为当前接受的、冻结的 `v31` 训练与分析栈
+- `scripts/matrix_vis`
+  - 作为把单轴距离差观测解释成局部运动轨迹的后验可视化与诊断工具
 
-> **脚本**: `scripts/svd_single_patient.py`
-> **结果目录**: `data/win20-step20/svd_single_patient_results/`
+本次更新删除了大量已经明显过时的内容，尤其是：
 
-### 问题发现：NMF无法直接用于差分数据
-
-**背景**：最初计划使用NMF分解关键点距离矩阵，但发现：
-- NMF要求输入矩阵非负
-- 差分数据 ΔD = D_t - D_{t-1} 包含负值
-- 原始距离矩阵 D 虽然非负，但减去患者身份基准（均值）后同样产生负值
-
-**尝试**：对原始距离矩阵D直接做NMF（Idea 1方向4）
-- 结果：基向量语义混杂，所有10个患者的所有基都被所有样本激活
-- 结论：原始D包含大量身份信息，不去除则基无法反映运动
-
-### 转向SVD：差分+去身份基准
-
-**思路转变**：
-1. 用户之前在单患者上验证过SVD差分可发现语义（闭眼、动嘴）
-2. SVD可以处理负值（无需非负约束）
-3. 使用前后差分 ΔD 可以捕捉运动变化
-
-**实验设计**：
-- 数据：win20-step20，10个患者（9个IMR + 1个TT）
-- 方法：对每个患者单独做SVD分解差分矩阵
-- 分析：PC1-PC3能量占比、语义区域分布、时间系数
-
-### 关键发现
-
-#### 1. PC1能量高度集中
-
-| 模态 | PC1平均能量占比 | 标准差 |
-|------|----------------|--------|
-| X（水平） | 96.1% | ±3.8% |
-| Y（垂直） | 95.4% | ±4.7% |
-
-TT/845380（20窗口）能量稍分散：X: 86%, Y: 83.7%，说明多窗口患者有更丰富的运动模式
-
-#### 2. PC1语义集中于mouth区域
-
-**所有10个患者的PC1 dominant region均为mouth**
-
-| 患者 | X PC1 dominant | X dominant% | Y PC1 dominant | Y dominant% |
-|------|----------------|-------------|----------------|-------------|
-| IMR/00256 | mouth | 9.7% | mouth | 8.6% |
-| IMR/00342 | mouth | 6.1% | mouth | 3.0% |
-| IMR/00305 | mouth | 4.1% | mouth | 2.5% |
-| IMR/00353 | mouth | 10.7% | mouth | 8.5% |
-| IMR/00420 | mouth | 4.6% | mouth | 6.9% |
-| IMR/00363 | mouth | 9.9% | mouth | 9.0% |
-| IMR/00522 | mouth | 7.5% | mouth | 8.9% |
-| IMR/00271 | mouth | 9.4% | mouth | 8.1% |
-| IMR/00402 | mouth | 7.8% | mouth | 9.7% |
-| TT/845380 | mouth | 10.9% | mouth | 9.9% |
-
-**解读**：341维矩阵中mouth区域占74点（21.7%），PC1中mouth贡献约10%，与其他区域相比显著更高。这与"咧嘴动作"的语义一致。
-
-#### 3. X vs Y模态差异
-
-- **X模态（水平）**：PC1与outer_lips，嘴角横向运动
-- **Y模态（垂直）**：PC1与mouth(inner+around)，垂直张嘴运动
-
-### 当前结论
-
-1. **SVD差分可发现语义**：PC1确实集中于mouth区域，说明"差分+SVD"可以捕捉运动语义
-2. **单患者效果稳定**：10个患者结果一致，均显示mouth dominant
-3. **PC1过于占优**（>95%）：可能意味着运动模式单一，或需要更多基才能分解更细的运动单元
-4. **身份基准问题待解决**：当前方法依赖于单患者分析，多患者联合分解时身份是否会混入基中仍需验证
+- 早期“推荐想法排名”
+- 已被后续结果覆盖的旧版 next-step 列表
+- 把 `scripts/lq` 与 `scripts/disentangleNet` 混写为同一阶段状态的表述
 
 ---
 
-## Idea 1 补充：多患者联合SVD分解（2026-03-29）
+## 1. 当前主线结构
 
-> **脚本**: `scripts/svd_multi_patient.py`
-> **结果目录**: `data/win20-step20/svd_multi_patient_results/`
+### 1.1 三条线各自负责什么
 
-### 实验设计
+1. `scripts/lq`
+   - 负责回答“结构上怎么改，shared / side / private 三条路径会发生什么”
+   - 这里保留了从 collapse、FSQ 替换、shared 结构增强、side branch 引入到 severity probe 的完整试错链条
 
-- 将IMR（227患者）和TT（42患者）分别做联合SVD分解
-- X/Y模态分开处理
-- 分析PC1-PC5的能量分布和语义区域
+2. `scripts/disentangleNet`
+   - 负责把已经接受的 `v31` 结构冻结下来
+   - 当前只保留 `v31` 所需的训练入口、模型、数据、初始化基和 post-hoc probe 分析
 
-### 关键结果
+3. `scripts/matrix_vis`
+   - 负责把一个单轴 `diff of distance matrix` 解释成一个窗口内的局部运动轨迹
+   - 它不是训练模型，而是对 basis / observation 的后验解释工具
 
-#### IMR数据集 (227患者, 1164差分窗口)
+### 1.2 当前对整体路线的理解
 
-| 模态 | PC1能量 | PC2能量 | PC3能量 | PC1 dominant |
-|------|---------|---------|---------|--------------|
-| X（水平） | 64.6% | 25.1% | 3.3% | mouth (9.4%) |
-| Y（垂直） | 78.3% | 14.9% | 1.8% | mouth (8.9%) |
+- `lq` 已经完成“结构探索”阶段
+- `disentangleNet` 是当前“可复核主线”
+- `matrix_vis` 是当前“解释层工具”
 
-#### TT数据集 (42患者, 452差分窗口)
+因此，当前研究不是“继续发散找新分解法”，而是围绕下面三个问题收束：
 
-| 模态 | PC1能量 | PC2能量 | PC3能量 | PC1 dominant |
-|------|---------|---------|---------|--------------|
-| X（水平） | 47.0% | 27.2% | 8.3% | mouth (10.0%) |
-| Y（垂直） | 69.1% | 18.4% | 4.3% | mouth (8.0%) |
-
-#### 语义区域详细分布（前5基）
-
-**IMR X模态:**
-- PC1: mouth 9.4%, around_mouth 2.4%
-- PC2: mouth 4.8%, around_mouth 1.1%
-- PC3: eyehole 3.4%, mouth 2.6%
-- PC4: mouth 4.8%, nose 1.7%
-- PC5: mouth 2.2%, eyehole 1.6%
-
-**TT X模态:**
-- PC1: mouth 10.0%, around_mouth 2.3%
-- PC2: mouth 2.2%, nose 0.8%
-- PC3: eyehole 3.2%, mouth 2.3%
-- PC4: mouth 2.2%, around_mouth 1.5%
-- PC5: mouth 3.5%, eyehole 1.8%
-
-**IMR Y模态:**
-- PC1: mouth 8.9%, around_mouth 1.9%
-- PC2: mouth 3.1%, nose 0.9%
-- PC3: mouth 4.9%, around_mouth 1.6%
-- PC4: mouth 4.2%, nose 1.1%
-- PC5: mouth 6.5%, eyehole 1.7%
-
-**TT Y模态:**
-- PC1: mouth 8.0%, around_mouth 1.8%
-- PC2: mouth 4.3%, nose 1.1%
-- PC3: mouth 3.5%, around_mouth 1.7%
-- PC4: mouth 3.5%, nose 1.3%
-- PC5: mouth 5.7%, nose 0.8%
-
-### 结论
-
-1. **基向量主要捕捉运动语义而非身份**：
-   - 所有数据集的PC1 dominant region均为mouth
-   - 身份信息没有混入基向量（否则会有非运动区域异常激活）
-
-2. **TT运动模式更多样**：
-   - X模态PC1能量从IMR的64.6%降到TT的47.0%
-   - TT的PC3出现eyehole dominant（水平眨眼运动）
-
-3. **IMR垂直运动更一致**：
-   - Y模态PC1能量：IMR 78.3% > TT 69.1%
-   - 说明IMR被试的垂直张嘴模式更相似
-
-4. **能量分布对比**：
-
-| 数据集 | X PC1 | X PC1+PC2 | Y PC1 | Y PC1+PC2 |
-|--------|-------|-----------|-------|-----------|
-| IMR | 64.6% | 89.7% | 78.3% | 93.2% |
-| TT | 47.0% | 74.2% | 69.1% | 87.5% |
-
-TT的前两个基能量更分散，说明TT数据包含更丰富的运动变化。
+1. side 信息能否被稳定路由到单独的 side branch
+2. free / private 中还残留多少 dataset 痕迹
+3. basis 或窗口差观测如何被解释成可视的局部运动
 
 ---
 
-## Idea 3 验证：差分 vs 非差分距离矩阵对比（2026-03-29）
+## 2. `scripts/lq`：前置探索时间线
 
-> **脚本**: `scripts/svd_single_patient_raw.py` (单患者) / `scripts/svd_multi_patient_raw.py` (多患者)
-> **结果目录**: `data/win20-step20/svd_single_patient_raw_results/`
+## 2.1 Collapse 阶段：`v1` 到 `v9`
 
-### 实验设计
+这一阶段的主要结论很明确：
 
-对比**原始距离矩阵（非差分）** vs **差分距离矩阵**的SVD分解结果，验证差分步骤的必要性。
+- 仅靠早期 LQ 设置无法避免 collapse
+- 调 side loss、调 residual weight、减小 shared 容量，都不能根治 collapse
+- shared 离散码没有被稳定使用，模型会持续走 private residual 这条逃逸路径
 
-- 数据：同10个患者（9 IMR + 1 TT）
-- 方法：对原始距离矩阵直接做SVD（跳过差分步骤）
-- 分析：PC1能量占比、语义区域分布
+代表性结果：
 
-### 关键结果对比
+| 版本 | 核心改动 | 关键结果 | 结论 |
+|------|----------|----------|------|
+| `v1` | 保守 baseline | `val_loss=0.6309`，L3 几乎单码使用 | 立即 collapse |
+| `v2` | 官方 `LatentQuantize` anti-collapse 设置 | `val_loss=0.6308`，usage 仍塌缩 | 单换 quantizer 不够 |
+| `v3` | 去掉 discrete side，增强 LQ 压力 | `val_loss=0.4414`，L3 仍近单码 | loss 改善不代表 shared code 健康 |
+| `v4` | 降低 private residual weight | `val_loss=0.4974` | 只减 residual 权重没用 |
+| `v5` | 加 `private_residual_max_l1=1.0` | `val_loss=0.5112` | 限 residual 幅度后仍塌缩 |
+| `v6` | 彻底关掉 side supervision | `val_recon=0.3255`，L3 仍高度集中 | collapse 不是 side loss 单独造成的 |
+| `v7` | 缩 shared bottleneck | 保持较差 usage | 直接压 shared 容量是错误方向 |
+| `v8` | pool size 改为 `2x2` | 无根本改善 | 仅保留粗空间布局不够 |
+| `v9` | soft basis probe | 仍非稳定解 | 说明问题不在 basis 混合方式本身 |
 
-| 指标 | RAW (非差分) | DIFF (差分) |
-|------|-------------|-------------|
-| **X PC1 dominant** | **eyehole** (100%患者) | **mouth** (100%患者) |
-| **Y PC1 dominant** | mouth/around_mouth (分散) | **mouth** (100%患者) |
-| **PC1 能量占比** | ~99.9% | ~95% |
+### 2.1.1 阶段性判断
 
-### 详细结果
-
-**RAW矩阵 (非差分):**
-- X模态: PC1 dominant = eyehole (眼窝区域)
-- Y模态: PC1 dominant = mouth/around_mouth (分散)
-- PC1能量几乎100%，说明"人脸结构"主导了这个矩阵
-
-**DIFF矩阵 (差分):**
-- X模态: PC1 dominant = mouth (嘴部区域)
-- Y模态: PC1 dominant = mouth (100%患者一致)
-- PC1能量约95%，能量更分散到其他基
-
-### 结论
-
-1. **RAW矩阵的PC1捕捉的是静态结构**：eyehole dominant反映的是人脸解剖结构的差异（身份信息），而非运动
-
-2. **差分是捕捉运动的必要步骤**：不做差分则PC1 dominant是eyehole（身份），而非mouth（运动）
-
-3. **对后续方向的影响**：
-   - ❌ 不需要做"坐标 vs 距离"对比了（差分距离矩阵已验证是正确方向）
-   - ✅ 直接进入**Idea 2 (Tucker分解)**：验证多线性结构能否进一步解耦身份-运动
-
-### 下一步方向
-
-1. **Tucker分解验证**：多线性结构可能实现身份-运动的显式解耦
-2. **TT场景复杂性分析**：为何TT能量更分散？是否与采集环境、患者异质性相关？
-3. **时间系数可解释性**：按患者分段显示时间系数，验证是否反映运动阶段
-4. **基向量语义映射**：学习从基向量到AU标签的线性映射
+- 模型的首要问题不是“side 监督太强”
+- 也不是“shared 维度还不够小”
+- 真正的问题是 shared 离散路径缺少稳定被使用的结构条件
 
 ---
 
-## Idea 4 验证：Grassmann流形验证共享基（2026-03-30）
+## 2.2 FSQ 切换与 shared 结构增强：`v10` 到 `v21`
 
-> **脚本**: `scripts/grassmann_cross_analysis.py`
-> **结果目录**: `data/win20-step20/grassmann_cross_analysis_results/`
+`v10` 是一个关键分界点。它不是最终结构，但它是第一次让 code usage 明显好转的版本。
 
-### 问题
+### 2.2.1 `v10`：第一个可接受的 anti-collapse baseline
 
-联合SVD是否"强制"共享基？单患者SVD与联合SVD的基是否真的相似？
+运行目录：
 
-### 验证方法
+- `outputs/lq_x_mouth_v10_fsq_probe_win20`
 
-使用Grassmann流形主角度分析：
-1. 对每个患者单独做SVD，得到各自的基
-2. 对每个数据集（IMR/TT）做联合SVD，得到数据集级别的基
-3. 计算单患者基与联合基之间的主角度
+关键指标：
 
-**核心逻辑**：
-- 若"真共享"：单患者基与本数据集联合基角度小，单患者基与异数据集联合基角度大
-- 若"被计算强迫"：所有患者与所有联合基角度相近，无差异化
+- `val_loss = 0.3619`
+- `val_recon = 0.3600`
+- `val_shared_recon = 0.3620`
+- `val_scaled_residual = 0.0034`
+- code usage
+  - L2: `[20, 23, 37]`
+  - L3: `[18, 2, 3, 3, 25, 29]`
 
-### 关键结果
+结论：
 
-**Joint-to-Joint（联合基之间）**:
-| 模态 | PC1 | PC2 | PC3 | PC4 |
-|------|-----|-----|-----|-----|
-| X (水平) | 13.5° | 16.3° | 23.7° | 56.0° |
-| Y (垂直) | 7.1° | 7.5° | 25.7° | 49.6° |
+- 官方 `FSQ` 替换是第一步真正缓解 collapse 的因素
+- 从这里开始，后续问题从“码完全不用”转为“码虽然用了，但解释性是否足够”
 
-**单患者 vs 联合基 (PC1)**:
-| 比较 | X PC1 | Y PC1 |
-|------|-------|-------|
-| IMR单患者 vs IMR联合 | 12.9° | 10.0° |
-| TT单患者 vs IMR联合 | 20.0° | 9.9° |
-| TT单患者 vs TT联合 | 14.8° | 8.9° |
-| IMR单患者 vs TT联合 | 20.0° | 12.5° |
+### 2.2.2 `v11` 到 `v16`：直接压 private 或强化 basis 约束都不够
 
-### 结论
+| 版本 | 核心改动 | 关键指标 | 结论 |
+|------|----------|----------|------|
+| `v11` | `private_dim 32 -> 8` | `val_recon=0.3610`，L2 变成 `[0,80,0]` | 直接压 private 太粗暴，反而更坏 |
+| `v12` | 缩 private decoder hidden width | `val_recon=0.3615` | 没有优于 `v10` |
+| `v13` | side continuous probe | `val_recon=0.3623` | side continuous 不改善 shared 解释 |
+| `v14` | `level_qr` | `val_recon=0.3574`，shared 稍好，usage 更集中 | QR 有益但副作用明显 |
+| `v15` | `global_qr` | `val_recon=0.3572`，L3 更集中 | 全局 QR 提升重建但牺牲 usage spread |
+| `v16` | `global_qr + basis_l1` | `val_recon=0.3310`，`val_scaled_residual=0.0353` | 总重建下降主要靠 private residual 变大 |
 
-- ✅ **联合基本身很接近**：TT_joint与IMR_joint夹角仅13.5°(X)和7.1°(Y)，两数据集共享相似的运动子空间
-- ✅ **患者与本数据集联合基对齐更好**：IMR患者→IMR联合(12.9°) < IMR患者→TT联合(20.0°)；TT患者→TT联合(14.8°) < TT患者→IMR联合(20.0°)
-- ✅ **跨数据集差异主要由数据集内部异质性驱动**，而非系统偏差
-- ✅ **共享基不是被强迫的**：单患者SVD与联合SVD在 Grassmann 流形上确实自然对齐
+这一段最重要的经验不是某个版本“赢了”，而是：
 
----
+- 更强的 basis 正交或稀疏约束会改善重建
+- 但这些收益很容易被 private residual 吞掉
+- 因此后面必须同时看 `shared_recon` 和 `scaled_residual`
 
-## Idea 1* 补充：DMD动态模式分解（2026-03-31）
+### 2.2.3 `v17` 到 `v21`：Residual FSQ + shared 监督开始形成主线
 
-> **背景**: SVD窗口过粗（20帧≈状态表征），无法捕捉运动"过程"。win5-step5（5帧窗口，5帧步长≈过程表征）可补充过程信息。
->
-> **目标**: 用DMD（动态模式分解）分析win5-step5数据，验证是否能捕捉到更细粒度的运动动态。
->
-> **脚本**: `scripts/dmd_single_patient.py` (单患者), `scripts/dmd_multi_patient.py` (多患者联合)
-> **结果目录**: `data/win5-step5/dmd_single_patient_results/`, `data/win5-step5/dmd_multi_patient_results/`
+| 版本 | 核心改动 | `val_recon` | `val_shared_recon` | `val_scaled_residual` | 结论 |
+|------|----------|-------------|--------------------|-----------------------|------|
+| `v17` | `residual_fsq + global_qr + basis_l1` | `0.3109` | `0.3423` | `0.0393` | higher-level usage 变好，但 private residual 过大 |
+| `v18` | `v17 + sparse_shared_mixing + shared_recon_loss` | `0.3150` | `0.3469` | `0.0394` | shared reconstruction 明显回升 |
+| `v19` | `v18 + tighter private cap=0.5` | `0.3275` | `0.3446` | `0.0214` | 当前这一阶段最好的 interpretability tradeoff |
+| `v20` | `v19 + cap=0.4` | `0.3310` | `0.3448` | `0.0171` | private 更低，但 usage 更集中 |
+| `v21` | `v19 + cap=0.6` | `0.3245` | `0.3446` | `0.0251` | private 又变大，不如 `v19` 稳 |
 
-### DMD vs SVD 对比
+阶段性结论：
 
-| 特性 | SVD | DMD |
-|------|-----|-----|
-| 分解目标 | 矩阵最优低秩近似 | 线性动力系统拟合 |
-| 输出 | 正交基 + 系数 | 动态模态 + 特征值（与动力学频率/衰减相关） |
-| 语义 | 能量最大方向 | 动态模式（可解释为振荡/衰减） |
-| 窗口 | 20帧静态窗口 | 可跨窗口时序建模 |
-
-### 分析计划
-
-#### 阶段1: DMD单患者验证 ✅ (2026-03-31)
-1. 对每个患者单独做DMD
-2. 分析模态数量、特征值分布（实部=衰减，虚部=振荡频率）
-3. 可视化 dominant DMD modes → reshape成341×341热图
-4. **对比**: DMD模态热图 vs SVD PC热图
-
-**关键结果**:
-- **所有10个患者 Mode1 dominant region = mouth** (与SVD一致)
-- **特征值模 < 1** (X均值0.778, Y均值0.739) → 运动随时间衰减
-- **存在复数特征值** → 振荡运动分量（如眼球运动）
-- **TT患者窗口数更多** (TT/845380: 81窗口 vs IMR: ~26窗口)
-
-| 患者 | X Mode1 dominant | X 特征值模 | Y Mode1 dominant | Y 特征值模 |
-|------|-----------------|-----------|-----------------|-----------|
-| IMR/00235 | mouth (9.4%) | 0.926 | mouth (6.4%) | 0.983 |
-| IMR/00370 | mouth (5.0%) | 0.896 | mouth (7.9%) | 0.983 |
-| IMR/00241 | mouth (8.4%) | 0.928 | mouth (8.2%) | 0.982 |
-| IMR/00350 | mouth (9.5%) | 0.923 | mouth (7.6%) | 0.978 |
-| IMR/00381 | mouth (4.3%) | 0.921 | mouth (3.6%) | 0.980 |
-| TT/860312 | mouth (8.1%) | 0.925 | mouth (1.2%) | 0.981 |
-| TT/862049 | mouth (7.9%) | 0.927 | mouth (4.0%) | 0.984 |
-| TT/845380 | mouth (8.0%) | 0.937 | mouth (2.0%) | 0.986 |
-| TT/846108 | mouth (6.4%) | 0.932 | mouth (2.4%) | 0.983 |
-| TT/859088 | mouth (5.2%) | 0.941 | mouth (3.2%) | 0.983 |
-
-#### 阶段2: DMD多患者联合分析 ✅ (2026-03-31)
-- 筛选条件: 30 ≤ 窗口数 ≤ 200
-- DMD rank = 50
-- 结果目录: `data/win5-step5/dmd_multi_patient_results/`
-- 模态保存: `saved_modes/{IMR,TT}/`
-
-**筛选结果**:
-| 数据集 | 筛选前患者 | 筛选后患者 | 总窗口数 |
-|--------|-----------|-----------|---------|
-| IMR | 227 | 2 | 210 |
-| TT | 58 | 38 | 2119 |
-
-**IMR联合DMD结果** (仅2患者，样本较少):
-
-| 模态 | X 特征值 | X \|λ\| | X dominant | Y 特征值 | Y \|λ\| | Y dominant |
-|------|---------|---------|------------|---------|---------|------------|
-| Mode1 | 0.40+0.63i | 0.744 | mouth (7.8%) | 0.39-0.67i | 0.778 | mouth (7.8%) |
-| Mode2 | 0.40-0.63i | 0.744 | mouth (7.8%) | 0.39+0.67i | 0.778 | mouth (7.8%) |
-| Mode3 | 0.59+0.42i | 0.724 | mouth (9.9%) | -0.10-0.73i | 0.741 | mouth (1.8%) |
-| Mode4 | 0.59-0.42i | 0.724 | mouth (9.9%) | -0.10+0.73i | 0.741 | mouth (1.8%) |
-
-**TT联合DMD结果** (38患者，2119窗口):
-
-| 模态 | X 特征值 | X \|λ\| | X dominant | Y 特征值 | Y \|λ\| | Y dominant |
-|------|---------|---------|------------|---------|---------|------------|
-| Mode1 | 0.584+0.00i | 0.584 | mouth (8.9%) | 0.453+0.00i | 0.453 | mouth (7.7%) |
-| Mode2 | -0.006+0.54i | 0.543 | eyehole (1.8%) | 0.18+0.37i | 0.408 | mouth (1.6%) |
-| Mode3 | -0.006-0.54i | 0.543 | eyehole (1.8%) | 0.18-0.37i | 0.408 | mouth (1.6%) |
-
-**关键发现**:
-- ✅ **Mode1 dominant region = mouth** (与SVD一致)
-- ✅ **TT Mode2出现eyehole** (类似眨眼振荡模式)
-- ✅ **特征值模 < 1** (所有运动都在衰减)
-
-#### 阶段3: DMD模态与Blendshape相关性分析 ✅ (2026-04-01)
-使用TT联合DMD的5个主模态，对所有患者（IMR+TT）计算时间系数，然后与blendshape做相关性分析
-
-**blendshape窗口**: 5帧（与DMD差分窗口一致）
-
-**关键结果**:
-
-| DMD模态 | 最高相关blendshape | r | 特征值 |
-|---------|-------------------|-----|--------|
-| X Mode1 | jawForward | 0.589 | 0.573 |
-| X Mode2 | eyeBlinkLeft | 0.317 | -0.008+0.53i |
-| Y Mode1 | cheekPuff | 0.599 | 0.440 |
-| Y Mode2 | cheekPuff | 0.636 | 0.380+0.09i |
-
-**发现**:
-- Y模态与 **cheekPuff** 相关性最高 (~0.6)
-- X模态与 **jawForward** 相关性较高 (~0.58)
-- 复数特征值模态对(2,3)和(4,5)的相关性完全一致（conjugate pairs）
-- 与SVD的blendshape相关性结果（cheekPuff r=0.73）可比
-
-#### 阶段4: Grassmann验证（可选）
-- 类似Idea 4，验证DMD联合基是否也是"真共享"
-
-#### 阶段4: 与SVD互补性分析
-- 对同一患者，分别用SVD(win20)和DMD(win5)提取基
-- 对比模态热图：SVD捕捉"状态"，DMD捕捉"过程"
-- 验证两者是否捕捉不同频谱的运动信息
-
-### 预期输出
-
-| 输出 | 内容 |
-|------|------|
-| DMD模态热图 | 前5个dominant模态reshape为341×341热图 |
-| 特征值分布 | 复平面上的特征值分布图 |
-| 能量对比表 | DMD vs SVD各模态能量占比 |
-| 时序系数 | 每个窗口在DMD模态上的激活系数 |
-
-### 待解决问题
-
-1. **DMD参数选择**: 如何确定截断的模态数量？
-2. **时序对齐**: win5-step5窗口数远多于win20-step20，如何对应blendshape标签？
-3. **初始化对比**: DMD能否解释SVD的PC1 dominant region？
+1. 只压 private branch 没用
+2. residual FSQ 本身是有效结构改动
+3. “shared 结构增强 + 直接优化 `shared_recon`”是正确方向
+4. `v19` 是从纯结构探索走向 side-aware 分支之前最稳的解释性 baseline
 
 ---
 
-## Idea 5 分析：码本基的类型分析（2026-04-12）
+## 2.3 Side semantic bank：`v22` 与 `v23`
 
-> **脚本目录**: `scripts/val_codebook/`
-> **数据来源**: `data/win20-step20/IMR-SVD/` 和 `TT-SVD/`
-> **结果目录**: `scripts/val_codebook/{exp1,exp2,exp3}_*/output/`
+这一步开始显式问一个新问题：
 
-### 问题
+> 能不能把 side 语义从 shared/free 里剥出来，交给单独的 side basis bank？
 
-单患者SVD提取的PC1主模态是否可以作为"公共码本"，用于区分患者的不同属性？
+### 2.3.1 `v22`：round-1 side semantic bank
 
-### 实验设计
+运行目录：
 
-**数据**: 269患者 (IMR=227, TT=42)
-**特征**: 每个患者的PC1空间基 (341×341) 展平为116281维向量
-**矩阵类型**:
-- Full: 完整341×341矩阵
-- Mouth: 截断的119×119矩阵 (around_mouth + mouth, indices 188-307)
+- `outputs/lq_x_mouth_v22_side_semantic_bank_probe_win20_e50`
 
-**算法**: PCA(50) + Logistic Regression (L2)
-**验证**: 5折分层交叉验证
+结构变化：
 
-### 实验1: IMR vs TT 数据集分类 (二分类)
+- 保留 `v19` backbone
+- 打开 `side_semantic_enabled=True`
+- `side_basis_count=2`
+- `side_loss_weight=0.3`
 
-**目的**: 验证IMR和TT患者的PC1模态是否存在差异
+验证指标：
 
-| Config | Accuracy | F1 (macro) | AUC |
-|--------|----------|------------|-----|
-| full_x | **0.918±0.040** | 0.829±0.088 | **0.962±0.027** |
-| full_y | 0.914±0.038 | **0.835±0.080** | 0.882±0.086 |
-| mouth_x | 0.903±0.027 | 0.813±0.048 | 0.909±0.040 |
-| mouth_y | 0.881±0.040 | 0.783±0.068 | 0.921±0.030 |
+- `val_recon = 0.3330`
+- `val_shared_recon = 0.3504`
+- `val_scaled_residual = 0.0216`
+- `mean_side_path_usage = 0.500`
+- `mean_free_path_usage = 0.2727`
+- `side_from_side_rep_acc = 0.4545`
+- `side_from_free_rep_acc = 0.4545`
+- `dataset_from_side_rep_acc = 0.8182`
+- `dataset_from_free_rep_acc = 0.8182`
 
-**结论**:
-- IMR和TT数据集在PC1模态上**差异显著**，AUC达0.96
-- X方向AUC更高(0.962)，说明水平方向差异更大
-- Mouth截断矩阵效果略差于full矩阵
+结论：
 
-### 实验2: 测别分类 (Left/Normal/Right, 三分类)
+- side path 已经被用上了，不是 idle branch
+- 但 2 个 side basis 还不能形成有效的 side separation
+- free / side 两条 shared 路径都还带有明显 dataset 痕迹
 
-**目的**: 验证患者面瘫侧别（左侧/正常/右侧）在PC1模态上是否存在差异
+### 2.3.2 `v23`：side subspace orth 失败
 
-**标签映射**:
-- label_5class < 2 → Left (左侧异常)
-- label_5class = 2 → Normal (正常)
-- label_5class > 2 → Right (右侧异常)
+运行目录：
 
-**类别分布**: Left=78, Normal=97, Right=94
+- `outputs/lq_x_mouth_v23_side_subspace_orth_probe_win20_e50`
 
-| Config | Accuracy | F1 (macro) |
-|--------|----------|------------|
-| full_x | 0.732±0.039 | 0.732±0.037 |
-| full_y | 0.751±0.044 | 0.750±0.048 |
-| **mouth_x** | **0.762±0.048** | **0.760±0.049** |
-| mouth_y | 0.691±0.029 | 0.692±0.030 |
+关键结果：
 
-**结论**:
-- PC1模态包含**左右不对称的特征**，三分类准确率约73-76%
-- Mouth区域在X方向表现最好(76.2%)
-- Y方向full表现更好(75.1%)
+- `val_recon = 0.3342`
+- `val_shared_recon = 0.3504`
+- `val_scaled_residual = 0.0208`
+- `side_from_side_rep_acc = 0.5227`
+- `side_from_free_rep_acc = 0.5182`
+- `dataset_from_side_rep_acc = 0.7818`
+- `dataset_from_free_rep_acc = 0.8182`
+- `raw_linear_r2_free_to_side ≈ 1.0`
+- `raw_linear_r2_side_to_free ≈ 1.0`
 
-### 实验3: 严重度分类 (Normal/Mild/Severe, 三分类)
+结论：
 
-**目的**: 验证面瘫严重程度在PC1模态上是否存在差异
+- `subspace_orth` 没有真正把 side / free 拉开
+- 两个 latent 子空间几乎线性等价
+- 因此这条路线被放弃
 
-**标签映射**:
-- score = 0 → Normal
-- score = 1 → Mild
-- score = 2 → Severe
+---
 
-**类别分布**: Normal=97, Mild=70, Severe=102
+## 2.4 Laterality 强化与早分支化：`v29` 到 `v31`
 
-| Config | Accuracy | F1 (macro) |
-|--------|----------|------------|
-| full_x | 0.584±0.033 | 0.563±0.044 |
-| full_y | 0.594±0.069 | 0.563±0.077 |
-| **mouth_x** | **0.613±0.053** | **0.595±0.058** |
-| mouth_y | 0.577±0.068 | 0.564±0.067 |
+这一段的主题是：
 
-**结论**:
-- 面瘫等级在PC1模态上**区分度较低**（约58-61%）
-- 接近随机基线(33%三类)，说明PC1难以捕捉严重程度信息
-- Mouth区域X方向仍然最好(61.3%)
+> side branch 不是“有无”的问题，而是要不要更强的 laterality 结构、要不要更早切分。
 
-### 关键结论
+### 2.4.1 `v29`：laterality contrast probe
 
-1. **数据集效应显著**: IMR vs TT分类准确率91.8%，AUC=0.96
-   - 提示跨数据集建模时需考虑数据集偏差
+运行目录：
 
-2. **Mouth区域是主要判别区域**:
-   - 测别分类: Mouth_X最好(76.2% vs 73.2% full)
-   - 严重度分类: Mouth_X最好(61.3% vs 58.4% full)
+- `outputs/lq_x_mouth_v29_laterality_contrast_probe_win20_e50`
 
-3. **X方向普遍比Y方向效果更好**:
-   - IMR vs TT: X方向AUC=0.962
-   - 测别分类: Mouth_X=76.2%
-   - 严重度分类: Mouth_X=61.3%
+关键现象：
 
-4. **严重度分类困难**:
-   - 严重度分类准确率仅58-61%，接近随机(33%)
-   - 说明单患者PC1难以捕捉严重程度信息
+- `side_basis_count = 4`
+- `side_from_usage_acc = 0.6773`
+- `side_from_coeff_acc = 0.5955`
+- `side_from_usage_coeff_acc = 0.7227`
+- `dataset_from_usage_acc = 0.8182`
 
-5. **PC1码本性质**:
-   - PC1可以区分数据集和侧别(Left/Right)
-   - PC1不能区分严重程度
-   - PC1主要包含运动方向信息，而非强度信息
+按 side 聚合的 usage 平均值出现明显 laterality 分布：
 
-### 代码结构
+- Left:
+  - `usage_b0 = 0.660`
+- Right:
+  - `usage_b1 = 0.774`
+- Normal:
+  - 在 `b0/b2/b3` 之间更分散
 
-```
-scripts/val_codebook/
-├── README.md                    # 任务说明
-├── RESULTS.md                   # 结果汇总
-├── common/
-│   ├── load_pc1.py            # 数据加载
-│   ├── classify.py              # PCA+LR分类框架
-│   └── visualize.py            # ROC/混淆矩阵可视化
-├── exp1_dataset_classification/output/
-│   ├── roc_*.png, confusion_*.png
-│   └── results_*.json
-├── exp2_side_classification/output/
-├── exp3_severity_classification/output/
-└── sweep.py                    # 批量运行脚本
-```
+结论：
+
+- laterality contrast 开始出现“左侧基 / 右侧基”的结构趋势
+- 但 dataset 偏差仍然明显
+- 4 个 side basis 的设计偏重 laterality，但还不够稳
+
+### 2.4.2 `v30`：收敛到 3 个 side basis
+
+运行目录：
+
+- `outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_win20_e50`
+
+关键结果：
+
+- `side_basis_count = 3`
+- `side_from_usage_acc = 0.8318`
+- `side_from_coeff_acc = 0.7682`
+- `side_from_usage_coeff_acc = 0.8045`
+- `dataset_from_usage_acc = 0.8182`
+
+按 side 聚合的 usage 平均值：
+
+- Left:
+  - `usage_b2 = 0.859`
+- Normal:
+  - `usage_b1 = 0.367`
+- Right:
+  - `usage_b0 = 0.310`, `usage_b1 = 0.292`, `usage_b2 = 0.398`
+
+结论：
+
+- 3-basis 结构比 `v29` 更简洁，也更接近后续固定版
+- 但这仍然是 `scripts/lq` 阶段的版本，不是当前冻结主线
+
+### 2.4.3 `v31`：旧 `lq` 版与冻结 `disentangleNet` 版要分开看
+
+这是本次文档更新中最需要澄清的地方。
+
+`scripts/lq` 里仍保留旧的：
+
+- `outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50`
+
+它延续的是 `lq` 阶段的实验轨迹，分析文件里还能看到旧的 11-basis 结构痕迹。
+
+而 `scripts/disentangleNet` 冻结下来的 `v31` 已经是新的接受版本：
+
+- `levels = 2,6`
+- `side_basis_count = 3`
+- `early_branch_factorization = True`
+- `basis_orthogonalization = joint_global_qr`
+- `side_pooling = fixed_region2_contrast`
+
+也就是说：
+
+- `lq/v31` 是探索期版本
+- `disentangleNet/v31` 是冻结后的接受版本
+
+这一点在后面的 `scripts/disentangleNet` 小节中单独展开。
+
+---
+
+## 2.5 Severity 辅助线：`v32`
+
+运行目录：
+
+- `outputs/lq_x_mouth_v32_joint_qr_levels26_side3_sparse_side_severity_probe_win20_e50`
+
+这个版本主要回答：
+
+> side-aware level-2 representation 是否已经足够承载 severity 信息？
+
+### 2.5.1 结果
+
+当前实际形成的是二分类子问题：
+
+- `severity_counts`
+  - `Normal = 111`
+  - `Mild = 182`
+
+关键 probe：
+
+| 任务 | Accuracy | Balanced Acc | Macro F1 |
+|------|----------|--------------|----------|
+| `severity_from_level2_coeff` | `0.6212` | `0.5000` | `0.3832` |
+| `severity_from_level2_rep` | `0.6621` | `0.5699` | `0.5377` |
+| `severity_from_level2_usage` | `0.6621` | `0.5699` | `0.5377` |
+| `severity_from_level2_usage_coeff` | `0.6621` | `0.5699` | `0.5377` |
+| `severity_from_free_rep` | `0.6519` | `0.5616` | `0.5304` |
+| `side_from_level2_rep` | `0.4198` | `0.3807` | `0.3063` |
+
+### 2.5.2 结论
+
+- severity 信息在当前 setup 下是弱信号
+- `level2` side-aware 表示对 severity 的提升非常有限
+- `severity_from_level2_coeff` 甚至退化到 balanced accuracy `0.5`
+- 因此当前不能把 `v32` 写成“severity 已被有效解耦”的证据
+
+更准确的表述应当是：
+
+> `v32` 只说明 side-aware 中层表示对 severity 可能有弱相关，但离可用结论还很远。
+
+---
+
+## 3. `scripts/disentangleNet`：当前接受的冻结 `v31`
+
+## 3.1 包结构定位
+
+`scripts/disentangleNet` 不是一个继续发散试验的目录，而是：
+
+- 从 `scripts/lq` 中抽出的、当前接受的 `v31` 训练栈
+- 只保留 `v31` 所需配置面
+- 保留对应的后处理分析路径
+
+入口：
+
+- 训练：
+  - `bash scripts/disentangleNet/run_train_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe.sh`
+- 分析：
+  - `analysis/analyze_checkpoint.py`
+  - `analysis/analyze_side_interpretability.py`
+  - `analysis/analyze_kfold_report.py`
+
+## 3.2 冻结配置
+
+当前 `train.py` 中写死的 `V31_FIXED_CONFIG` 关键设置如下：
+
+| 项目 | 值 |
+|------|----|
+| mode | `x` |
+| region | `mouth` |
+| data | `data/win20-step20/IMR,data/win20-step20/TT` |
+| group_size | `4` |
+| levels | `2,6` |
+| quantizer | `residual_fsq` |
+| basis orth | `joint_global_qr` |
+| shared soft mixing | `True` |
+| shared topk | `2` |
+| side branch | `enabled` |
+| side basis count | `3` |
+| side pooling | `fixed_region2_contrast` |
+| side loss | group-level only (`side_loss_weight=0.3`) |
+| private residual cap | `0.5` |
+| early branch factorization | `True` |
+
+### 3.2.1 与 `lq` 的区别
+
+冻结版 `disentangleNet/v31` 与旧 `lq/v31` 的关键差异：
+
+- 去掉了继续开放的大量实验开关
+- 固定到 `levels=2,6`
+- 固定为 early-branch factorization
+- 固定为 3 个 side basis
+
+因此后续如果写“当前主线”，应默认指向 `scripts/disentangleNet`，而不是 `scripts/lq`。
+
+## 3.3 当前验证产物
+
+当前有三组相关输出：
+
+- 旧导出：
+  - `outputs/disentangleNet/v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50`
+- 核验 rerun：
+  - `outputs/disentangleNet/v31_current_verify`
+- 紧凑核验 rerun：
+  - `outputs/disentangleNet/v31_internal_compact_verify_e50`
+
+这三组输出的定性结论一致，因此这里重点记录“稳定复现出来的模式”，而不是把某一组当成唯一真值。
+
+## 3.4 训练与验证指标
+
+`v31_current_verify`：
+
+- `val_recon = 0.3097`
+- `val_shared_recon = 0.3255`
+- `val_scaled_residual = 0.0209`
+
+`v31_internal_compact_verify_e50`：
+
+- `val_recon = 0.3226`
+- `val_shared_recon = 0.3377`
+- `val_scaled_residual = 0.0199`
+
+这两组数说明：
+
+- 当前结构已经能把 plain reconstruction 压到 `0.31-0.32`
+- shared reconstruction 在 `0.326-0.338` 区间
+- private residual 被稳定压在 `~0.02`
+
+## 3.5 Full post-hoc k-fold 结果
+
+full k-fold 报告基于：
+
+- `293` groups
+- `267` subjects
+- `5` folds
+- stratification = `joint_side_dataset`
+
+关键 probe 结果如下：
+
+| 任务 | 结果范围 | 解读 |
+|------|----------|------|
+| `side_from_side_rep` | `0.9283 - 0.9317` acc | side branch 强烈编码了侧别 |
+| `side_from_usage_coeff` | `0.9283 - 0.9420` acc | side 使用模式 + 系数几乎可直接读出侧别 |
+| `side_from_free_rep` | `0.4710` acc | free branch 对 side 的显式判别能力明显更弱 |
+| `dataset_from_side_rep` | `0.7713 - 0.7782` acc，balanced acc `0.50 - 0.53` | side branch 仍带 dataset 痕迹，但不稳定且偏类分布 |
+| `dataset_from_free_rep` | `0.7986 - 0.8055` acc，balanced acc `0.645 - 0.694` | free branch 中 dataset 痕迹更明确 |
+| `dataset_from_private_rep` | `0.8840 - 0.8908` acc，balanced acc `0.810 - 0.825` | private branch 是最强 dataset carrier |
+
+### 3.5.1 当前最重要的结构性结论
+
+1. side branch 已经成功承担了侧别语义
+2. free branch 没有学成一个“纯 dataset-invariant shared motion branch”
+3. private branch 仍然最强地承载 dataset 偏差
+
+也就是说，当前 `v31` 不是“彻底解耦完成”，而是：
+
+> 已经实现了 side-routing 成功，但 dataset leakage 仍未清理干净。
+
+## 3.6 当前 code usage 的重要警告
+
+虽然 `v31` 在 side probe 上表现很强，但 free quantizer 的 usage 仍然不健康。
+
+`v31_current_verify` 的验证集 usage：
+
+- level-0 counts: `[24, 56]`
+- level-1 counts: `[0, 0, 0, 6, 74, 0]`
+
+`v31_internal_compact_verify_e50` 的验证集 usage：
+
+- level-0 counts: `[20, 60]`
+- level-1 counts: `[0, 0, 0, 3, 77, 0]`
+
+结论：
+
+- 当前 `v31` 不是“code utilization 也已完美健康”
+- 它更像是“side branch routing 已经明显成功，但 free codebook 仍偏集中”
+- 因此后续若继续做主线改进，首要问题会从“能否分 side”转向“能否提升 free branch 的利用效率并降低 dataset leakage”
+
+---
+
+## 4. `scripts/matrix_vis`：后验轨迹解释工具
+
+## 4.1 当前定位
+
+`matrix_vis` 当前不是新的训练模型，而是：
+
+- 给定单轴 `diff of distance matrix`
+- 在 anchor、平滑和单轴观测假设下
+- 恢复一个可解释的窗口内轨迹
+
+它的价值不在于“证明轨迹唯一正确”，而在于：
+
+1. 让 basis / observation 的语义可视化
+2. 让我们知道哪些轴更容易、哪些区域更稳定
+3. 提供真实数据上的后验 sanity check
+
+## 4.2 Toy 实验：`y` 明显比 `x` 容易
+
+### 4.2.1 `toy_leaf_to_rectangle_axis_x`
+
+- `ground_truth_rmse = 0.3371`
+- `ground_truth_mae = 0.2644`
+- `ground_truth_max_abs_error = 0.9914`
+
+### 4.2.2 `toy_leaf_to_rectangle_axis_y`
+
+- `ground_truth_rmse = 0.0350`
+- `ground_truth_mae = 0.0293`
+- `ground_truth_max_abs_error = 0.0660`
+
+结论：
+
+- 在当前观测定义和约束下，`y` 轴几乎是一个简单开口问题
+- `x` 轴更像固定边界下的内部重排问题
+- 这与前面对面部运动的直觉一致，也与 README 中“`x` 通常比 `y` 难”的判断一致
+
+## 4.3 Matrix-free solver 已经与 OSQP 对齐
+
+### 4.3.1 Toy x 轴对比
+
+`toy_leaf_to_rectangle_axis_x` 与 `toy_leaf_to_rectangle_axis_x_matrixfree` 的误差几乎相同：
+
+- OSQP:
+  - `rmse = 0.3371022`
+- matrix-free:
+  - `rmse = 0.3371164`
+
+差异已经小到可以忽略。
+
+### 4.3.2 真实 full341 对比
+
+`outputs/matrix_vis/real_compare/imr_00228_win005_minus_win004_full341_osqp_vs_matrixfree/summary.json`
+
+比较结果：
+
+- `x rmse = 1.0712e-05`
+- `y rmse = 2.1765e-05`
+- `xy rmse = 2.4259e-05`
+- `xy max_abs = 2.8926e-04`
+
+结论：
+
+- 在真实 full341 case 上，matrix-free 与 OSQP 的最终轨迹几乎重合
+- 后续做 subset / preview / batch sanity check 时，matrix-free 是可接受近似
+
+## 4.4 真实数据运行代价
+
+### 4.4.1 Full341 + OSQP
+
+以 `imr_00228_win005_minus_win004` 为例：
+
+- 每轴 `341` points
+- `57970` pairwise observations
+- `20` time steps
+
+运行时间：
+
+- x 轴：
+  - `run_time ≈ 119.80s`
+- y 轴：
+  - `run_time ≈ 119.22s`
+
+### 4.4.2 Mouth119 + matrix-free
+
+相同 case 的 mouth region：
+
+- `119` points
+- `7021` pairwise observations
+
+运行时间：
+
+- x 轴：
+  - `run_time ≈ 4.31s`
+- y 轴：
+  - `run_time ≈ 11.77s`
+
+结论：
+
+- full341 级别更适合高保真单例分析
+- mouth119 + matrix-free 已足够支持快速后验解释与可视预览
+
+## 4.5 当前实际产物
+
+当前 `matrix_vis` 已经能稳定导出：
+
+- toy 单轴重建图
+- toy 与 ground truth 对比图
+- real 单轴轨迹图
+- `x/y` 合成的 2D 预览
+- `preview.gif`
+- `snapshot_last_frame.png`
+- `summary.json`
+- `solution.npz`
+
+例如：
+
+- `outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_x_mouth_regions_anchor14/`
+- `outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_y_mouth_regions_anchor14/`
+- `outputs/matrix_vis/real/imr_00228_win005_minus_win004_compose_xy_mouth_regions/`
+
+---
+
+## 5. 当前主结论
+
+1. `scripts/lq` 已经完成“从 collapse 到 side-aware branch”的探索阶段
+2. `v19` 是前 side-semantic 阶段最稳的 interpretability baseline
+3. `v22-v23` 说明“仅加 side bank / subspace orth”还不够
+4. `v29-v31` 说明 laterality 结构确实可以被 side branch 显式承载
+5. `scripts/disentangleNet` 冻结版 `v31` 已经稳定实现：
+   - 强 side prediction
+   - 较低 private residual
+   - 但仍存在 free/private 的 dataset leakage
+6. `v32` 说明 severity 仍不是当前结构的强项
+7. `scripts/matrix_vis` 已经从概念工具变成可复核的后验解释工具
+8. 当前下一阶段最值得继续追的问题不是“还能不能分出 side”，而是：
+   - 能否减少 dataset leakage
+   - 能否提升 free code usage 健康度
+   - 能否让 `matrix_vis` 与 learned basis 的解释链条更紧密

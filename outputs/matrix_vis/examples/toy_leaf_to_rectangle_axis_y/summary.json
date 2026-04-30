@@ -1,0 +1,32 @@
+{
+  "experiment_name": "toy_leaf_to_rectangle_axis_y",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/examples/toy_leaf_to_rectangle_axis_y",
+  "axis": "y",
+  "num_subset_points": 16,
+  "num_pairwise_observations": 120,
+  "anchor_point_ids": [
+    0,
+    8
+  ],
+  "anchor_point_id": 0,
+  "plot_warning": null,
+  "comparison_plot_warning": null,
+  "comparison_metrics": {
+    "ground_truth_rmse": 0.034994542598724365,
+    "ground_truth_mae": 0.029295897111296654,
+    "ground_truth_max_abs_error": 0.06595104932785034
+  },
+  "diagnostics": {
+    "status": "optimal",
+    "objective_value": 0.0005325351301634708,
+    "num_points": 16,
+    "num_time_steps": 25,
+    "num_observations": 120,
+    "num_outer_iterations": 4,
+    "solver_stats": {
+      "solver_name": "OSQP",
+      "num_iters": 25,
+      "solve_time": 0.001592978
+    }
+  }
+}

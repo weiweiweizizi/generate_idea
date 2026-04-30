@@ -1,0 +1,9 @@
+{
+  "experiment_name": "imr_00228_win005_minus_win004_compose_xy_mouth_regions",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real/imr_00228_win005_minus_win004_compose_xy_mouth_regions",
+  "num_mesh_points": 478,
+  "num_subset_points": 119,
+  "num_frames": 20,
+  "saved_frame_count": 20,
+  "subset_policy": "intersection"
+}

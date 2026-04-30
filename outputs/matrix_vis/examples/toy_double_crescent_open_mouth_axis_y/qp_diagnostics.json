@@ -1,0 +1,12 @@
+{
+  "status": "optimal_inaccurate",
+  "objective_value": 7.272080165237127e-15,
+  "num_points": 16,
+  "num_time_steps": 25,
+  "num_observations": 120,
+  "solver_stats": {
+    "solver_name": "OSQP",
+    "num_iters": 10000,
+    "solve_time": 0.5458419760000001
+  }
+}

@@ -2,203 +2,335 @@
 
 [TOC]
 
-**Direction**: 基于关键点距离时序矩阵的面部子运动单元分解 — 使用矩阵分解方法(NMF、Tucker分解、CP分解)将面部关键点距离矩阵分解为可解释的子运动基，实现面部运动的细粒度分解与重建
-
-**Final Target**：基于一组可能存在面瘫(表现为嘴部不对称)的患者，利用其分解得到的面部子单元，系数，和分解残余量，实现面瘫分级
-
-**Data**: 健康组被试完成指定咧嘴任务，患病组完成指定咧嘴任务
-
-**Generated**: 2026-03-19
-
-**Ideas evaluated**: 10 generated → 5 surviving filtering → 0 piloted → 5 recommended
+**Direction**: 基于 `diff of distance matrix` 的面部子运动分解与后验运动解释  
+**Current focus**: `scripts/lq` 前置探索，`scripts/disentangleNet` 冻结主线，`scripts/matrix_vis` 后验可视化  
+**Last Updated**: 2026-04-29
 
 ---
 
-## Landscape Summary
+## 1. 当前问题定义
 
-### 现有方法分析
+当前研究已经从“是否存在可行想法”进入“哪条结构主线最可信”的阶段。
 
-| 方法 | 年份 | 核心思路 | 运动分解方式 | 缺点 |
-|------|------|---------|-------------|------|
-| Sparse Facial Motion | 2025 | VQ-VAE离散关键帧+过渡帧 | 关键帧=子单元 | 离散化，预测任务 |
-| AniTalker | 2024 | MINE互信息解耦身份vs运动 | 运动编码器 | 需要大量视频训练 |
-| EDTalk | 2024 | 三空间正交基向量 | 口型/姿态/表情分离 | 基数量需手动设定 |
-| MoDiTalker | 2024 | 两阶段AToM+MToV | 唇动与视频分离 | 粒度粗，只解耦唇动 |
-| DisCoHead | CVPR 2023 | 几何变换瓶颈 | 头姿与外观分离 | 几何变换局限 |
-| Progressive | CVPR 2022 | 粗到细渐进解耦 | 唇动/眼动/头姿/表情 | 对比学习需负样本 |
-| **Blendshapes** | **2025** | **语音+表情blendshape叠加** | **线性加性分解** | **只有两类，粒度粗** |
-| FacialMotionID | 2025 | 实证研究 | 证明运动可辨识身份 | 非方法论论文 |
+更准确的研究目标可以表述为：
 
-### 已识别的研究空白
+1. 从窗口级面部距离差矩阵中学习跨被试共享的运动基
+2. 将侧别信息尽量路由到显式 side branch，而不是混在 free/shared 中
+3. 控制 private residual，避免模型把解释压力都推回私有分支
+4. 用后验轨迹重建工具把 basis / observation 的语义落到可视轨迹上
 
-1. **矩阵分解视角缺失**: 所有方法都是神经网络隐式解耦，没有显式MF方法
-2. **关键点距离矩阵未利用**: 没有方法用距离矩阵作为输入
-3. **连续可加表示**: 都是离散token，没有连续的子运动叠加
-4. **可解释性**: 基数量需手动设定，不够自动
-5. **身份解耦**: 用MINE深度学习方法，没有简单MF方法
+当前不应再把项目描述成“同时平行探索 NMF、Tucker、CP、深度网络等多个候选 idea”。从代码与结果看，主线已经实质收敛到：
+
+- `scripts/lq`
+  - 结构探索与消融
+- `scripts/disentangleNet`
+  - 接受版 `v31`
+- `scripts/matrix_vis`
+  - basis / observation 的后验解释层
 
 ---
 
-## Recommended Ideas (ranked)
+## 2. 数据与实验范围
 
-### Idea 1: Baseline验证 — 纯NMF能否发现可解释的面部子运动？
+当前主线使用的数据与设置：
 
-- **Hypothesis**: 即使不加任何先验知识，NMF从关键点距离矩阵中也能自动浮现出类似"唇动"、"眨眼"、"头动"等语义可解释的基向量
+| 项目 | 当前主设置 |
+|------|------------|
+| data roots | `data/win20-step20/IMR,data/win20-step20/TT` |
+| mode | `x` |
+| region | `mouth` |
+| input unit | grouped window sequence |
+| group size | `4` |
+| supervision focus | side-aware shared basis learning |
 
-- **Minimum experiment**: 对478个关键点构建距离时序矩阵，直接应用标准NMF，可视化每个基的关键点对权重热图
+当前 full post-hoc probe 的统计范围：
 
-- **Expected outcome**: 如果基向量具有语义可解释性 → 证明MF视角可行；如果基向量语义混杂 → 说明需要额外约束
-
-- **Novelty**: 8/10 — 首次将标准NMF直接用于关键点距离矩阵
-
-- **Feasibility**: 计算: 1GPU小时；数据: 任意公开人脸数据集；实现: sklearn 5行代码
-
-- **Risk**: LOW（失败也有价值，明确回答方向是否可行）
-
-- **Contribution type**: 诊断性
-
-- **Pilot result**: SKIPPED — 建议手动快速验证
-
-- **Reviewer's likely objection**: "标准NMF太简单，baseline而已，不算贡献"
-
-- **Why we should do this**: 最低成本回答"MF视角是否可行"这个根本问题，结果无论正负都有意义
-
----
-
-### Idea 2: Tucker分解实现身份-运动显式解耦
-
-- **Hypothesis**: 不同人的同一种面部子运动在关键点距离空间中共享相同的"运动基"，但具有不同的"身份系数"，Tucker分解的多线性结构可直接分离这两者
-
-- **Minimum experiment**: 收集10-20人视频，构建3D张量 X ∈ R^(N_subjects × N_pairs × T)，应用Tucker分解，验证同一人在身份基上系数相似，同一运动在不同人中共享运动基
-
-- **Expected outcome**: 如果Tucker可分离 → 提出新的身份-运动解耦方法；如果分离不明显 → 说明需要更强的约束
-
-- **Novelty**: 9/10 — 首次将Tucker分解用于面部运动-身份解耦
-
-- **Feasibility**: 计算: 1-2 GPU小时；数据: 需要多人口型数据集；实现: 需自定义优化
-
-- **Risk**: MEDIUM（身份基和运动基可能仍然混杂）
-
-- **Contribution type**: 新方法
-
-- **Pilot result**: SKIPPED
-
-- **Reviewer's likely objection**: "Tucker分解是否真的优于神经网络隐式解耦？需要和AniTalker等方法对比"
-
-- **Why we should do this**: 最接近论文创新点，如果成功可直接对比AniTalker的隐式解耦
+- `293` groups
+- `267` subjects
+- dataset counts:
+  - `IMR = 228`
+  - `TT = 65`
+- side counts:
+  - `Left = 83`
+  - `Normal = 111`
+  - `Right = 99`
 
 ---
 
-### Idea 3: 验证距离表示是否真的优于坐标表示（负面假设验证）
+## 3. `scripts/lq`：前置探索的关键数据
 
-- **Hypothesis**: 距离矩阵可能丢失了关键信息（如整体平移），导致分解质量反而更差
+## 3.1 Collapse 被真正缓解的起点是 `v10`
 
-- **Minimum experiment**: 对同一数据构建坐标矩阵 vs 距离矩阵，分别做NMF，对比重建误差、可解释性、泛化能力
+`v10` 是第一个可以被当作可信 baseline 的版本。
 
-- **Expected outcome**: 如果距离矩阵更差 → 重新考虑输入表示；如果等价或更好 → 证明距离表示的优势
+运行目录：
 
-- **Novelty**: 7/10 — 系统性对比两种表示的MF适用性
+- `outputs/lq_x_mouth_v10_fsq_probe_win20`
 
-- **Feasibility**: 计算: 半天；数据: 任意数据集；实现: 标准NMF
+关键指标：
 
-- **Risk**: LOW（无论结果如何都有明确结论）
+| 指标 | 数值 |
+|------|------|
+| `val_loss` | `0.3619` |
+| `val_recon` | `0.3600` |
+| `val_shared_recon` | `0.3620` |
+| `val_scaled_residual` | `0.0034` |
+| L2 usage | `[20, 23, 37]` |
+| L3 usage | `[18, 2, 3, 3, 25, 29]` |
 
-- **Contribution type**: 理论/诊断结果
+核心意义：
 
-- **Pilot result**: SKIPPED
+- 官方 `FSQ` 替换是早期 anti-collapse 的关键改动
+- 从 `v10` 开始，问题不再是“code 完全不用”，而是“code 怎么用才更可解释”
 
-- **Reviewer's likely objection**: "这更像消融实验，不是核心贡献"
+## 3.2 `v17-v21` 确立了 shared / private 的主要 tradeoff
 
-- **Why we should do this**: 回答"距离表示是否值得使用"这个前提问题，理论价值高
+这组版本决定了后面 side-aware 结构的出发点。
+
+| 版本 | 结构变化 | `val_recon` | `val_shared_recon` | `val_scaled_residual` |
+|------|----------|-------------|--------------------|-----------------------|
+| `v17` | `residual_fsq + global_qr + basis_l1` | `0.3109` | `0.3423` | `0.0393` |
+| `v18` | `v17 + sparse_shared_mixing + shared_recon_loss` | `0.3150` | `0.3469` | `0.0394` |
+| `v19` | `v18 + private cap=0.5` | `0.3275` | `0.3446` | `0.0214` |
+| `v20` | `v19 + private cap=0.4` | `0.3310` | `0.3448` | `0.0171` |
+| `v21` | `v19 + private cap=0.6` | `0.3245` | `0.3446` | `0.0251` |
+
+这组结果对应的判断：
+
+1. `residual_fsq` 有助于 higher-level usage
+2. 直接约束 basis 并不能自动得到更好的解释，private residual 会把收益拿走
+3. `shared_recon` 必须单独监督
+4. `v19` 是这一阶段最稳的 interpretability baseline
+
+## 3.3 side-aware 路线的关键结果
+
+### `v22`
+
+- `val_recon = 0.3330`
+- `val_shared_recon = 0.3504`
+- `val_scaled_residual = 0.0216`
+- `mean_side_path_usage = 0.500`
+- `side_from_side_rep_acc = 0.4545`
+- `dataset_from_side_rep_acc = 0.8182`
+
+解释：
+
+- side path 已经被用上
+- 但 2 个 side basis 还不足以形成有效 separation
+
+### `v23`
+
+- `val_recon = 0.3342`
+- `val_shared_recon = 0.3504`
+- `val_scaled_residual = 0.0208`
+- `side_from_side_rep_acc = 0.5227`
+- `side_from_free_rep_acc = 0.5182`
+- `raw_linear_r2_free_to_side ≈ 1.0`
+
+解释：
+
+- `subspace_orth` 并没有真正把 side / free 分开
+- 两条分支几乎线性可逆，因此这条路被否定
+
+### `v29-v31`
+
+这一段的目标是把 laterality 信息稳定地压进 side branch。
+
+`v29`：
+
+- `side_from_usage_acc = 0.6773`
+- `side_from_usage_coeff_acc = 0.7227`
+- Left 平均偏向 `b0`
+- Right 平均偏向 `b1`
+
+`v30`：
+
+- `side_from_usage_acc = 0.8318`
+- `side_from_usage_coeff_acc = 0.8045`
+- 3 个 side basis 的结构更简洁，也更接近后续冻结版
+
+这组结果说明：
+
+- laterality 确实可以被 side branch 显式承载
+- 但 `scripts/lq` 里的 `v31` 仍应视为探索期版本，不是最终冻结主线
+
+## 3.4 severity 结果仍弱
+
+`v32` 的 severity interpretability 结果：
+
+| 任务 | Accuracy | Balanced Acc | Macro F1 |
+|------|----------|--------------|----------|
+| `severity_from_level2_coeff` | `0.6212` | `0.5000` | `0.3832` |
+| `severity_from_level2_rep` | `0.6621` | `0.5699` | `0.5377` |
+| `severity_from_level2_usage` | `0.6621` | `0.5699` | `0.5377` |
+
+当前只能保守写成：
+
+- severity 在当前结构下是弱信号
+- side-aware 中层表示对 severity 有有限相关
+- 不能写成“severity 已成功解耦”
 
 ---
 
-### Idea 4: 从分解基到可解释属性的映射学习
+## 4. `scripts/disentangleNet`：当前接受主线的关键数据
 
-- **Hypothesis**: NMF/Tucker分解产生的基向量虽然可能语义混杂，但通过监督学习可以找到它们与已知语义标签（AU、blendshapes）之间的线性映射
+## 4.1 固定配置
 
-- **Minimum experiment**: 使用带AU标注的数据集，对距离矩阵做NMF得到H，训练线性回归 AU_labels = M × H，检验哪些基对应哪些AU
+当前冻结在 `train.py` 里的 `v31` 主设置：
 
-- **Expected outcome**: 如果映射成功且稀疏 → 说明MF基具有语义可解释性；如果映射后基仍混杂 → 说明MF基与语义标签存在语义鸿沟
+| 项目 | 值 |
+|------|----|
+| `levels` | `2,6` |
+| `quantizer_type` | `residual_fsq` |
+| `basis_orthogonalization` | `joint_global_qr` |
+| `side_basis_count` | `3` |
+| `side_pooling` | `fixed_region2_contrast` |
+| `early_branch_factorization` | `True` |
+| `private_residual_max_l1` | `0.5` |
 
-- **Novelty**: 7/10 — "可解释性后处理"的MF框架
+这说明 `scripts/disentangleNet` 不是继续开放搜索空间，而是固定了一个已经接受的结构组合。
 
-- **Feasibility**: 计算: 1 GPU小时；数据: 需要AU标注数据集；实现: sklearn线性回归
+## 4.2 checkpoint 级指标
 
-- **Risk**: LOW（监督学习部分几乎一定成功）
+`v31_current_verify`：
 
-- **Contribution type**: 经验发现
+| 指标 | 数值 |
+|------|------|
+| `val_recon` | `0.3097` |
+| `val_shared_recon` | `0.3255` |
+| `val_scaled_residual` | `0.0209` |
 
-- **Pilot result**: SKIPPED
+`v31_internal_compact_verify_e50`：
 
-- **Reviewer's likely objection**: "为什么不用有监督的分解方法？"
+| 指标 | 数值 |
+|------|------|
+| `val_recon` | `0.3226` |
+| `val_shared_recon` | `0.3377` |
+| `val_scaled_residual` | `0.0199` |
 
-- **Why we should do this**: 快速验证可解释性，且可为后续监督约束提供依据
+当前可稳定复述的区间：
+
+- `val_recon ≈ 0.31 - 0.32`
+- `val_shared_recon ≈ 0.326 - 0.338`
+- `val_scaled_residual ≈ 0.020`
+
+## 4.3 Full k-fold probe
+
+`293` groups / `267` subjects / `5` folds 下的关键结果：
+
+| 任务 | Accuracy 范围 | 含义 |
+|------|---------------|------|
+| `side_from_side_rep` | `0.9283 - 0.9317` | side branch 强烈承载了侧别 |
+| `side_from_usage_coeff` | `0.9283 - 0.9420` | side usage + coeff 几乎可直接判 side |
+| `side_from_free_rep` | `0.4710` | free branch 的 side 显式信息明显弱很多 |
+| `dataset_from_side_rep` | `0.7713 - 0.7782` | side branch 仍保留 dataset 痕迹 |
+| `dataset_from_free_rep` | `0.7986 - 0.8055` | free branch 的 dataset 痕迹更明显 |
+| `dataset_from_private_rep` | `0.8840 - 0.8908` | private branch 是最强 dataset carrier |
+
+这里最重要的结论不是“acc 高”，而是信息分布：
+
+1. side 信息已经被 side branch 稳定承载
+2. free / private 还没有摆脱 dataset leakage
+3. private branch 仍是 dataset 偏差的主通道
+
+## 4.4 code usage 的保留问题
+
+当前 `v31` 的 free quantizer usage 仍然偏集中。
+
+`v31_current_verify` 验证集 usage：
+
+- level-0: `[24, 56]`
+- level-1: `[0, 0, 0, 6, 74, 0]`
+
+`v31_internal_compact_verify_e50` 验证集 usage：
+
+- level-0: `[20, 60]`
+- level-1: `[0, 0, 0, 3, 77, 0]`
+
+因此，当前主线不能写成“side 分离和 code usage 都已经解决”。更准确的结论是：
+
+- side routing 成功
+- code utilization 仍然不够健康
+- dataset leakage 仍待处理
 
 ---
 
-### Idea 5: 与SOTA深度解耦方法的公平对比
+## 5. `scripts/matrix_vis`：后验解释层的关键数据
 
-- **Hypothesis**: 神经网络端到端优化可能在重建质量上优于MF，但MF在可解释性和身份解耦上可能具有独特优势
+## 5.1 Toy 结果
 
-- **Minimum experiment**: 获取EDTalk/AniTalker的解耦结果，在相同数据上运行NMF，对比: 重建质量、FaceNet身份识别准确率、AU回归可解释性
+`toy_leaf_to_rectangle_axis_x`：
 
-- **Expected outcome**: 如果MF接近深度方法 → 说明简单MF值得探索；如果差距大 → 说明需要结合深度学习
+- `RMSE = 0.3371`
+- `MAE = 0.2644`
 
-- **Novelty**: 6/10 — 为领域提供对比基线
+`toy_leaf_to_rectangle_axis_y`：
 
-- **Feasibility**: 计算: 半天；数据: 相同数据集；实现: 需要复现/获取对比方法
+- `RMSE = 0.0350`
+- `MAE = 0.0293`
 
-- **Risk**: LOW（对比实验设计清晰）
+这说明在当前观测定义下：
 
-- **Contribution type**: 经验发现/对比基线
+- `y` 轴更接近单一开口运动，更容易重建
+- `x` 轴更像受边界限制的内部重排，更难
 
-- **Pilot result**: SKIPPED
+## 5.2 matrix-free 与 OSQP 的一致性
 
-- **Reviewer's likely objection**: "对比已有SOTA不是新贡献，需要超越它们"
+toy x 轴：
 
-- **Why we should do this**: 为后续研究提供公平比较的基线，MF方法的必要前提
+- OSQP `RMSE = 0.3371022`
+- matrix-free `RMSE = 0.3371164`
+
+真实 full341 对比：
+
+- `x rmse = 1.0712e-05`
+- `y rmse = 2.1765e-05`
+- `xy rmse = 2.4259e-05`
+
+这说明：
+
+- matrix-free 近似在当前问题上已经足够精确
+- 可以用更低代价完成 subset / preview 级解释
+
+## 5.3 真实数据运行代价
+
+full341 + OSQP：
+
+- `341` points
+- `57970` observations
+- 单轴运行时间约 `119s`
+
+mouth119 + matrix-free：
+
+- `119` points
+- `7021` observations
+- x 轴约 `4.31s`
+- y 轴约 `11.77s`
+
+因此当前最实用的使用方式是：
+
+- full341 用于单例高保真分析
+- mouth119 + matrix-free 用于快速解释与预览
 
 ---
 
-## Eliminated Ideas (for reference)
+## 6. 当前总判断
 
-| Idea | Reason eliminated |
-|------|-------------------|
-| Idea 6: 双视图联合分解 | 实现复杂，收益不确定 |
-| Idea 7: 时间连续性约束 | 需要自定义优化，验证周期长 |
-| Idea 8: 贝叶斯NMF自动基数量 | Beta-NMF对超参数敏感，可能推断不稳定 |
-| Idea 9: 交互式MF工具 | 工具性质，非核心论文贡献 |
-| Idea 10: 跨数据集迁移性 | 依赖Idea 1/2成功 |
+### 6.1 已经站住的部分
 
----
+1. `lq` 已经给出足够清晰的结构探索链条
+2. `disentangleNet/v31` 已经稳定实现 side-aware 路由
+3. `matrix_vis` 已经是一个可信的后验解释工具，而不只是概念原型
 
-## Suggested Execution Order
+### 6.2 仍然未解决的部分
 
-1. **先做Idea 1（1-2天）**: 快速验证MF视角是否可行
-2. **同时做Idea 3（3-5天）**: 验证距离表示是否合理
-3. **根据Idea 1/3结果**:
-   - 如果正面 → 深入Idea 2（Tucker分解）
-   - 如果负面 → 考虑结合深度学习（Idea 9）
-4. **Idea 4和Idea 5作为辅助验证**
+1. free branch 的 code usage 仍然偏集中
+2. free / private 中的 dataset leakage 明显存在
+3. severity 信息还没有形成强、稳的可解释表示
 
----
+### 6.3 当前最合理的论文式叙述
 
-## Key Open Questions
+当前最稳的叙述不是“已经完成面瘫分级”，而是：
 
-1. **NMF基是否具有语义可解释性？** — Idea 1回答
-2. **距离矩阵是否比坐标矩阵更适合MF？** — Idea 3回答
-3. **Tucker能否做到身份-运动显式解耦？** — Idea 2回答
-4. **MF方法与深度解耦方法差距多大？** — Idea 5回答
-
----
-
-## Next Steps
-
-- [x] **Idea 1 ✅**: SVD差分验证完成 — PC1 mouth-dominant，运动语义可解释（详见 IDEA_EXPERIMENTS.md）
-- [x] **Idea 3 ✅**: 差分必要性验证完成 — RAW=eyehole(身份)，DIFF=mouth(运动)（详见 IDEA_EXPERIMENTS.md）
-- [x] **Idea 4 ✅**: Grassmann验证完成 — 共享基是"真共享"而非"计算强迫"（详见 IDEA_EXPERIMENTS.md）
-- [x] **Idea 2 ❌**: Tucker不适合可视化需求
-- [ ] PARAFAC/CP分解探索（替代Tucker）
-- [ ] 结合blendshape/AU标注进行弱监督语义映射
-- [ ] 时间系数可解释性分析
+> 我们已经建立了一条 side-aware、可后验解释的共享运动分解主线。  
+> 这条主线在 side 路由上表现强，但在 dataset-invariance 与 severity 表示上仍存在明显缺口。

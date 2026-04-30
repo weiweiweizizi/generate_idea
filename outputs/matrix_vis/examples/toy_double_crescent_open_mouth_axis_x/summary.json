@@ -1,0 +1,27 @@
+{
+  "experiment_name": "toy_double_crescent_open_mouth_axis_x",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/examples/toy_double_crescent_open_mouth_axis_x",
+  "axis": "x",
+  "num_subset_points": 16,
+  "num_pairwise_observations": 120,
+  "anchor_point_id": 0,
+  "plot_warning": null,
+  "comparison_plot_warning": null,
+  "comparison_metrics": {
+    "ground_truth_rmse": 0.015616584569215775,
+    "ground_truth_mae": 0.011725608259439468,
+    "ground_truth_max_abs_error": 0.037804603576660156
+  },
+  "diagnostics": {
+    "status": "optimal_inaccurate",
+    "objective_value": 6.390443725160821e-13,
+    "num_points": 16,
+    "num_time_steps": 25,
+    "num_observations": 120,
+    "solver_stats": {
+      "solver_name": "OSQP",
+      "num_iters": 10000,
+      "solve_time": 0.539226528
+    }
+  }
+}

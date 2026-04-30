@@ -1,0 +1,15 @@
+{
+  "status": "solved",
+  "objective_value": -7041.302768361785,
+  "num_points": 341,
+  "num_time_steps": 20,
+  "num_observations": 57970,
+  "num_outer_iterations": 4,
+  "solver_stats": {
+    "solver_name": "OSQP",
+    "num_iters": 50,
+    "solve_time": 2.705787865,
+    "setup_time": 59.63620465,
+    "run_time": 119.79528460099999
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "experiment_name": "toy_leaf_to_rectangle_compose_xy",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/examples/toy_leaf_to_rectangle_compose_xy",
+  "num_mesh_points": 16,
+  "num_subset_points": 16,
+  "num_frames": 25,
+  "saved_frame_count": 25,
+  "subset_policy": "intersection"
+}
