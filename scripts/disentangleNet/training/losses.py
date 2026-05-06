@@ -37,7 +37,11 @@ def step_model(model, batch, device, loss_weights):
         raise ValueError("disentangleNet v31 requires side_semantic_enabled=True")
     side_labels = batch["side_label"].to(device)
 
-    outputs = model(x, side_labels=side_labels, dataset_labels=None)
+    outputs = model(
+        x,
+        side_labels=side_labels,
+        dataset_labels=None,
+    )
 
     recon_loss_per_frame = (outputs["reconstructed"] - x).abs().mean(dim=(2, 3, 4))
     shared_recon_loss_per_frame = (
@@ -74,19 +78,29 @@ def step_model(model, batch, device, loss_weights):
         side_loss_cont_value = masked_mean(side_loss_cont, supervision_mask)
     if side_loss_disc is not None:
         side_loss_disc_value = masked_mean(side_loss_disc, supervision_mask)
+
     side_group_rep = outputs["side_path_representation"]
     if side_group_rep is None:
-        raise RuntimeError("side_path_representation is required for side_group supervision")
+        raise RuntimeError("side_path_representation is required for group supervision")
     if side_group_rep.ndim != 3:
         raise ValueError(
-            "side_group supervision expects grouped side_path_representation with shape B x T x D"
+            "group supervision expects grouped side_path_representation with shape B x T x D"
         )
-    group_side_rep = masked_mean_per_sequence(side_group_rep, supervision_mask)
     group_valid_mask = supervision_mask.any(dim=1)
     if group_valid_mask.any():
-        group_side_logits = model.classify_side_group(group_side_rep[group_valid_mask])
+        group_side_logits = outputs["group_side_logits"]
         group_side_labels = batch["side_label"].to(device)[group_valid_mask]
-        side_group_loss_value = F.cross_entropy(group_side_logits, group_side_labels)
+        if group_side_logits is not None:
+            side_group_loss_value = F.cross_entropy(
+                group_side_logits[group_valid_mask],
+                group_side_labels,
+            )
+
+    if side_loss_cont_value is not None:
+        total_loss = total_loss + loss_weights["side_cont"] * side_loss_cont_value
+    if side_loss_disc_value is not None:
+        total_loss = total_loss + loss_weights["side_disc"] * side_loss_disc_value
+    if side_group_loss_value is not None:
         total_loss = total_loss + loss_weights["side_group"] * side_group_loss_value
 
     metrics = {

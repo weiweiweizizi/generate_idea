@@ -1,9 +1,0 @@
-Saved combined group representations: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/full_group_level_representations.npz
-Saved combined side semantics: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/full_group_side_semantics.csv
-Saved subject fold assignments: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/subject_fold_assignments.csv
-Saved fold summary: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/fold_summary.csv
-Saved probe summary: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/probe_summary.csv
-Saved probe predictions: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/probe_predictions.csv
-Saved probe fold metrics: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/probe_fold_metrics.csv
-Saved report: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/report.md
-Saved summary: outputs/disentangleNet/v31_internal_compact_verify_e50/kfold_report/summary.json

@@ -1,0 +1,33 @@
+{
+  "patient_profiles_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/patient_activation_profiles.csv",
+  "class_col": "score",
+  "feature_family": "usage",
+  "basis_count": 8,
+  "basis_names": [
+    "b0",
+    "b1",
+    "b4",
+    "b5",
+    "b6",
+    "b8",
+    "b9",
+    "b10"
+  ],
+  "n_perm": 4000,
+  "permanova": {
+    "pseudo_f": 10.577947337236512,
+    "p_value": 0.00024993751562109475,
+    "n_perm": 4000
+  },
+  "num_significant_pairwise_edges_fdr_0_05": 45,
+  "paths": {
+    "basis_manifest_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/basis_manifest.csv",
+    "class_correlation_long_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/class_correlation_long.csv",
+    "pairwise_tests_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/pairwise_corr_diff_tests.csv",
+    "mean_by_class_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/mean_usage_by_score.csv",
+    "mean_heatmap_png": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/mean_usage_by_score.png",
+    "corr_heatmaps_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/correlation_heatmaps",
+    "delta_heatmaps_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/delta_heatmaps",
+    "report_md": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/coactivation_by_score/usage/report.md"
+  }
+}

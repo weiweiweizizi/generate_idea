@@ -4,6 +4,7 @@ import numpy as np
 
 from scripts.matrix_vis.core.types import MeshTemplate, SUPPORTED_MESH_DIMENSIONS
 
+# 构建mesh template，包含输入验证和MeshTemplate实例构建
 
 def validate_mesh_points(points: np.ndarray, dimension: str) -> np.ndarray:
     if dimension not in SUPPORTED_MESH_DIMENSIONS:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import torch
 import torch.nn as nn
 
@@ -29,12 +31,24 @@ def build_shared_quantizer(
     if FSQ is None:
         raise ImportError("FSQ is unavailable; install vector-quantize-pytorch")
 
+    fsq_signature = inspect.signature(FSQ)
+    supports_preserve_symmetry = "preserve_symmetry" in fsq_signature.parameters
+
     residual_fsq_layers = nn.ModuleList(
         [
             FSQ(
-                levels=[level],
-                dim=shared_dim,
-                preserve_symmetry=fsq_preserve_symmetry,
+                **(
+                    {
+                        "levels": [level],
+                        "dim": shared_dim,
+                        "preserve_symmetry": fsq_preserve_symmetry,
+                    }
+                    if supports_preserve_symmetry
+                    else {
+                        "levels": [level],
+                        "dim": shared_dim,
+                    }
+                )
             )
             for level in levels
         ]

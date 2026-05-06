@@ -1,0 +1,9 @@
+{
+  "experiment_name": "disentanglenet_v31_current_verify_basis_00_compose_xy",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v31_current_verify/anchor_14/basis_00/compose_xy",
+  "num_mesh_points": 478,
+  "num_subset_points": 119,
+  "num_frames": 20,
+  "saved_frame_count": 20,
+  "subset_policy": "intersection"
+}

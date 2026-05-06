@@ -92,6 +92,20 @@ def validate_aux_supervision_config(
         raise ValueError("severity_loss_weight must be >= 0")
 
 
+def validate_label_supervision_config(config: Mapping[str, Any]) -> None:
+    target_label_mode = str(config["target_label_mode"])
+    if target_label_mode != "side":
+        raise ValueError("disentangleNet v31 training only supports target_label_mode='side'")
+    if int(config["num_side_classes"]) <= 0:
+        raise ValueError("num_side_classes must be positive")
+    for key in ("group_side_loss_weight",):
+        if float(config[key]) < 0:
+            raise ValueError(f"{key} must be >= 0")
+
+    if float(config["group_side_loss_weight"]) <= 0:
+        raise ValueError("side mode requires group_side_loss_weight > 0")
+
+
 def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
     config = dict(raw_config)
     config.setdefault("early_branch_factorization", False)
@@ -113,6 +127,9 @@ def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
     config.setdefault("free_side_adv_weight", 0.0)
     config.setdefault("free_side_grl_lambda", 1.0)
     config.setdefault("severity_loss_weight", 0.0)
+    config.setdefault("target_label_mode", "side")
+    config.setdefault("num_side_classes", 3)
+    config.setdefault("group_side_loss_weight", None)
 
     side_cont_weight, side_disc_weight = resolve_side_weights(
         config["side_weight"],
@@ -121,6 +138,8 @@ def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
     )
     config["side_cont_weight"] = side_cont_weight
     config["side_disc_weight"] = side_disc_weight
+    if config["group_side_loss_weight"] is None:
+        config["group_side_loss_weight"] = config["side_loss_weight"]
 
     validate_action_basis_init(
         config["action_basis_init_path"],
@@ -164,4 +183,5 @@ def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
     if config["free_side_grl_lambda"] < 0:
         raise ValueError("free_side_grl_lambda must be >= 0")
     validate_aux_supervision_config(severity_loss_weight=config["severity_loss_weight"])
+    validate_label_supervision_config(config)
     return config

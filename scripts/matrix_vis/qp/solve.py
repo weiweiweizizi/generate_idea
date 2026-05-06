@@ -10,7 +10,7 @@ from scipy.sparse.linalg import LinearOperator, cg
 import time
 from scripts.matrix_vis.qp.builder import AxisQPBundle
 
-
+# 两种求解器的后端
 @dataclass(frozen=True)
 class AxisQPSolveResult:
     trajectory: np.ndarray

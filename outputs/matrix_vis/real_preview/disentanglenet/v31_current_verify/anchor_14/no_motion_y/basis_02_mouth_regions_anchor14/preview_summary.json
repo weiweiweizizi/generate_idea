@@ -1,0 +1,8 @@
+{
+  "x_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v31_current_verify/anchor_14/basis_02/axis_x/solution.npz",
+  "y_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v31_current_verify/anchor_14/no_motion_y/basis_02_mouth_regions_anchor14/synthetic_no_motion_y_solution.npz",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v31_current_verify/anchor_14/no_motion_y/basis_02_mouth_regions_anchor14",
+  "num_frames": 20,
+  "num_subset_points": 119,
+  "anchor_point_id": 14
+}

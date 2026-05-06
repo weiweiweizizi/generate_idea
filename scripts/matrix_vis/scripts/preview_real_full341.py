@@ -1,4 +1,25 @@
 #!/usr/bin/env python
+"""预览 full341 重建结果在标准 facemesh 上的动态轨迹。
+
+这个脚本面向 full341 子集的单次可视化检查：
+- 读取一对 `axis_x` / `axis_y` solution.npz
+- 合成为二维轨迹
+- 在标准化 canonical facemesh 上导出：
+  - 逐帧 PNG
+  - 最后一帧 snapshot
+  - 动态 GIF
+  - 便于下游复用的 `subset_motion_preview.npz`
+
+常用命令：
+```bash
+python scripts/matrix_vis/scripts/preview_real_full341.py
+
+python scripts/matrix_vis/scripts/preview_real_full341.py \
+  --x-solution outputs/matrix_vis/.../axis_x/solution.npz \
+  --y-solution outputs/matrix_vis/.../axis_y/solution.npz \
+  --output-dir outputs/matrix_vis/real_preview/.../preview
+```
+"""
 
 from __future__ import annotations
 
@@ -12,6 +33,7 @@ from PIL import Image
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
+from scripts.matrix_vis.core.composition import compose_xy_coordinates
 from scripts.matrix_vis.core.landmark_layout import resolve_subset_layout
 from scripts.matrix_vis.io.load_mesh import _load_canonical_obj_vertices
 
@@ -48,31 +70,6 @@ def _normalize_standard_facemesh(points: np.ndarray) -> np.ndarray:
 def _load_solution(path: Path) -> dict[str, np.ndarray]:
     data = np.load(path)
     return {key: data[key] for key in data.files}
-
-
-def _ordered_common_ids(x_ids: np.ndarray, y_ids: np.ndarray, subset_ids: tuple[int, ...]) -> np.ndarray:
-    x_set = {int(point_id) for point_id in x_ids.tolist()}
-    y_set = {int(point_id) for point_id in y_ids.tolist()}
-    ordered = [int(point_id) for point_id in subset_ids if int(point_id) in x_set and int(point_id) in y_set]
-    if not ordered:
-        raise ValueError("No overlapping ordered point ids between solutions and requested subset")
-    return np.asarray(ordered, dtype=np.int64)
-
-
-def _compose_subset_coordinates(
-    *,
-    x_solution: dict[str, np.ndarray],
-    y_solution: dict[str, np.ndarray],
-    subset_ids: np.ndarray,
-) -> np.ndarray:
-    x_lookup = {int(point_id): idx for idx, point_id in enumerate(x_solution["point_ids"].astype(np.int64).tolist())}
-    y_lookup = {int(point_id): idx for idx, point_id in enumerate(y_solution["point_ids"].astype(np.int64).tolist())}
-    num_frames = int(x_solution["time_grid"].shape[0])
-    coordinates = np.empty((num_frames, subset_ids.shape[0], 2), dtype=np.float32)
-    for subset_idx, point_id in enumerate(subset_ids.tolist()):
-        coordinates[:, subset_idx, 0] = x_solution["trajectory"][x_lookup[int(point_id)]]
-        coordinates[:, subset_idx, 1] = y_solution["trajectory"][y_lookup[int(point_id)]]
-    return coordinates
 
 
 def _save_snapshot(
@@ -145,18 +142,23 @@ def _save_gif(frame_paths: list[Path], output_path: Path, *, duration_ms: int = 
 
 
 def main() -> None:
+    """CLI 入口：导出 full341 预览图、GIF 与坐标缓存。"""
     parser = argparse.ArgumentParser(
         description="Preview real 341-point reconstruction on normalized standard facemesh without polylines."
     )
     parser.add_argument(
         "--x-solution",
         type=Path,
-        default=Path("outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_x_full341_anchor_facebox/solution.npz"),
+        default=Path(
+            "outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_033_263_010_175/matrix_free_cg/axis_x/solution.npz"
+        ),
     )
     parser.add_argument(
         "--y-solution",
         type=Path,
-        default=Path("outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_y_full341_anchor_facebox/solution.npz"),
+        default=Path(
+            "outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_033_263_010_175/matrix_free_cg/axis_y/solution.npz"
+        ),
     )
     parser.add_argument(
         "--mesh",
@@ -171,16 +173,14 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("outputs/matrix_vis/real_preview/imr_00228_win005_minus_win004_full341_anchor_facebox"),
+        default=Path(
+            "outputs/matrix_vis/real_preview/imr_00228_win005_minus_win004/full341/anchor_033_263_010_175/default/preview"
+        ),
     )
     args = parser.parse_args()
 
     x_solution = _load_solution(args.x_solution.resolve())
     y_solution = _load_solution(args.y_solution.resolve())
-    x_time = x_solution["time_grid"].astype(np.float32)
-    y_time = y_solution["time_grid"].astype(np.float32)
-    if x_time.shape != y_time.shape or not np.allclose(x_time, y_time):
-        raise ValueError("x and y solutions must share the same time grid")
 
     standard_mesh = _load_canonical_obj_vertices(args.mesh.resolve())
     normalized_mesh = _normalize_standard_facemesh(standard_mesh)
@@ -189,15 +189,10 @@ def main() -> None:
         subset_layout_source=args.layout_source.resolve(),
         subset_layout_extractor_name="mediapipe",
     )
-    common_ids = _ordered_common_ids(
-        x_solution["point_ids"].astype(np.int64),
-        y_solution["point_ids"].astype(np.int64),
-        subset_ids,
-    )
-    subset_coordinates = _compose_subset_coordinates(
+    common_ids, time_grid, subset_coordinates = compose_xy_coordinates(
         x_solution=x_solution,
         y_solution=y_solution,
-        subset_ids=common_ids,
+        preferred_point_ids=np.asarray(subset_ids, dtype=np.int64),
     )
 
     anchor_points = normalized_mesh[np.asarray(DEFAULT_ANCHOR_POINT_IDS, dtype=np.int64), :2]
@@ -220,7 +215,7 @@ def main() -> None:
     np.savez(
         output_dir / "subset_motion_preview.npz",
         point_ids=common_ids.astype(np.int64),
-        time_grid=x_time.astype(np.float32),
+        time_grid=time_grid.astype(np.float32),
         coordinates=subset_coordinates.astype(np.float32),
         anchor_point_ids=np.asarray(DEFAULT_ANCHOR_POINT_IDS, dtype=np.int64),
     )

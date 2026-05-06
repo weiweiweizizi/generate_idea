@@ -25,6 +25,17 @@ from scripts.matrix_vis.viz.axis_plots import (
     save_axis_trajectory_plot,
 )
 
+# 运行轴重建流程的主函数，包含以下步骤：
+# 1. load_config() 加载配置文件，解析实验设置。
+# 2. load_mesh()
+# 3. project_mesh_to_axis() 将网格投影到指定轴
+# 4. load_basis_observation() 加载基函数观测数据
+# 5. basis_to_observation_table() 将基函数观测转换为观测表格
+# 6. truncate_observations() 根据配置截断观测数量（忽略值很小的对）
+# 7. build_axis_qp() 构建轴重建的二次规划问题
+# 8. solve_axis_qp() 求解二次规划问题，得到重建
+# 9. 保存结果
+# 10，如果有ground truth，计算对比指标
 
 def truncate_observations(
     observation_table,

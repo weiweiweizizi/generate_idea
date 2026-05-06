@@ -1,0 +1,35 @@
+{
+  "checkpoint_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/best.pt",
+  "mode": "x",
+  "region": "mouth",
+  "matrix_size": 119,
+  "num_basis": 8,
+  "levels": [
+    2,
+    6
+  ],
+  "level_boundaries": [
+    0,
+    2,
+    8
+  ],
+  "basis_orthogonalization": "joint_global_qr",
+  "quantizer_type": "residual_fsq",
+  "point_layout": "face_regions_grouped",
+  "point_layout_region_names": [
+    "around_mouth",
+    "mouth"
+  ],
+  "value_semantics": "mean_distance_delta",
+  "exported_basis_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis/basis_bank_x.npy",
+  "side_basis_count": 3,
+  "exported_side_basis_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis/side_basis_bank_x.npy",
+  "bridge_scope": {
+    "step1": "basis_wise_x_reconstruct_then_compose_with_fixed_y",
+    "step2": "patient_coeff_compose_then_x_reconstruct"
+  },
+  "artifacts": {
+    "basis_bank_heatmap": null,
+    "side_basis_bank_heatmap": null
+  }
+}

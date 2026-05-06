@@ -81,6 +81,7 @@ class DistNet(nn.Module):
         num_side_classes=3,
         num_severity_classes=3,
         num_dataset_classes=2,
+        target_label_mode="side",
         private_residual_weight=0.25,
         grl_lambda=1.0,
         use_dataset_aux=False,
@@ -130,6 +131,8 @@ class DistNet(nn.Module):
         self.num_side_classes = num_side_classes
         self.num_severity_classes = num_severity_classes
         self.num_dataset_classes = num_dataset_classes
+        self.target_label_mode = "side"
+        self.requested_target_label_mode = str(target_label_mode)
         self.private_residual_weight = private_residual_weight
         self.grl_lambda = grl_lambda
         self.use_dataset_aux = bool(use_dataset_aux)
@@ -193,7 +196,9 @@ class DistNet(nn.Module):
 
         (
             self.initial_conv,
+            self.pre_layer1_block,
             self.layer1,
+            self.pre_layer2_block,
             self.layer2,
             self.layer3,
             self.avg_pool,
@@ -558,6 +563,7 @@ class DistNet(nn.Module):
         self,
         x,
         side_labels=None,
+        label5_labels=None,
         dataset_labels=None,
         return_group_pooled: bool = False,
     ):
@@ -570,10 +576,13 @@ class DistNet(nn.Module):
         """
         x, sequence_shape = self._flatten_sequence_input(x)
         side_labels = self._flatten_sequence_labels(side_labels, sequence_shape)
+        label5_labels = self._flatten_sequence_labels(label5_labels, sequence_shape)
         dataset_labels = self._flatten_sequence_labels(dataset_labels, sequence_shape)
 
         feats = self.initial_conv(x)
+        feats = self.pre_layer1_block(feats)
         feats = self.layer1(feats)
+        feats = self.pre_layer2_block(feats)
         feats = self.layer2(feats)
         feats = self.layer3(feats)
 
@@ -581,6 +590,7 @@ class DistNet(nn.Module):
             x=x,
             feats=feats,
             side_labels=side_labels,
+            label5_labels=label5_labels,
             dataset_labels=dataset_labels,
             sequence_shape=sequence_shape,
             return_group_pooled=return_group_pooled,
@@ -592,6 +602,7 @@ class DistNet(nn.Module):
         x: torch.Tensor,
         feats: torch.Tensor,
         side_labels: torch.Tensor | None,
+        label5_labels: torch.Tensor | None,
         dataset_labels: torch.Tensor | None,
         sequence_shape: tuple[int, int] | None,
         return_group_pooled: bool,
@@ -700,6 +711,8 @@ class DistNet(nn.Module):
         side_loss_cont = None
         side_loss_per_sample = None
         side_loss_cont_per_sample = None
+        label5_logits = None
+        label5_loss_per_sample = None
         free_side_logits = None
         free_side_adv_loss = None
         free_side_adv_loss_per_sample = None
@@ -770,6 +783,7 @@ class DistNet(nn.Module):
         )
         side_basis_logits = self._reshape_sequence_tensor(side_basis_logits, sequence_shape)
         side_logits = self._reshape_sequence_tensor(side_logits, sequence_shape)
+        label5_logits = self._reshape_sequence_tensor(label5_logits, sequence_shape)
         free_side_logits = self._reshape_sequence_tensor(free_side_logits, sequence_shape)
         private_dataset_logits = self._reshape_sequence_tensor(
             private_dataset_logits, sequence_shape
@@ -787,6 +801,9 @@ class DistNet(nn.Module):
         side_loss_cont_per_sample = self._reshape_sequence_tensor(
             side_loss_cont_per_sample, sequence_shape
         )
+        label5_loss_per_sample = self._reshape_sequence_tensor(
+            label5_loss_per_sample, sequence_shape
+        )
         free_side_adv_loss_per_sample = self._reshape_sequence_tensor(
             free_side_adv_loss_per_sample,
             sequence_shape,
@@ -797,20 +814,27 @@ class DistNet(nn.Module):
         dataset_adv_loss_per_sample = self._reshape_sequence_tensor(
             dataset_adv_loss_per_sample, sequence_shape
         )
-        group_pooled_side_rep = (
-            self._mean_pool_sequence_tensor(side_latent, sequence_shape)
-            if return_group_pooled
-            else None
-        )
+        canonical_group_side_rep = self._mean_pool_sequence_tensor(side_path_rep, sequence_shape)
+        group_pooled_side_rep = canonical_group_side_rep if return_group_pooled else None
         group_pooled_free_rep = (
             self._mean_pool_sequence_tensor(free_latent, sequence_shape)
             if return_group_pooled
             else None
         )
-        group_pooled_side_latent = group_pooled_side_rep
+        group_pooled_side_latent = (
+            self._mean_pool_sequence_tensor(side_latent, sequence_shape)
+            if return_group_pooled
+            else None
+        )
         group_pooled_free_latent = group_pooled_free_rep
         group_pooled_side_latent_raw = None
         group_pooled_free_latent_raw = None
+        group_side_logits = (
+            self.classify_side_group(canonical_group_side_rep)
+            if canonical_group_side_rep is not None
+            else None
+        )
+        group_label5_logits = None
 
         return {
             "reconstructed": reconstructed,
@@ -849,6 +873,10 @@ class DistNet(nn.Module):
             "free_path_coefficients": free_path_coefficients,
             "free_level2_coefficients": free_level2_coefficients,
             "side_basis_logits": side_basis_logits,
+            "side_logits": side_logits,
+            "label5_logits": label5_logits,
+            "group_side_logits": group_side_logits,
+            "group_label5_logits": group_label5_logits,
             "group_pooled_side_rep": group_pooled_side_rep,
             "group_pooled_free_rep": group_pooled_free_rep,
             "group_pooled_side_latent_raw": group_pooled_side_latent_raw,
@@ -865,13 +893,16 @@ class DistNet(nn.Module):
                 "free_side_adv_loss": free_side_adv_loss,
                 "free_side_adv_loss_per_sample": free_side_adv_loss_per_sample,
             },
+            "label5_loss": {
+                "label5_loss": None,
+                "label5_loss_per_sample": label5_loss_per_sample,
+            },
             "dataset_loss": {
                 "private_dataset_loss": dataset_private_loss,
                 "shared_dataset_adv_loss": dataset_adv_loss,
                 "private_dataset_loss_per_sample": dataset_private_loss_per_sample,
                 "shared_dataset_adv_loss_per_sample": dataset_adv_loss_per_sample,
             },
-            "side_logits": side_logits,
             "free_side_logits": free_side_logits,
             "discrete_side_logits": None,
             "private_dataset_logits": private_dataset_logits,

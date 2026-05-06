@@ -1,0 +1,3 @@
+dataset_name,subject,group_id,window_idx,prev_window_idx,side_pred,side_pred_name,side_true,side_true_name
+TT,844697,TT:844697:x:group000,1,0,1,Normal,1,Normal
+TT,844697,TT:844697:x:group000,2,1,1,Normal,1,Normal

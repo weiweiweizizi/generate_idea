@@ -1,0 +1,13 @@
+{
+  "patient_bundle_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/patient_844697_x_sequence.npz",
+  "output_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x",
+  "num_windows": 2,
+  "window_indices": [
+    1,
+    2
+  ],
+  "window_dirs": [
+    "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/window_001",
+    "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/window_002"
+  ]
+}

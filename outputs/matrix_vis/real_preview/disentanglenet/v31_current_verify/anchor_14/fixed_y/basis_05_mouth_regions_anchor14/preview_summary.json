@@ -1,0 +1,8 @@
+{
+  "x_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v31_current_verify/anchor_14/basis_05/axis_x/solution.npz",
+  "y_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/imr_00228_win005_minus_win004/mouth_regions/anchor_018/osqp/axis_y/solution.npz",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v31_current_verify/anchor_14/fixed_y/basis_05_mouth_regions_anchor14",
+  "num_frames": 20,
+  "num_subset_points": 119,
+  "anchor_point_id": 14
+}

@@ -1,0 +1,35 @@
+{
+  "experiment_name": "imr_00228_win005_minus_win004_axis_x_full341_anchor_facebox",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_109_010_338_108_151_337/osqp/axis_x",
+  "axis": "x",
+  "num_subset_points": 341,
+  "num_pairwise_observations": 57970,
+  "observation_truncation": null,
+  "anchor_point_ids": [
+    109,
+    10,
+    338,
+    108,
+    151,
+    337
+  ],
+  "anchor_point_id": 109,
+  "plot_warning": null,
+  "comparison_plot_warning": null,
+  "comparison_metrics": null,
+  "diagnostics": {
+    "status": "solved",
+    "objective_value": -7041.302768361785,
+    "num_points": 341,
+    "num_time_steps": 20,
+    "num_observations": 57970,
+    "num_outer_iterations": 4,
+    "solver_stats": {
+      "solver_name": "OSQP",
+      "num_iters": 50,
+      "solve_time": 2.705787865,
+      "setup_time": 59.63620465,
+      "run_time": 119.79528460099999
+    }
+  }
+}

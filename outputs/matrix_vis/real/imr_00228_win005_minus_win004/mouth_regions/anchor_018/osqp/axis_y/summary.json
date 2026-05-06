@@ -1,0 +1,30 @@
+{
+  "experiment_name": "imr_00228_win005_minus_win004_axis_y_mouth_regions",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real/imr_00228_win005_minus_win004/mouth_regions/anchor_018/osqp/axis_y",
+  "axis": "y",
+  "num_subset_points": 119,
+  "num_pairwise_observations": 7021,
+  "observation_truncation": null,
+  "anchor_point_ids": [
+    18
+  ],
+  "anchor_point_id": 18,
+  "plot_warning": null,
+  "comparison_plot_warning": null,
+  "comparison_metrics": null,
+  "diagnostics": {
+    "status": "solved",
+    "objective_value": -101.33592011645469,
+    "num_points": 119,
+    "num_time_steps": 20,
+    "num_observations": 7021,
+    "num_outer_iterations": 4,
+    "solver_stats": {
+      "solver_name": "OSQP",
+      "num_iters": 75,
+      "solve_time": 0.36340163,
+      "setup_time": 1.860440788,
+      "run_time": 4.123381543
+    }
+  }
+}

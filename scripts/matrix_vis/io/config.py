@@ -23,12 +23,14 @@ from scripts.matrix_vis.core.types import (
 )
 from scripts.matrix_vis.io.paths import resolve_input_path, resolve_output_path
 
+# 解析主配置YAML，验证所有字段，解析 subset_layout（从配置文件路径resolve相对路径），构建完整的 MatrixVisConfig
+
 try:
     import yaml
 except ImportError:  # pragma: no cover - depends on local env
     yaml = None
 
-
+# 验证字段
 def _require_mapping(parent: dict[str, Any], key: str) -> dict[str, Any]:
     value = parent.get(key)
     if not isinstance(value, dict):
@@ -64,6 +66,7 @@ def _require_str(section: dict[str, Any], key: str) -> str:
     return value.strip()
 
 
+# 解析mesh.point_ids字段，支持"auto"或一个非空整数列表
 def _parse_point_ids(value: Any) -> str | list[int]:
     if value == "auto":
         return "auto"
@@ -73,7 +76,7 @@ def _parse_point_ids(value: Any) -> str | list[int]:
         raise ValueError("mesh.point_ids must contain only integers")
     return value
 
-
+# 解析projection.subset_point_ids字段，必须是一个非空整数列表，且不包含重复项
 def _parse_subset_point_ids(value: Any) -> tuple[int, ...]:
     if not isinstance(value, list) or not value:
         raise ValueError("projection.subset_point_ids must be a non-empty list of integers")
@@ -84,7 +87,7 @@ def _parse_subset_point_ids(value: Any) -> tuple[int, ...]:
         raise ValueError("projection.subset_point_ids must not contain duplicates")
     return point_ids
 
-
+# 解析projection部分的subset配置，支持直接指定subset_point_ids或通过subset_layout指定一个布局文件来解析点ID
 def _parse_projection_subset(
     *,
     projection_section: dict[str, Any],

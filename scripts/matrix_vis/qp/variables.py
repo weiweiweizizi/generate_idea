@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 
 
+# 变量布局
 @dataclass(frozen=True)
 class VariableLayout:
     num_points: int

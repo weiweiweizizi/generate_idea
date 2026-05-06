@@ -1,4 +1,31 @@
 #!/usr/bin/env python
+"""
+Inspect side-basis behavior from one checkpoint.
+
+What this script does:
+- Load one checkpoint plus its grouped evaluation split.
+- Export raw side basis matrices.
+- Measure basis magnitude, symmetry after left/right swap, and block-wise mass concentration.
+- Aggregate group-level side usage and side coefficients.
+- Export basis statistics, group semantics, and a compact JSON summary.
+
+Typical usage:
+1. Default validation split:
+   `python scripts/disentangleNet/analysis/analyze_side_interpretability.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt`
+2. Evaluate all grouped samples:
+   `python scripts/disentangleNet/analysis/analyze_side_interpretability.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt --split all`
+3. Override block boundaries:
+   `python scripts/disentangleNet/analysis/analyze_side_interpretability.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt \\
+      --block_boundaries 0,22,45,82,119`
+
+Main outputs:
+- `<output_dir>/side_basis_stats.csv`
+- `<output_dir>/group_side_semantics.csv`
+- `<output_dir>/summary.json`
+"""
 
 from __future__ import annotations
 
@@ -22,6 +49,14 @@ from scripts.disentangleNet.analysis.analyze_checkpoint import (
 )
 from scripts.disentangleNet.model.distnet import DistNet
 
+# 1.加载checkpoint
+# 2.side basis基矩阵统计
+#   - 每个basis的fro_norm, l1_sum, mean_abs, max_abs
+#   - 每个basis与swap后的cosine相似度和l1差异 同一个部位，交换左右，分析basis关于左右是否对称
+#   - 每个basis在block上的绝对值分布，分析是否集中在某些block上
+# 3.每个group的side semantics统计
+#   - 每个group的side basis usage和side coeff的均值，分析不同
+# 4.汇总和输出：side_interpretability/summary.json，side_basis_stats.csv，group_side_semantics.csv
 
 SIDE_LABEL_NAMES = {
     0: "Left",
@@ -88,6 +123,9 @@ def load_model_from_checkpoint(
     if side_z_dim is not None:
         side_z_dim = int(side_z_dim)
     private_adapter_enabled = bool(config.get("private_adapter_enabled", False))
+    num_side_classes = int(config.get("num_side_classes", 3))
+    num_label5_classes = int(config.get("num_label5_classes", 5))
+    target_label_mode = str(config.get("target_label_mode", "side"))
 
     model = DistNet(
         levels=levels,
@@ -97,8 +135,10 @@ def load_model_from_checkpoint(
         shared_dim=shared_dim,
         private_dim=private_dim,
         private_decoder_hidden_dim=private_decoder_hidden_dim,
-        num_side_classes=3,
+        num_side_classes=num_side_classes,
+        num_label5_classes=num_label5_classes,
         num_dataset_classes=num_dataset_classes,
+        target_label_mode=target_label_mode,
         private_residual_weight=float(config.get("private_residual_weight", 0.25)),
         private_residual_max_l1=config.get("private_residual_max_l1"),
         shared_basis_soft_mixing=bool(config.get("shared_basis_soft_mixing", False)),
@@ -373,6 +413,17 @@ def analyze(
     output_dir: str | None = None,
     block_boundaries: str = "0,22,45,82,119",
 ):
+    """
+    Main CLI entry for side-basis interpretability analysis.
+
+    Parameters:
+    - `checkpoint_path`: trained checkpoint
+    - `data_roots`: optional comma-separated dataset roots; defaults to checkpoint config
+    - `split`: `train` or `val`
+    - `batch_size`, `num_workers`: loader controls
+    - `output_dir`: destination for basis statistics and group semantics
+    - `block_boundaries`: comma-separated matrix partition boundaries for block-mass summaries
+    """
     checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.exists():
         raise FileNotFoundError(checkpoint_path)

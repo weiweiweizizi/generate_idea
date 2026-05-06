@@ -1,0 +1,12 @@
+basis_global_index,basis_name,branch,level_index,level_name,local_basis_index,raw_coeff_column
+0,free_b0,free,0.0,free_level0,0,free_coeff_l0
+1,free_b1,free,0.0,free_level0,1,free_coeff_l0
+2,free_b2,free,1.0,free_level1,0,free_coeff_l1
+3,free_b3,free,1.0,free_level1,1,free_coeff_l1
+4,free_b4,free,1.0,free_level1,2,free_coeff_l1
+5,free_b5,free,1.0,free_level1,3,free_coeff_l1
+6,free_b6,free,1.0,free_level1,4,free_coeff_l1
+7,free_b7,free,1.0,free_level1,5,free_coeff_l1
+8,side_b0,side,,side,0,side_coeff
+9,side_b1,side,,side,1,side_coeff
+10,side_b2,side,,side,2,side_coeff

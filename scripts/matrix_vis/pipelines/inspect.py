@@ -8,7 +8,7 @@ from scripts.matrix_vis.io.config import load_config
 from scripts.matrix_vis.io.load_basis import load_basis_observation
 from scripts.matrix_vis.io.load_mesh import load_mesh
 
-
+# ？ 
 def inspect_axis_config(config: str) -> dict:
     cfg = load_config(config)
     mesh = load_mesh(cfg.mesh)

@@ -1,0 +1,28 @@
+{
+  "checkpoint_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/best.pt",
+  "split": "all",
+  "num_window_rows": 450,
+  "num_long_rows": 4950,
+  "num_subjects": 267,
+  "num_groups": 293,
+  "num_datasets": 2,
+  "free_levels": [
+    2,
+    6
+  ],
+  "free_basis_count": 8,
+  "side_basis_count": 3,
+  "total_basis_count": 11,
+  "data_roots": "data/win20-step20/IMR,data/win20-step20/TT",
+  "mode": "x",
+  "region": "mouth",
+  "use_difference": true,
+  "signed_normalize": "per_sample",
+  "group_size": 4,
+  "apply_deleted_filter": true,
+  "paths": {
+    "wide_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/window_basis_activations_wide.csv",
+    "long_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/window_basis_activations_long.csv",
+    "basis_manifest_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/basis_manifest.csv"
+  }
+}

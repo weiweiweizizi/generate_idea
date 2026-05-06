@@ -1,4 +1,26 @@
 #!/usr/bin/env python
+"""比较 full341 场景下 OSQP 与 matrix_free_cg 的重建差异。
+
+这个脚本用于回答一个具体问题：同一组 `axis_x/axis_y` 重建，
+如果求解器换成 `matrix_free_cg`，相对 `OSQP` 会差多少。
+
+输出包括：
+- `summary.json`: x / y / 二维 L2 的 MAE、RMSE、max 等统计
+- `comparison.png`: 末帧叠加图、差异热度图、逐帧统计曲线、直方图
+- `difference_data.npz`: 便于后续分析的坐标与差分缓存
+
+常用命令：
+```bash
+python scripts/matrix_vis/scripts/compare_full341_solvers.py
+
+python scripts/matrix_vis/scripts/compare_full341_solvers.py \
+  --osqp-x outputs/matrix_vis/.../osqp/axis_x/solution.npz \
+  --osqp-y outputs/matrix_vis/.../osqp/axis_y/solution.npz \
+  --cg-x outputs/matrix_vis/.../matrix_free_cg/axis_x/solution.npz \
+  --cg-y outputs/matrix_vis/.../matrix_free_cg/axis_y/solution.npz \
+  --output-dir outputs/matrix_vis/real_compare/... 
+```
+"""
 
 from __future__ import annotations
 
@@ -189,26 +211,35 @@ def _save_figure(
 
 
 def main() -> None:
+    """CLI 入口：读取两套解并导出求解器差异摘要。"""
     parser = argparse.ArgumentParser(description="Compare full341 OSQP and matrix_free_cg reconstructions.")
     parser.add_argument(
         "--osqp-x",
         type=Path,
-        default=Path("outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_x_full341_anchor_facebox/solution.npz"),
+        default=Path(
+            "outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_109_010_338_108_151_337/osqp/axis_x/solution.npz"
+        ),
     )
     parser.add_argument(
         "--osqp-y",
         type=Path,
-        default=Path("outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_y_full341_anchor_facebox/solution.npz"),
+        default=Path(
+            "outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_109_010_338_108_151_337/osqp/axis_y/solution.npz"
+        ),
     )
     parser.add_argument(
         "--cg-x",
         type=Path,
-        default=Path("outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_x_full341_anchor_facebox_matrixfree/solution.npz"),
+        default=Path(
+            "outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_109_010_338_108_151_337/matrix_free_cg/axis_x/solution.npz"
+        ),
     )
     parser.add_argument(
         "--cg-y",
         type=Path,
-        default=Path("outputs/matrix_vis/real/imr_00228_win005_minus_win004_axis_y_full341_anchor_facebox_matrixfree/solution.npz"),
+        default=Path(
+            "outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_109_010_338_108_151_337/matrix_free_cg/axis_y/solution.npz"
+        ),
     )
     parser.add_argument("--layout-source", type=Path, default=DEFAULT_LAYOUT_SOURCE)
     parser.add_argument("--mesh", type=Path, default=DEFAULT_MESH)

@@ -1,0 +1,49 @@
+{
+  "experiment_name": "imr_00228_win005_minus_win004_axis_y_full341_anchor_facebox",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_033_263_010_175/matrix_free_cg/axis_y",
+  "axis": "y",
+  "num_subset_points": 341,
+  "num_pairwise_observations": 57970,
+  "observation_truncation": null,
+  "anchor_point_ids": [
+    33,
+    263,
+    10,
+    175
+  ],
+  "anchor_point_id": 33,
+  "plot_warning": null,
+  "comparison_plot_warning": null,
+  "comparison_metrics": null,
+  "diagnostics": {
+    "status": "solved",
+    "objective_value": -10075.95838773785,
+    "num_points": 341,
+    "num_time_steps": 20,
+    "num_observations": 57970,
+    "num_outer_iterations": 4,
+    "wall_time": {
+      "setup_time": 0.0,
+      "solve_times": [
+        12.202378486996167,
+        9.33402059799846,
+        8.502090611000312,
+        9.430231645994354
+      ],
+      "total_time": 39.468721341989294
+    },
+    "solver_stats": {
+      "solver_name": "matrix_free_cg",
+      "num_iters": 84,
+      "solve_time": 9.430231645994354,
+      "setup_time": 0.0,
+      "run_time": 39.468721341989294,
+      "outer_cg_iterations": [
+        90,
+        82,
+        74,
+        84
+      ]
+    }
+  }
+}

@@ -1,4 +1,34 @@
 #!/usr/bin/env python
+"""
+Inspect one disentangleNet checkpoint at the group level.
+
+What this script does:
+- Load a trained checkpoint plus its evaluation split.
+- Export free/side basis banks and compact heatmap visualizations.
+- Collect group-level latent / representation tensors.
+- Fit lightweight linear probes for side label and dataset label.
+- Summarize reconstruction, usage, latent alignment, and probe behavior.
+
+Typical usage:
+1. Default validation split:
+   `python scripts/disentangleNet/analysis/analyze_checkpoint.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt`
+2. Evaluate all available grouped data:
+   `python scripts/disentangleNet/analysis/analyze_checkpoint.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt --split all`
+3. Write artifacts to a custom directory:
+   `python scripts/disentangleNet/analysis/analyze_checkpoint.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt \\
+      --output_dir outputs/disentangleNet/v31_current_verify/custom_analysis`
+
+Main outputs:
+- `<output_dir>/summary.json`
+- `<output_dir>/basis_bank.npy`
+- `<output_dir>/basis_bank_heatmap.png`
+- `<output_dir>/side_basis_bank.npy`
+- `<output_dir>/side_basis_bank_heatmap.png`
+- `<output_dir>/group_level_representations.npz`
+"""
 
 from __future__ import annotations
 
@@ -30,6 +60,21 @@ SKLEARN_LOGISTIC_REGRESSION = None
 SKLEARN_IMPORT_ERROR = None
 SKLEARN_IMPORT_ATTEMPTED = False
 
+# 1.加载模型和数据，提取特征，拟合线性探针，并保存分析结果和可视化图像。
+# 2.提取basis（包括2+6+3共11个basis），同时画成heatmap
+# 4.打探针：
+#   - side probe: 用side_rep预测side_label，free_rep预测side_label
+#   - dataset probe: 用side_rep预测dataset_label，free_rep预测dataset_label，
+# 5.输出：analysis/summary.json，basis_bank.npy，basis_bank_heatmap.png，side_basis_bank.npy，side_basis_bank_heatmap.png（如果有的话）
+
+
+def resolve_primary_label_view(config: dict) -> str:
+    """Choose the default label semantics for one checkpoint."""
+
+    target_label_mode = str(config.get("target_label_mode", "side"))
+    if target_label_mode in {"label5class", "both"}:
+        return "label5class"
+    return "side"
 
 def parse_levels(levels) -> tuple[int, ...]:
     if isinstance(levels, str):
@@ -450,6 +495,7 @@ def collect_group_representations(
     free_latents = []
     private_reps = []
     side_labels = []
+    label5_labels = []
     dataset_labels = []
     group_ids = []
     seen_batches = 0
@@ -570,6 +616,9 @@ def collect_group_representations(
                 side_labels.append(
                     batch["side_label"][group_valid_mask.cpu()].cpu().numpy().astype(np.int64)
                 )
+                label5_labels.append(
+                    batch["label_5class"][group_valid_mask.cpu()].cpu().numpy().astype(np.int64)
+                )
                 dataset_labels.append(
                     batch["dataset_label"][group_valid_mask.cpu()].cpu().numpy().astype(np.int64)
                 )
@@ -632,23 +681,32 @@ def collect_group_representations(
             "group_pooled_free_latent": concat_feature_list(free_latents),
             "group_pooled_private_rep": concat_feature_list(private_reps),
             "side_label": concat_label_list(side_labels),
+            "label_5class": concat_label_list(label5_labels),
             "dataset_label": concat_label_list(dataset_labels),
             "group_id": np.asarray(group_ids, dtype=object),
         },
     }
 
 
-def build_probe_summary(group_representations: dict, seed: int) -> tuple[dict, dict]:
+def build_probe_summary(
+    group_representations: dict,
+    seed: int,
+    *,
+    primary_label_view: str,
+) -> tuple[dict, dict, dict, dict]:
     """Fit post-hoc side and dataset probes from pooled group representations."""
 
     side_rep = group_representations["group_pooled_side_rep"]
     free_rep = group_representations["group_pooled_free_rep"]
     private_rep = group_representations["group_pooled_private_rep"]
     side_labels = group_representations["side_label"]
+    label5_labels = group_representations["label_5class"]
     dataset_labels = group_representations["dataset_label"]
 
     side_from_side = fit_linear_probe(side_rep, side_labels, seed=seed)
     side_from_free = fit_linear_probe(free_rep, side_labels, seed=seed)
+    label5_from_side = fit_linear_probe(side_rep, label5_labels, seed=seed)
+    label5_from_free = fit_linear_probe(free_rep, label5_labels, seed=seed)
     dataset_from_side = fit_linear_probe(side_rep, dataset_labels, seed=seed)
     dataset_from_free = fit_linear_probe(free_rep, dataset_labels, seed=seed)
     dataset_from_private = fit_linear_probe(private_rep, dataset_labels, seed=seed)
@@ -664,6 +722,18 @@ def build_probe_summary(group_representations: dict, seed: int) -> tuple[dict, d
         "side_from_free_rep_error": side_from_free["error"],
         "side_from_side_rep_accuracies": side_from_side["accuracies"],
         "side_from_free_rep_accuracies": side_from_free["accuracies"],
+    }
+    label5_probe = {
+        "label5_from_side_rep_acc": label5_from_side["accuracy"],
+        "label5_from_side_rep_acc_std": label5_from_side["accuracy_std"],
+        "label5_from_free_rep_acc": label5_from_free["accuracy"],
+        "label5_from_free_rep_acc_std": label5_from_free["accuracy_std"],
+        "label5_from_side_rep_backend": label5_from_side["backend"],
+        "label5_from_free_rep_backend": label5_from_free["backend"],
+        "label5_from_side_rep_error": label5_from_side["error"],
+        "label5_from_free_rep_error": label5_from_free["error"],
+        "label5_from_side_rep_accuracies": label5_from_side["accuracies"],
+        "label5_from_free_rep_accuracies": label5_from_free["accuracies"],
     }
     dataset_probe = {
         "dataset_from_side_rep_acc": dataset_from_side["accuracy"],
@@ -682,7 +752,11 @@ def build_probe_summary(group_representations: dict, seed: int) -> tuple[dict, d
         "dataset_from_free_rep_accuracies": dataset_from_free["accuracies"],
         "dataset_from_private_rep_accuracies": dataset_from_private["accuracies"],
     }
-    return side_probe, dataset_probe
+    primary_label_probe = {
+        "primary_label_view": primary_label_view,
+        **(label5_probe if primary_label_view == "label5class" else side_probe),
+    }
+    return side_probe, label5_probe, dataset_probe, primary_label_probe
 
 
 def analyze(
@@ -694,6 +768,16 @@ def analyze(
     num_workers: int = 0,
     output_dir: str | None = None,
 ):
+    """
+    Main CLI entry for checkpoint-level inspection.
+
+    Parameters:
+    - `checkpoint_path`: trained checkpoint to inspect
+    - `data_roots`: optional comma-separated dataset roots; defaults to checkpoint config
+    - `split`: `train` or `val`
+    - `batch_size`, `max_batches`, `num_workers`: evaluation loader controls
+    - `output_dir`: destination for exported artifacts; defaults to `<checkpoint_dir>/analysis`
+    """
     checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.exists():
         raise FileNotFoundError(checkpoint_path)
@@ -744,6 +828,10 @@ def analyze(
         side_z_dim = int(side_z_dim)
     private_adapter_enabled = bool(config.get("private_adapter_enabled", False))
     discrete_side_loss_enabled = bool(config.get("discrete_side_loss_enabled", True))
+    num_side_classes = int(config.get("num_side_classes", 3))
+    num_label5_classes = int(config.get("num_label5_classes", 5))
+    target_label_mode = str(config.get("target_label_mode", "side"))
+    primary_label_view = resolve_primary_label_view(config)
 
     output_dir = Path(output_dir or checkpoint_path.parent / "analysis")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -777,8 +865,10 @@ def analyze(
         shared_dim=shared_dim,
         private_dim=private_dim,
         private_decoder_hidden_dim=private_decoder_hidden_dim,
-        num_side_classes=3,
+        num_side_classes=num_side_classes,
+        num_label5_classes=num_label5_classes,
         num_dataset_classes=len(specs),
+        target_label_mode=target_label_mode,
         private_residual_weight=float(config.get("private_residual_weight", 0.25)),
         private_residual_max_l1=config.get("private_residual_max_l1"),
         shared_basis_soft_mixing=bool(config.get("shared_basis_soft_mixing", False)),
@@ -843,14 +933,21 @@ def analyze(
         group_pooled_free_latent=group_representations["group_pooled_free_latent"],
         group_pooled_private_rep=group_representations["group_pooled_private_rep"],
         side_label=group_representations["side_label"],
+        label_5class=group_representations["label_5class"],
         dataset_label=group_representations["dataset_label"],
         group_id=group_representations["group_id"],
     )
-    side_probe, dataset_probe = build_probe_summary(group_representations, seed=seed)
+    side_probe, label5_probe, dataset_probe, primary_label_probe = build_probe_summary(
+        group_representations,
+        seed=seed,
+        primary_label_view=primary_label_view,
+    )
 
     summary = {
         "checkpoint_path": str(checkpoint_path),
         "analysis_split": split,
+        "target_label_mode": target_label_mode,
+        "primary_label_view": primary_label_view,
         "basis_shape": list(basis.shape),
         "levels": list(levels),
         "side_basis_shape": list(side_basis.shape),
@@ -893,6 +990,8 @@ def analyze(
         "mean_side_path_usage_per_basis": analysis_outputs["mean_side_path_usage_per_basis"],
         "mean_free_path_usage_per_basis": analysis_outputs["mean_free_path_usage_per_basis"],
         "side_probe": side_probe,
+        "label5_probe": label5_probe,
+        "primary_label_probe": primary_label_probe,
         "dataset_probe": dataset_probe,
         "artifacts": {
             "basis_bank": str(basis_path),

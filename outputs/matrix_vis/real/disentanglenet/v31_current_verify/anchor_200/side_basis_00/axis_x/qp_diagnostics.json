@@ -1,0 +1,31 @@
+{
+  "status": "solved",
+  "objective_value": -392.6226477025381,
+  "num_points": 119,
+  "num_time_steps": 20,
+  "num_observations": 7021,
+  "num_outer_iterations": 4,
+  "wall_time": {
+    "setup_time": 0.0,
+    "solve_times": [
+      1.2924566209840123,
+      0.8009858309815172,
+      0.7832385509973392,
+      0.6624012750107795
+    ],
+    "total_time": 3.539082277973648
+  },
+  "solver_stats": {
+    "solver_name": "matrix_free_cg",
+    "num_iters": 57,
+    "solve_time": 0.6624012750107795,
+    "setup_time": 0.0,
+    "run_time": 3.539082277973648,
+    "outer_cg_iterations": [
+      112,
+      68,
+      68,
+      57
+    ]
+  }
+}

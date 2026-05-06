@@ -1,4 +1,34 @@
 #!/usr/bin/env python
+"""
+Run subject-level k-fold probe evaluation from one checkpoint.
+
+What this script does:
+- Rebuild the full train+val grouped dataset from checkpoint config.
+- Collect group-level representations and side semantics for all groups.
+- Re-split subjects into stratified folds.
+- Evaluate several lightweight probe tasks fold-by-fold.
+- Export subject assignments, per-fold metrics, predictions, confusion matrices, and a Markdown report.
+
+Typical usage:
+1. Default 5-fold report:
+   `python scripts/disentangleNet/analysis/analyze_kfold_report.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt`
+2. Custom split count:
+   `python scripts/disentangleNet/analysis/analyze_kfold_report.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt --requested_splits 10`
+3. Custom output directory:
+   `python scripts/disentangleNet/analysis/analyze_kfold_report.py \\
+      outputs/disentangleNet/v31_current_verify/best.pt \\
+      --output_dir outputs/disentangleNet/v31_current_verify/kfold_report_custom`
+
+Main outputs:
+- `<output_dir>/summary.json`
+- `<output_dir>/report.md`
+- `<output_dir>/subject_fold_assignments.csv`
+- `<output_dir>/probe_summary.csv`
+- `<output_dir>/probe_fold_metrics.csv`
+- `<output_dir>/probe_predictions.csv`
+"""
 
 from __future__ import annotations
 
@@ -21,6 +51,7 @@ from scripts.disentangleNet.analysis.analyze_checkpoint import (
     build_eval_dataset,
     build_specs,
     collect_group_representations,
+    resolve_primary_label_view,
 )
 from scripts.disentangleNet.analysis.analyze_side_interpretability import (
     SIDE_LABEL_NAMES,
@@ -92,6 +123,7 @@ def build_full_eval_dataset(
 def combine_group_representations(group_outputs: dict) -> pd.DataFrame:
     group_ids = group_outputs["group_representations"]["group_id"]
     side_labels = group_outputs["group_representations"]["side_label"]
+    label5_labels = group_outputs["group_representations"]["label_5class"]
     dataset_labels = group_outputs["group_representations"]["dataset_label"]
     return pd.DataFrame(
         {
@@ -100,6 +132,7 @@ def combine_group_representations(group_outputs: dict) -> pd.DataFrame:
             "dataset_name": [parse_dataset_name(group_id) for group_id in group_ids],
             "side_label": side_labels.astype(np.int64),
             "side_label_name": [SIDE_LABEL_NAMES.get(int(label), str(int(label))) for label in side_labels],
+            "label_5class": label5_labels.astype(np.int64),
             "dataset_label": dataset_labels.astype(np.int64),
         }
     )
@@ -127,16 +160,46 @@ def resolve_stratify_labels(
     manifest_df: pd.DataFrame,
     *,
     requested_splits: int,
+    primary_label_view: str,
 ) -> tuple[str, pd.Series, int]:
     subject_df = (
         manifest_df.groupby("subject", as_index=False)
         .agg(
             side_label=("side_label", "first"),
+            label_5class=("label_5class", "first"),
             dataset_label=("dataset_label", "first"),
             num_groups=("group_id", "count"),
         )
         .copy()
     )
+    if primary_label_view == "label5class":
+        subject_df["joint_label5_dataset"] = (
+            subject_df["label_5class"].astype(str)
+            + "|d"
+            + subject_df["dataset_label"].astype(str)
+        )
+        joint_counts = subject_df["joint_label5_dataset"].value_counts()
+        if not joint_counts.empty and int(joint_counts.min()) >= requested_splits:
+            return (
+                "joint_label5_dataset",
+                subject_df.set_index("subject")["joint_label5_dataset"],
+                requested_splits,
+            )
+
+        label5_counts = subject_df["label_5class"].value_counts()
+        if label5_counts.empty:
+            raise RuntimeError("No label_5class labels found for k-fold stratification")
+        resolved_splits = min(int(requested_splits), int(label5_counts.min()))
+        if resolved_splits < 2:
+            raise RuntimeError(
+                f"Need at least 2 subjects per class, got label_5class counts {label5_counts.to_dict()}"
+            )
+        return (
+            "label5class_only",
+            subject_df.set_index("subject")["label_5class"].astype(str),
+            resolved_splits,
+        )
+
     subject_df["joint_label"] = (
         subject_df["side_label"].astype(str) + "|d" + subject_df["dataset_label"].astype(str)
     )
@@ -528,6 +591,16 @@ def analyze(
     requested_splits: int = 5,
     output_dir: str | None = None,
 ):
+    """
+    Main CLI entry for k-fold probe reporting.
+
+    Parameters:
+    - `checkpoint_path`: trained checkpoint
+    - `data_roots`: optional comma-separated dataset roots; defaults to checkpoint config
+    - `batch_size`, `num_workers`: loader controls
+    - `requested_splits`: requested number of subject folds
+    - `output_dir`: destination for exported report artifacts
+    """
     checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.exists():
         raise FileNotFoundError(checkpoint_path)
@@ -605,6 +678,7 @@ def analyze(
         group_pooled_free_latent=group_representations["group_pooled_free_latent"][row_indices],
         group_pooled_private_rep=group_representations["group_pooled_private_rep"][row_indices],
         side_label=manifest_df["side_label"].to_numpy(dtype=np.int64),
+        label_5class=manifest_df["label_5class"].to_numpy(dtype=np.int64),
         dataset_label=manifest_df["dataset_label"].to_numpy(dtype=np.int64),
         group_id=manifest_df["group_id"].to_numpy(dtype=object),
         subject=manifest_df["subject"].to_numpy(dtype=object),
@@ -613,9 +687,11 @@ def analyze(
     full_side_semantics_path = output_dir / "full_group_side_semantics.csv"
     manifest_df.to_csv(full_side_semantics_path, index=False)
 
+    primary_label_view = resolve_primary_label_view(model_config)
     stratification_mode, stratify_labels, resolved_splits = resolve_stratify_labels(
         manifest_df,
         requested_splits=requested_splits,
+        primary_label_view=primary_label_view,
     )
     subject_to_fold, subject_fold_df = greedy_subject_stratified_folds(
         manifest_df,
@@ -642,6 +718,13 @@ def analyze(
                     },
                     ensure_ascii=False,
                 ),
+                "label5_counts": json.dumps(
+                    {
+                        str(int(label)): int(count)
+                        for label, count in fold_manifest["label_5class"].value_counts().sort_index().items()
+                    },
+                    ensure_ascii=False,
+                ),
                 "dataset_counts": json.dumps(
                     {
                         str(specs[int(label)].dataset_name): int(count)
@@ -658,6 +741,18 @@ def analyze(
     task_specs = [
         ("side_from_side_rep", group_representations["group_pooled_side_rep"][row_indices], manifest_df["side_label"].to_numpy(dtype=np.int64), SIDE_LABEL_NAMES),
         ("side_from_free_rep", group_representations["group_pooled_free_rep"][row_indices], manifest_df["side_label"].to_numpy(dtype=np.int64), SIDE_LABEL_NAMES),
+        (
+            "label5_from_side_rep",
+            group_representations["group_pooled_side_rep"][row_indices],
+            manifest_df["label_5class"].to_numpy(dtype=np.int64),
+            {idx: str(idx) for idx in sorted(manifest_df["label_5class"].unique().tolist())},
+        ),
+        (
+            "label5_from_free_rep",
+            group_representations["group_pooled_free_rep"][row_indices],
+            manifest_df["label_5class"].to_numpy(dtype=np.int64),
+            {idx: str(idx) for idx in sorted(manifest_df["label_5class"].unique().tolist())},
+        ),
         (
             "dataset_from_side_rep",
             group_representations["group_pooled_side_rep"][row_indices],
@@ -683,10 +778,22 @@ def analyze(
             SIDE_LABEL_NAMES,
         ),
         (
+            "label5_from_usage",
+            manifest_df[[col for col in manifest_df.columns if col.startswith("usage_b")]].to_numpy(dtype=np.float32),
+            manifest_df["label_5class"].to_numpy(dtype=np.int64),
+            {idx: str(idx) for idx in sorted(manifest_df["label_5class"].unique().tolist())},
+        ),
+        (
             "side_from_coeff",
             manifest_df[["side_coeff_mean"]].to_numpy(dtype=np.float32),
             manifest_df["side_label"].to_numpy(dtype=np.int64),
             SIDE_LABEL_NAMES,
+        ),
+        (
+            "label5_from_coeff",
+            manifest_df[["side_coeff_mean"]].to_numpy(dtype=np.float32),
+            manifest_df["label_5class"].to_numpy(dtype=np.int64),
+            {idx: str(idx) for idx in sorted(manifest_df["label_5class"].unique().tolist())},
         ),
         (
             "side_from_usage_coeff",
@@ -695,6 +802,14 @@ def analyze(
             ].to_numpy(dtype=np.float32),
             manifest_df["side_label"].to_numpy(dtype=np.int64),
             SIDE_LABEL_NAMES,
+        ),
+        (
+            "label5_from_usage_coeff",
+            manifest_df[
+                [col for col in manifest_df.columns if col.startswith("usage_b")] + ["side_coeff_mean"]
+            ].to_numpy(dtype=np.float32),
+            manifest_df["label_5class"].to_numpy(dtype=np.int64),
+            {idx: str(idx) for idx in sorted(manifest_df["label_5class"].unique().tolist())},
         ),
         (
             "dataset_from_usage",
@@ -729,7 +844,15 @@ def analyze(
             labels=labels,
             label_names_map=label_name_map,
             manifest_df=manifest_df[
-                ["group_id", "subject", "dataset_name", "side_label", "side_label_name", "dataset_label"]
+                [
+                    "group_id",
+                    "subject",
+                    "dataset_name",
+                    "side_label",
+                    "side_label_name",
+                    "label_5class",
+                    "dataset_label",
+                ]
             ].copy(),
             subject_to_fold=subject_to_fold,
             num_splits=resolved_splits,
@@ -773,9 +896,14 @@ def analyze(
         "requested_splits": int(requested_splits),
         "resolved_splits": int(resolved_splits),
         "stratification_mode": stratification_mode,
+        "primary_label_view": primary_label_view,
         "side_counts": {
             SIDE_LABEL_NAMES.get(int(label), str(int(label))): int(count)
             for label, count in manifest_df["side_label"].value_counts().sort_index().items()
+        },
+        "label5_counts": {
+            str(int(label)): int(count)
+            for label, count in manifest_df["label_5class"].value_counts().sort_index().items()
         },
         "dataset_counts": {
             specs[int(label)].dataset_name: int(count)

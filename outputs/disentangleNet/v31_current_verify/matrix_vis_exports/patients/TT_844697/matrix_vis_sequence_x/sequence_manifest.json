@@ -1,0 +1,82 @@
+{
+  "windows": [
+    {
+      "window_idx": 1,
+      "prev_window_idx": 0,
+      "group_id": "TT:844697:x:group000",
+      "side_pred": 1,
+      "side_true": 1,
+      "output_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/window_001",
+      "diagnostics": {
+        "status": "solved",
+        "objective_value": -682.1398619031052,
+        "num_points": 119,
+        "num_time_steps": 20,
+        "num_observations": 7021,
+        "num_outer_iterations": 4,
+        "wall_time": {
+          "setup_time": 0.0,
+          "solve_times": [
+            1.5556125069997506,
+            2.4656061309942743,
+            2.626554650007165,
+            3.0434986309992382
+          ],
+          "total_time": 9.691271919000428
+        },
+        "solver_stats": {
+          "solver_name": "matrix_free_cg",
+          "num_iters": 261,
+          "solve_time": 3.0434986309992382,
+          "setup_time": 0.0,
+          "run_time": 9.691271919000428,
+          "outer_cg_iterations": [
+            133,
+            214,
+            228,
+            261
+          ]
+        }
+      }
+    },
+    {
+      "window_idx": 2,
+      "prev_window_idx": 1,
+      "group_id": "TT:844697:x:group000",
+      "side_pred": 1,
+      "side_true": 1,
+      "output_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/window_002",
+      "diagnostics": {
+        "status": "solved",
+        "objective_value": -3543.83867891399,
+        "num_points": 119,
+        "num_time_steps": 20,
+        "num_observations": 7021,
+        "num_outer_iterations": 4,
+        "wall_time": {
+          "setup_time": 0.0,
+          "solve_times": [
+            1.5489414850017056,
+            1.811616318009328,
+            1.4733789289894048,
+            1.8503508330031764
+          ],
+          "total_time": 6.684287565003615
+        },
+        "solver_stats": {
+          "solver_name": "matrix_free_cg",
+          "num_iters": 166,
+          "solve_time": 1.8503508330031764,
+          "setup_time": 0.0,
+          "run_time": 6.684287565003615,
+          "outer_cg_iterations": [
+            133,
+            163,
+            132,
+            166
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "output_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis",
+  "basis_shape": [
+    8,
+    119,
+    119
+  ],
+  "side_basis_shape": [
+    3,
+    119,
+    119
+  ],
+  "manifest_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis/basis_manifest.json",
+  "basis_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis/basis_bank_x.npy",
+  "side_basis_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis/side_basis_bank_x.npy",
+  "point_layout": "face_regions_grouped",
+  "point_layout_region_names": [
+    "around_mouth",
+    "mouth"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "wide_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/window_basis_activations_wide.csv",
+  "num_patients": 267,
+  "num_rankings": 160,
+  "pattern_counts": {
+    "right_like_diffuse_low_coeff": 89,
+    "normal_like_b9_b10_negative": 88,
+    "left_like_b10_pure_positive": 63,
+    "mixed_or_boundary": 27
+  },
+  "paths": {
+    "patient_profiles_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/patient_activation_profiles.csv",
+    "summary_by_side_label_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/summary_by_side_label.csv",
+    "summary_by_dataset_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/summary_by_dataset.csv",
+    "summary_by_dataset_and_side_label_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/summary_by_dataset_and_side_label.csv",
+    "patient_extreme_rankings_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/patient_extreme_rankings.csv",
+    "report_md": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/report.md"
+  }
+}

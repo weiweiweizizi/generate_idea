@@ -1,0 +1,11 @@
+{
+  "sequence_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x",
+  "output_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/real_preview_mouth_regions_anchor14",
+  "num_windows": 2,
+  "num_frames": 40,
+  "subset_point_count": 119,
+  "y_mode": "static_mesh_template",
+  "x_solution": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/real_preview_mouth_regions_anchor14/stitched_x_solution.npz",
+  "y_solution": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/real_preview_mouth_regions_anchor14/static_y_solution.npz",
+  "preview_output_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/matrix_vis_sequence_x/real_preview_mouth_regions_anchor14"
+}

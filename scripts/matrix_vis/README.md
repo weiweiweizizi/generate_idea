@@ -246,3 +246,29 @@ scripts/matrix_vis/
 - 交互式调参界面
 
 如果后续要继续演化，建议以 [modeling.md](/home/weizilin/generate_idea/scripts/matrix_vis/modeling.md) 为准，而不要再以历史两阶段草案为准。
+
+## 当前 `disentangleNet` 桥接范围
+
+当前第一版桥接只支持两种输入：
+
+1. basis-wise `x` reconstruction
+   - 输入来自 `disentangleNet` 导出的 `basis_bank_x.npy`
+   - 当前布局不是纯 `mouth` 42 点，而是 `face_regions_grouped` 下的
+     `around_mouth + mouth` 119 点
+   - 每个 basis 单独作为一个 observation matrix 进入 `matrix_vis`
+   - 每个 `x` 结果再与固定的 `y` 结果合成
+
+2. patient-wise coefficient-composed `x` reconstruction
+   - 输入来自一个目标患者的逐窗口系数组合矩阵
+   - 当前仅验证 `TT/844697`
+   - `y` 在第一版里保持静止
+
+当前桥接仍然不支持：
+
+- 直接读取 checkpoint 并在 `matrix_vis` 内部完成推理
+- 在 `matrix_vis` 内部对多个 basis 联合做系数组合
+- 自动从 `mouth` basis 扩展到 full341 布局
+
+桥接契约见：
+
+- [docs/disentanglenet_matrix_vis_contract.md](/home/weizilin/generate_idea/docs/disentanglenet_matrix_vis_contract.md)

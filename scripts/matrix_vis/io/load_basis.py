@@ -5,7 +5,8 @@ import numpy as np
 from scripts.matrix_vis.core.landmark_layout import resolve_subset_layout
 from scripts.matrix_vis.core.types import BasisConfig, BasisObservation
 
-
+# 支持直接加载或者差分加载；
+# 支持整理矩阵行列顺序以适配subset point id的任意排列（前提是matrix_layout正确指定了行列顺序）；
 def load_basis_observation(
     basis_config: BasisConfig,
     *,

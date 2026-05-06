@@ -221,6 +221,25 @@ mesh 是求解器获取初始位置的几何模板。
 - `basis.prev_source` + `basis.next_source`
   - loader 会自动计算 `next - prev`
 
+### 5.3.1 `disentangleNet` 桥接的第一版约束
+
+当前桥接约定不是让 `matrix_vis` 直接处理 `disentangleNet` 的 latent，而是
+让 `disentangleNet` 先导出可消费的 observation matrix：
+
+- Step 1
+  - 导出 `x/mouth` basis stack
+  - 当前 basis 对应的是 `around_mouth + mouth` 的 119 点 grouped layout
+  - 每个 basis 单独做一次 `x` 重建
+  - 每个 `x` 结果再与固定 `y` 结果合成
+- Step 2
+  - 对目标患者先按窗口系数组合出一个 `x` observation matrix
+  - 再把这个矩阵送入 `matrix_vis`
+  - 第一版 `y` 保持静止
+
+桥接契约的详细字段定义见：
+
+- [docs/disentanglenet_matrix_vis_contract.md](/home/weizilin/generate_idea/docs/disentanglenet_matrix_vis_contract.md)
+
 ### 5.4 Observation table
 
 方阵会被转换成上三角 pairwise 表格：

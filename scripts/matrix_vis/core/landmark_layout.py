@@ -6,6 +6,12 @@ from typing import Any
 
 import yaml
 
+# 从配置文件中加载面部区域定义和对称点对，返回一个字典和一个列表
+# 配置文件的内容示例：
+# face_regions:
+#   left_eye: 
+#   right_eye: 
+# symmetric_pairs:
 
 def _parse_symmetric_pairs(raw: Any) -> list[tuple[int, int]]:
     if isinstance(raw, list) and raw and isinstance(raw[0], (list, tuple)):
@@ -17,7 +23,7 @@ def _parse_symmetric_pairs(raw: Any) -> list[tuple[int, int]]:
         return [(int(left), int(right)) for left, right in ast.literal_eval(raw)]
     return []
 
-
+# 从yaml加载面部区域配置（face_regions）
 def load_face_region_config(
     config_path: str | Path,
     *,
@@ -43,7 +49,7 @@ def load_face_region_config(
     symmetric_pairs = _parse_symmetric_pairs(section.get("symmetric_pairs", []))
     return face_regions, symmetric_pairs
 
-
+# 将各区域按照配置中的顺序进行分组，并将对称区域相邻放，返回一个包含所有点ID的元组
 def build_grouped_face_region_subset(
     face_regions: dict[str, list[int]],
     symmetric_pairs: list[tuple[int, int]],
@@ -55,13 +61,13 @@ def build_grouped_face_region_subset(
 
     ordered: list[int] = []
     seen: set[int] = set()
-    for left_points in face_regions.values():
+    for left_points in face_regions.values():   # face_regions默认只有左边的坐标
         left_group: list[int] = []
         right_group: list[int] = []
         for left_point in left_points:
             point_id = int(left_point)
             right_point = sym_map.get(point_id)
-            if point_id not in seen:
+            if point_id not in seen:            # 如果左边的点还没有被处理过，就把它加入左边的分组，并标记为已处理
                 left_group.append(point_id)
                 seen.add(point_id)
             if right_point is not None and right_point not in seen:
@@ -72,6 +78,7 @@ def build_grouped_face_region_subset(
     return tuple(ordered)
 
 
+# 根据用户指定的区域名称过滤face_regions字典，返回一个新的字典，如果用户指定了不存在的区域名称，则抛出异常
 def _filter_face_regions(
     face_regions: dict[str, list[int]],
     *,
@@ -91,6 +98,8 @@ def _filter_face_regions(
     return filtered
 
 
+# 根据用户指定的subset_layout和相关配置，返回一个包含所选点ID的元组
+# mouth这里似乎不够
 def resolve_subset_layout(
     *,
     subset_layout: str,

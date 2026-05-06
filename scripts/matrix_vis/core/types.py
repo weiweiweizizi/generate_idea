@@ -6,7 +6,14 @@ from typing import Any
 
 import numpy as np
 
+# 定义所有数据类
+# 配置类：   ExperimentConfig，MeshConfig，ProjectionConfig，BasisConfig，QPConfig,ExportConfig
+#           ComposeInputConfig，ComposeExportConfig，ComposeConfig，MatrixVisConfig
 
+# 运行结果： MeshTemplate，AxisProjection，BasisObservation，TrajectorySolution，ComposedMotion
+#       
+
+# 枚举常量
 SUPPORTED_AXES = ("x", "y")
 SUPPORTED_MESH_FORMATS = ("numpy", "mediapipe_canonical_obj")
 SUPPORTED_MESH_DIMENSIONS = ("2d", "3d")

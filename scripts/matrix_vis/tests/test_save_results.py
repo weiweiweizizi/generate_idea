@@ -37,14 +37,14 @@ def test_solution_npz_round_trip(tmp_path: Path) -> None:
 def test_save_composed_motion_npz_writes_expected_keys(tmp_path: Path) -> None:
     save_composed_motion_npz(
         output_dir=tmp_path,
-        point_ids=np.asarray([10, 11, 12], dtype=np.int64),
+        point_ids=np.asarray([10, 12], dtype=np.int64),
         time_grid=np.asarray([0.0, 0.5, 1.0], dtype=np.float32),
-        coordinates=np.zeros((3, 3, 2), dtype=np.float32),
+        coordinates=np.zeros((3, 2, 2), dtype=np.float32),
         subset_point_ids=np.asarray([10, 12], dtype=np.int64),
     )
 
     loaded = dict(np.load(tmp_path / "composed_motion.npz"))
 
     assert sorted(loaded.keys()) == ["coordinates", "point_ids", "subset_point_ids", "time_grid"]
-    assert loaded["point_ids"].tolist() == [10, 11, 12]
+    assert loaded["point_ids"].tolist() == [10, 12]
     assert loaded["subset_point_ids"].tolist() == [10, 12]

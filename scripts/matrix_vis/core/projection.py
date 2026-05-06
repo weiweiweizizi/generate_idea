@@ -5,7 +5,7 @@ import numpy as np
 from scripts.matrix_vis.core.mesh import extract_subset_indices
 from scripts.matrix_vis.core.types import AxisProjection, MeshTemplate, ProjectionConfig
 
-
+# 将mesh投影到指定轴上，返回AxisProjection实例
 def project_mesh_to_axis(
     mesh: MeshTemplate,
     projection_config: ProjectionConfig,

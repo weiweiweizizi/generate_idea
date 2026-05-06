@@ -1,0 +1,17 @@
+{
+  "checkpoint_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/best.pt",
+  "dataset_name": "TT",
+  "subject": "844697",
+  "mode": "x",
+  "region": "mouth",
+  "point_layout": "face_regions_grouped",
+  "point_layout_region_names": [
+    "around_mouth",
+    "mouth"
+  ],
+  "matrix_size": 119,
+  "num_valid_windows": 2,
+  "composition_rule": "shared_free_representation_plus_side_path_representation_weighted_basis_sum",
+  "bundle_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/patient_844697_x_sequence.npz",
+  "side_predictions_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/patients/TT_844697/patient_844697_side_predictions.csv"
+}

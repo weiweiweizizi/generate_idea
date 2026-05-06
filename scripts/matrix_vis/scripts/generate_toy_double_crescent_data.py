@@ -1,3 +1,24 @@
+"""生成 matrix_vis toy 数据：从扁平 leaf 形状平滑张开到近矩形嘴形。
+
+这个脚本用于构造一个最小可控的 toy mouth-opening 轨迹，便于：
+- 检查 matrix_vis 的 basis 符号和几何直觉是否一致
+- 在不依赖真实 facemesh 数据时快速验证重建流程
+
+输出目录默认是：
+- `data/toy/matrix_vis/leaf_to_rectangle_mouth_opening/`
+
+输出文件包括：
+- `mesh_2d.npy`: 初始 contour
+- `trajectory_2d.npy`: 时间轨迹
+- `basis_open_mouth_x.npy`: x 轴距离矩阵变化
+- `basis_open_mouth_y.npy`: y 轴距离矩阵变化
+
+常用命令：
+```bash
+python scripts/matrix_vis/scripts/generate_toy_double_crescent_data.py
+```
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -67,6 +88,7 @@ def pairwise_axis_distance_matrix_diff(trajectory: np.ndarray, axis_index: int) 
 
 
 def main() -> None:
+    """CLI 入口：生成 toy 轮廓、轨迹和对应的 x/y basis。"""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     mesh_2d = build_flat_leaf_mesh()

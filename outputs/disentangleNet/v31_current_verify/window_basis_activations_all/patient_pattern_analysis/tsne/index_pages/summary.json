@@ -1,0 +1,28 @@
+{
+  "analysis_root": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/tsne",
+  "output_dir": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/tsne/index_pages",
+  "rows": [
+    "All Patients",
+    "IMR Only",
+    "TT Only"
+  ],
+  "columns": [
+    "All Basis",
+    "No Side",
+    "Side Only"
+  ],
+  "families": [
+    {
+      "feature_family": "combined",
+      "output_png": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/tsne/index_pages/combined_2d_index.png"
+    },
+    {
+      "feature_family": "usage",
+      "output_png": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/tsne/index_pages/usage_2d_index.png"
+    },
+    {
+      "feature_family": "activation",
+      "output_png": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/window_basis_activations_all/patient_pattern_analysis/tsne/index_pages/activation_2d_index.png"
+    }
+  ]
+}

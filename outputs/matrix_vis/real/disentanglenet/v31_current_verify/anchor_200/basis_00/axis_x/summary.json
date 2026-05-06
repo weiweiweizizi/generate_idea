@@ -1,0 +1,46 @@
+{
+  "experiment_name": "disentanglenet_v31_current_verify_basis_00_axis_x_anchor_200",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v31_current_verify/anchor_200/basis_00/axis_x",
+  "axis": "x",
+  "num_subset_points": 119,
+  "num_pairwise_observations": 7021,
+  "observation_truncation": null,
+  "anchor_point_ids": [
+    200
+  ],
+  "anchor_point_id": 200,
+  "plot_warning": null,
+  "comparison_plot_warning": null,
+  "comparison_metrics": null,
+  "diagnostics": {
+    "status": "solved",
+    "objective_value": -366.0927774570978,
+    "num_points": 119,
+    "num_time_steps": 20,
+    "num_observations": 7021,
+    "num_outer_iterations": 4,
+    "wall_time": {
+      "setup_time": 0.0,
+      "solve_times": [
+        1.3575099339941517,
+        0.495028353005182,
+        0.42753472199547105,
+        0.21989432998816483
+      ],
+      "total_time": 2.4999673389829695
+    },
+    "solver_stats": {
+      "solver_name": "matrix_free_cg",
+      "num_iters": 18,
+      "solve_time": 0.21989432998816483,
+      "setup_time": 0.0,
+      "run_time": 2.4999673389829695,
+      "outer_cg_iterations": [
+        117,
+        42,
+        37,
+        18
+      ]
+    }
+  }
+}

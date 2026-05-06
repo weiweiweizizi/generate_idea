@@ -1,0 +1,42 @@
+experiment:
+  name: imr_00228_win005_minus_win004_axis_y_full341_anchor_facebox
+  output_dir: outputs/matrix_vis/real/imr_00228_win005_minus_win004/full341/anchor_033_263_010_175/matrix_free_cg/axis_y
+mesh:
+  source: /home/weizilin/code_reproduction/canonical_face/canonical_face_model.obj
+  format: mediapipe_canonical_obj
+  dimension: 3d
+  point_ids: auto
+  normalization_scope: face_regions
+projection:
+  axis: y
+  source_axis_index: 1
+  subset_layout:
+    name: face_regions_grouped
+    source: /home/weizilin/code_reproduction/corelation-lm/project/configs/extractors.yaml
+    extractor_name: mediapipe
+  anchor_point_ids:
+  - 33
+  - 263
+  - 10
+  - 175
+basis:
+  prev_source: data/win20-step20/IMR/00228/win_004_y.npy
+  next_source: data/win20-step20/IMR/00228/win_005_y.npy
+  basis_index: 0
+  matrix_shape: square
+  value_semantics: mean_distance_delta
+solver:
+  num_time_steps: 20
+  lambda_data: 1.0
+  lambda_acc: 10.0
+  lambda_vel: 1.0
+  enforce_order: false
+  max_displacement: null
+  qp_backend: matrix_free_cg
+  max_observations: null
+export:
+  save_projected_mesh: true
+  save_qp_diagnostics: true
+  save_axis_plot: true
+  save_npz: true
+  save_json_summary: true

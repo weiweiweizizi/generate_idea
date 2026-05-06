@@ -1,0 +1,28 @@
+{
+  "manifest_path": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis/basis_manifest.json",
+  "generated_dir": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports",
+  "run_name": "matrix_vis_exports",
+  "num_basis": 8,
+  "fixed_y_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/svd_pc1/full341/anchor_109_010_338_108_151_337/matrix_free_cg/axis_y.yaml",
+  "fixed_y_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/svd_pc1/full341/anchor_109_010_338_108_151_337/matrix_free_cg/axis_y/solution.npz",
+  "axis_configs": [
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_00_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_01_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_02_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_03_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_04_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_05_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_06_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_07_axis_x.yaml"
+  ],
+  "compose_configs": [
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_00_compose_xy.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_01_compose_xy.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_02_compose_xy.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_03_compose_xy.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_04_compose_xy.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_05_compose_xy.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_06_compose_xy.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/matrix_vis_exports/basis_07_compose_xy.yaml"
+  ]
+}

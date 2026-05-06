@@ -9,7 +9,7 @@ from scipy import sparse
 from scripts.matrix_vis.core.types import QPConfig
 from scripts.matrix_vis.qp.variables import VariableLayout, build_time_grid, find_anchor_local_indices
 
-
+# 构建二次规划
 @dataclass(frozen=True)
 class AxisQPBundle:
     pair_weights: np.ndarray
