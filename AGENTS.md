@@ -1,12 +1,54 @@
-# Repository Guidelines
+# 仓库协作指南
 
-## Project Structure & Module Organization
-This repository is a facial-motion research workspace, not a packaged library. Core analysis code lives in `scripts/`, with early decomposition experiments now grouped under `scripts/pilot_feasibility/` (`svd/`, `dmd/`, `grassmann/`, `blendshape/`, `nmf/`, `tucker/`). The `scripts/lq/` subtree contains the learning-based prototype (`train.py`, datasets, model code, and utilities). Validation experiments live in `scripts/val_codebook/`. Source data remains under `data/`, while reproducible analysis outputs should go under `outputs/`. Narrative context lives in `IDEA_REPORT.md`, `IDEA_EXPERIMENTS.md`, `RESEARCH_PROGRESS.md`, `docs/`, `literature_notes/`, and `papers/`.
+## 项目定位与目录组织
 
-## Build, Test, and Development Commands
-Use the existing Conda environment noted in `CLAUDE.md`: `conda activate openmmlab`.
+这个仓库是一个**面部运动分解研究工作区**，不是打包发布的通用库。
 
-Typical commands:
+当前主要目录分工如下：
+
+- `scripts/`
+  - 代码主目录。
+  - 早期分解实验已整理到 `scripts/pilot_feasibility/`，按方法分成：
+    - `svd/`
+    - `dmd/`
+    - `grassmann/`
+    - `blendshape/`
+    - `nmf/`
+    - `tucker/`
+  - `scripts/lq/`
+    - 前置结构探索原型。
+  - `scripts/disentangleNet/`
+    - 当前冻结主线 `v31` 的训练与分析闭包。
+  - `scripts/matrix_vis/`
+    - 后验轨迹重建与可视化工具。
+  - `scripts/val_codebook/`
+    - 公共码本验证实验。
+- `data/`
+  - 原始数据与少量被视为数据本体的派生目录。
+- `outputs/`
+  - 可复现实验输出、训练结果、分析结果、可视化产物。
+- `docs/`
+  - 设计说明、计划、补充笔记。
+- `literature_notes/`
+  - 文献阅读记录。
+- 顶层研究文档：
+  - `IDEA_REPORT.md`
+  - `IDEA_EXPERIMENTS.md`
+  - `RESEARCH_PROGRESS.md`
+
+如果想快速看仓库里的 Markdown / README 分布，先看：
+
+- `docs/repo_index.md`
+
+## 环境与常用命令
+
+默认使用 `CLAUDE.md` 中提到的 Conda 环境：
+
+```bash
+conda activate openmmlab
+```
+
+常用命令示例：
 
 ```bash
 python scripts/pilot_feasibility/svd/svd_single_patient.py
@@ -15,16 +57,80 @@ python scripts/val_codebook/sweep.py --run
 python scripts/lq/train.py --data_roots=data/win10-step10/IMR,data/win10-step10/TT
 ```
 
-These run single analyses, correlation experiments, validation sweeps, and LQ model training. There is no root-level build system or Makefile in this checkout.
+这些命令分别对应：
 
-## Coding Style & Naming Conventions
-Follow the existing Python style in `scripts/`: 4-space indentation, module-level constants in `UPPER_SNAKE_CASE`, functions in `snake_case`, and descriptive filenames such as `svd_multi_patient_win5.py`. Keep scripts focused on one experiment. Prefer `pathlib.Path` for filesystem paths and keep dataset/window names explicit in output directories. Avoid committing generated caches such as `__pycache__/`.
+- 单个早期分解实验
+- DMD 与 blendshape 相关性分析
+- 公共码本验证 sweep
+- `lq` 训练
 
-## Testing Guidelines
-There is no automated unit-test suite yet. Validate changes by rerunning the affected script on a small, representative dataset slice and checking that expected outputs appear under `outputs/` or the intended preserved data directories. For `scripts/val_codebook/`, use `python scripts/val_codebook/sweep.py --summary` after runs to confirm aggregate metrics. Document any manual validation in the relevant research note or checklist under `docs/`.
+这个仓库当前**没有**根级 build system 或 Makefile。
 
-## Commit & Pull Request Guidelines
-Git history is not available in this workspace, so no repository-specific commit convention can be inferred. Use short imperative commit subjects, optionally scoped by area, for example: `scripts: refine win5 DMD correlation output`. Pull requests should state the research goal, list touched datasets/scripts, identify newly generated output paths, and include plots or screenshots when a change affects figures or reported metrics.
+## 代码风格
 
-## Data & Output Hygiene
-Treat `data/` as source data first: do not rename dataset folders casually, and keep new analysis results under `outputs/` unless a directory is explicitly part of the dataset itself (for example `TT-SVD`, `IMR-SVD`, `cal_diff`, `cal_diff_mouth-only`). If a script depends on absolute local paths, replace them with repository-relative paths before merging.
+保持现有 `scripts/` 下的 Python 风格：
+
+- 缩进：4 空格
+- 常量：`UPPER_SNAKE_CASE`
+- 函数：`snake_case`
+- 文件名：尽量描述实验含义，例如 `svd_multi_patient_win5.py`
+
+额外约定：
+
+- 一个脚本尽量只做一件实验相关的事。
+- 路径优先使用 `pathlib.Path`。
+- 输出目录命名要显式包含方法名、窗口设置或实验名。
+- 不要提交 `__pycache__` 等缓存文件。
+
+## 测试与验证
+
+当前没有统一的自动化单元测试套件。
+
+修改后建议这样验证：
+
+1. 在一个小而有代表性的数据切片上重跑受影响脚本。
+2. 检查预期输出是否出现在对应目录：
+   - `outputs/`
+   - 或明确被保留在 `data/` 内的数据型目录
+3. 如果改动涉及 `scripts/val_codebook/`：
+   - 跑 `python scripts/val_codebook/sweep.py --summary`
+   - 确认汇总指标正常
+4. 需要时把手工验证结论记到相关研究笔记或 `docs/` 文档里。
+
+## 提交与 PR 约定
+
+当前工作区里无法从历史中可靠推断出统一 commit 规范，因此默认使用：
+
+- 简短
+- 祈使句
+- 必要时加作用域
+
+例如：
+
+```text
+scripts: refine win5 DMD correlation output
+```
+
+如果后续发 PR，建议在说明里写清：
+
+- 研究目标是什么
+- 改了哪些脚本 / 数据集 / 输出路径
+- 新增了哪些结果目录
+- 如果影响图或结论，附上图或截图
+
+## 数据与输出卫生
+
+优先把 `data/` 视为**数据层**，不要随意重命名其中的数据集目录。
+
+新的分析结果默认放到：
+
+- `outputs/`
+
+除非某个目录被明确视为数据本体的一部分，例如：
+
+- `data/win20-step20/TT-SVD`
+- `data/win20-step20/IMR-SVD`
+- `data/win20-step20/cal_diff`
+- `data/win20-step20/cal_diff_mouth-only`
+
+如果脚本里还写着绝对本机路径，提交前应改成仓库相对路径或由 `Path(__file__)` 推导的相对路径。
