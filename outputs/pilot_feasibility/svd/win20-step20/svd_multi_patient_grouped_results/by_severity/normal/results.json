@@ -1,0 +1,779 @@
+{
+  "n_patients": 97,
+  "total_diff_windows": 608,
+  "patient_info": [
+    {
+      "dataset": "IMR",
+      "subj": "00102",
+      "n_windows": 18
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00228",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00229",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00230",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00231",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00232",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00233",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00234",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00235",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00236",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00237",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00238",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00239",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00240",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00241",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00242",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00243",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00244",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00245",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00246",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00247",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00248",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00249",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00250",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00251",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00252",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00256",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00257",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00258",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00259",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00267",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00271",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00275",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00294",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00348",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00349",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00350",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00351",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00352",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00353",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00354",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00355",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00356",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00357",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00361",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00378",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00379",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00380",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00381",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00383",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00384",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00397",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00398",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00399",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00400",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00401",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00411",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00412",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00413",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00414",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00416",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00531",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00532",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00533",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00534",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00535",
+      "n_windows": 5
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00548",
+      "n_windows": 4
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00549",
+      "n_windows": 4
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00550",
+      "n_windows": 4
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00551",
+      "n_windows": 4
+    },
+    {
+      "dataset": "IMR",
+      "subj": "00552",
+      "n_windows": 4
+    },
+    {
+      "dataset": "TT",
+      "subj": "675976",
+      "n_windows": 8
+    },
+    {
+      "dataset": "TT",
+      "subj": "707357",
+      "n_windows": 3
+    },
+    {
+      "dataset": "TT",
+      "subj": "740525",
+      "n_windows": 6
+    },
+    {
+      "dataset": "TT",
+      "subj": "806694",
+      "n_windows": 5
+    },
+    {
+      "dataset": "TT",
+      "subj": "840172",
+      "n_windows": 3
+    },
+    {
+      "dataset": "TT",
+      "subj": "844697",
+      "n_windows": 4
+    },
+    {
+      "dataset": "TT",
+      "subj": "844753",
+      "n_windows": 6
+    },
+    {
+      "dataset": "TT",
+      "subj": "845031",
+      "n_windows": 11
+    },
+    {
+      "dataset": "TT",
+      "subj": "846108",
+      "n_windows": 7
+    },
+    {
+      "dataset": "TT",
+      "subj": "846184",
+      "n_windows": 19
+    },
+    {
+      "dataset": "TT",
+      "subj": "847666",
+      "n_windows": 15
+    },
+    {
+      "dataset": "TT",
+      "subj": "849652",
+      "n_windows": 7
+    },
+    {
+      "dataset": "TT",
+      "subj": "850496",
+      "n_windows": 8
+    },
+    {
+      "dataset": "TT",
+      "subj": "850823",
+      "n_windows": 17
+    },
+    {
+      "dataset": "TT",
+      "subj": "851013",
+      "n_windows": 5
+    },
+    {
+      "dataset": "TT",
+      "subj": "851519",
+      "n_windows": 28
+    },
+    {
+      "dataset": "TT",
+      "subj": "851532",
+      "n_windows": 6
+    },
+    {
+      "dataset": "TT",
+      "subj": "851843",
+      "n_windows": 5
+    },
+    {
+      "dataset": "TT",
+      "subj": "859088",
+      "n_windows": 12
+    },
+    {
+      "dataset": "TT",
+      "subj": "859913",
+      "n_windows": 7
+    },
+    {
+      "dataset": "TT",
+      "subj": "860387",
+      "n_windows": 17
+    },
+    {
+      "dataset": "TT",
+      "subj": "860662",
+      "n_windows": 5
+    },
+    {
+      "dataset": "TT",
+      "subj": "861404",
+      "n_windows": 8
+    },
+    {
+      "dataset": "TT",
+      "subj": "861649",
+      "n_windows": 19
+    },
+    {
+      "dataset": "TT",
+      "subj": "861670",
+      "n_windows": 8
+    },
+    {
+      "dataset": "TT",
+      "subj": "861844",
+      "n_windows": 6
+    }
+  ],
+  "X_mode": {
+    "stacked_shape": [
+      608,
+      116281
+    ],
+    "singular_values": [
+      56.93752670288086,
+      29.451215744018555,
+      15.179908752441406,
+      13.768397331237793,
+      10.096161842346191,
+      9.203754425048828,
+      8.032378196716309,
+      7.414480686187744,
+      5.776991844177246,
+      5.457493782043457
+    ],
+    "explained_variance_ratio": [
+      0.6254894733428955,
+      0.17282849550247192,
+      0.045556165277957916,
+      0.03781519830226898,
+      0.0202669408172369,
+      0.016585156321525574,
+      0.012878840789198875,
+      0.010956794954836369,
+      0.0066503239795565605,
+      0.005946333985775709
+    ],
+    "energy": [
+      {
+        "pc": 1,
+        "singular_value": 56.93752670288086,
+        "energy_ratio": 66.1804756924862
+      },
+      {
+        "pc": 2,
+        "singular_value": 29.451215744018555,
+        "energy_ratio": 17.706761708632808
+      },
+      {
+        "pc": 3,
+        "singular_value": 15.179908752441406,
+        "energy_ratio": 4.704040047866269
+      },
+      {
+        "pc": 4,
+        "singular_value": 13.768397331237793,
+        "energy_ratio": 3.8698975637515316
+      },
+      {
+        "pc": 5,
+        "singular_value": 10.096161842346191,
+        "energy_ratio": 2.080871662299671
+      }
+    ],
+    "semantic_regions": [
+      {
+        "pc": 1,
+        "dominant_region": "mouth",
+        "dominant_contribution": 10.606985539197922,
+        "all_regions": {
+          "forehead": 0.03707711584866047,
+          "eyebrow": 0.05136884283274412,
+          "eyehole": 0.30615965370088816,
+          "eye_contour": 0.05941792041994631,
+          "eye_iris": 0.00802840295364149,
+          "nose": 0.48985183238983154,
+          "around_mouth": 2.4288713932037354,
+          "mouth": 10.606985539197922,
+          "cheek": 0.2751419320702553,
+          "jaw": 0.042592090903781354
+        }
+      },
+      {
+        "pc": 2,
+        "dominant_region": "mouth",
+        "dominant_contribution": 1.1785280890762806,
+        "all_regions": {
+          "forehead": 0.06741859833709896,
+          "eyebrow": 0.07330034277401865,
+          "eyehole": 0.6604406982660294,
+          "eye_contour": 0.08756510214880109,
+          "eye_iris": 0.004317695857025683,
+          "nose": 0.848833192139864,
+          "around_mouth": 0.8577702566981316,
+          "mouth": 1.1785280890762806,
+          "cheek": 0.164380285423249,
+          "jaw": 0.02790630387607962
+        }
+      },
+      {
+        "pc": 3,
+        "dominant_region": "eyehole",
+        "dominant_contribution": 3.3603988587856293,
+        "all_regions": {
+          "forehead": 0.5382069852203131,
+          "eyebrow": 0.6910182535648346,
+          "eyehole": 3.3603988587856293,
+          "eye_contour": 0.27482009027153254,
+          "eye_iris": 0.020249461522325873,
+          "nose": 0.7314237765967846,
+          "around_mouth": 1.414133608341217,
+          "mouth": 1.7345091328024864,
+          "cheek": 1.0023712180554867,
+          "jaw": 0.055464927572757006
+        }
+      },
+      {
+        "pc": 4,
+        "dominant_region": "mouth",
+        "dominant_contribution": 2.6342276483774185,
+        "all_regions": {
+          "forehead": 0.17122442368417978,
+          "eyebrow": 0.1672260696068406,
+          "eyehole": 1.3805188238620758,
+          "eye_contour": 0.19073670264333487,
+          "eye_iris": 0.013673590729013085,
+          "nose": 1.0293981060385704,
+          "around_mouth": 1.3084993697702885,
+          "mouth": 2.6342276483774185,
+          "cheek": 0.3681555390357971,
+          "jaw": 0.029249966610223055
+        }
+      },
+      {
+        "pc": 5,
+        "dominant_region": "mouth",
+        "dominant_contribution": 3.3288467675447464,
+        "all_regions": {
+          "forehead": 0.136048614513129,
+          "eyebrow": 0.20430232398211956,
+          "eyehole": 1.6760123893618584,
+          "eye_contour": 0.2614920260384679,
+          "eye_iris": 0.020249401859473437,
+          "nose": 0.838963221758604,
+          "around_mouth": 0.9859181009232998,
+          "mouth": 3.3288467675447464,
+          "cheek": 0.3143829759210348,
+          "jaw": 0.05349038983695209
+        }
+      }
+    ]
+  },
+  "Y_mode": {
+    "stacked_shape": [
+      608,
+      116281
+    ],
+    "singular_values": [
+      88.11734771728516,
+      37.889625549316406,
+      18.618995666503906,
+      14.406572341918945,
+      12.878266334533691,
+      9.489309310913086,
+      7.618303298950195,
+      7.225239276885986,
+      6.267008304595947,
+      5.677698612213135
+    ],
+    "explained_variance_ratio": [
+      0.7439619898796082,
+      0.14141499996185303,
+      0.03403962031006813,
+      0.02045469917356968,
+      0.0162783432751894,
+      0.008842910639941692,
+      0.00572218419983983,
+      0.005140456836670637,
+      0.0038323011249303818,
+      0.003165007336065173
+    ],
+    "energy": [
+      {
+        "pc": 1,
+        "singular_value": 88.11734771728516,
+        "energy_ratio": 76.18274824635354
+      },
+      {
+        "pc": 2,
+        "singular_value": 37.889625549316406,
+        "energy_ratio": 14.085570083408253
+      },
+      {
+        "pc": 3,
+        "singular_value": 18.618995666503906,
+        "energy_ratio": 3.401310689104841
+      },
+      {
+        "pc": 4,
+        "singular_value": 14.406572341918945,
+        "energy_ratio": 2.0363626880610353
+      },
+      {
+        "pc": 5,
+        "singular_value": 12.878266334533691,
+        "energy_ratio": 1.6272287437750648
+      }
+    ],
+    "semantic_regions": [
+      {
+        "pc": 1,
+        "dominant_region": "mouth",
+        "dominant_contribution": 8.316519111394882,
+        "all_regions": {
+          "forehead": 0.04800153838004917,
+          "eyebrow": 0.04362866166047752,
+          "eyehole": 0.5119673907756805,
+          "eye_contour": 0.06519041489809752,
+          "eye_iris": 0.004365091081126593,
+          "nose": 0.36109702195972204,
+          "around_mouth": 1.8613729625940323,
+          "mouth": 8.316519111394882,
+          "cheek": 0.056908559054136276,
+          "jaw": 0.02840847009792924
+        }
+      },
+      {
+        "pc": 2,
+        "dominant_region": "mouth",
+        "dominant_contribution": 4.048048332333565,
+        "all_regions": {
+          "forehead": 0.0455953209893778,
+          "eyebrow": 0.06466461927630007,
+          "eyehole": 1.0801715776324272,
+          "eye_contour": 0.18134668935090303,
+          "eye_iris": 0.008087646710919216,
+          "nose": 0.8556262589991093,
+          "around_mouth": 0.4270934499800205,
+          "mouth": 4.048048332333565,
+          "cheek": 0.16379685839638114,
+          "jaw": 0.013207663141656667
+        }
+      },
+      {
+        "pc": 3,
+        "dominant_region": "mouth",
+        "dominant_contribution": 4.25877720117569,
+        "all_regions": {
+          "forehead": 0.14569958439096808,
+          "eyebrow": 0.16766184708103538,
+          "eyehole": 1.3502498157322407,
+          "eye_contour": 0.10211821645498276,
+          "eye_iris": 0.005402266469900496,
+          "nose": 0.9069105610251427,
+          "around_mouth": 1.5333867631852627,
+          "mouth": 4.25877720117569,
+          "cheek": 0.28415003325790167,
+          "jaw": 0.03882927994709462
+        }
+      },
+      {
+        "pc": 4,
+        "dominant_region": "mouth",
+        "dominant_contribution": 5.108859017491341,
+        "all_regions": {
+          "forehead": 0.08173775277100503,
+          "eyebrow": 0.06994473515078425,
+          "eyehole": 0.7173377089202404,
+          "eye_contour": 0.1841760240495205,
+          "eye_iris": 0.003101663605775684,
+          "nose": 1.478650514036417,
+          "around_mouth": 1.7656147480010986,
+          "mouth": 5.108859017491341,
+          "cheek": 0.2433637622743845,
+          "jaw": 0.03809983318205923
+        }
+      },
+      {
+        "pc": 5,
+        "dominant_region": "mouth",
+        "dominant_contribution": 3.5101182758808136,
+        "all_regions": {
+          "forehead": 0.12013288214802742,
+          "eyebrow": 0.1620232011191547,
+          "eyehole": 1.7198814079165459,
+          "eye_contour": 0.37087921518832445,
+          "eye_iris": 0.007880025077611208,
+          "nose": 0.6365493405610323,
+          "around_mouth": 0.8830064907670021,
+          "mouth": 3.5101182758808136,
+          "cheek": 0.11249183444306254,
+          "jaw": 0.03116325242444873
+        }
+      }
+    ]
+  }
+}

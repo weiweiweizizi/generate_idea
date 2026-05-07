@@ -23,22 +23,22 @@ from scripts.disentangleNet_trainprobe.training import (
     save_best_checkpoint,
 )
 
-DEFAULT_ACTION_BASIS_INIT_PATH = "scripts/disentangleNet_trainprobe/init_basis/basis_x_shared_2_6.npy"
-DEFAULT_SIDE_BASIS_INIT_PATH = "scripts/disentangleNet_trainprobe/init_basis/basis_x_side_from_level2.npy"
+DEFAULT_ACTION_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_x_full.npy"
+DEFAULT_SIDE_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_x_full.npy"
 DEFAULT_OUTPUT_DIR = (
-    "outputs/disentangleNet_trainprobe/v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50"
+    "outputs/disentangleNet_trainprobe/v32_tri_region_masked_win20_e50"
 )
 
 V31_FIXED_CONFIG = {
     "action_basis_init_path": DEFAULT_ACTION_BASIS_INIT_PATH,
     "side_basis_init_path": DEFAULT_SIDE_BASIS_INIT_PATH,
     "mode": "x",
-    "region": "mouth",
+    "region": "full",
     "use_difference": True,
     "signed_normalize": "per_sample",
     "group_size": 4,
     "apply_deleted_filter": True,
-    "basis_size": 119,
+    "basis_size": 341,
     "levels": "2,6",
     "hidden_dim": 32,
     "pool_size": 1,
@@ -66,9 +66,11 @@ V31_FIXED_CONFIG = {
     "num_side_classes": 3,
     "side_semantic_enabled": True,
     "side_basis_count": 3,
-    "side_pooling": "fixed_region2_contrast",
-    "side_loss_weight": 0.3,
-    "group_side_loss_weight": 0.3,
+    "side_pooling": "tri_region_contrast",
+    "side_loss_weight": 0.0,
+    "mouth_group_side_loss_weight": 0.45,
+    "mouth_cross_group_side_loss_weight": 0.45,
+    "other_group_side_loss_weight": 0.10,
     "side_subspace_dim": None,
     "side_free_frame_qr": False,
     "subspace_orth_weight": 0.0,
@@ -119,9 +121,9 @@ def build_loss_weights(config: dict) -> dict[str, float]:
         "orth": config["orth_weight"],
         "basis_l1": config["basis_l1_weight"],
         "residual": config["residual_weight"],
-        "side_cont": config["side_cont_weight"],
-        "side_disc": config["side_disc_weight"],
-        "side_group": config["group_side_loss_weight"],
+        "mouth_side_group": config["mouth_group_side_loss_weight"],
+        "mouth_cross_side_group": config["mouth_cross_group_side_loss_weight"],
+        "other_side_group": config["other_group_side_loss_weight"],
         "severity_group": 0.0,
         "subspace_orth": 0.0,
         "free_side_adv": 0.0,
@@ -143,6 +145,8 @@ def train(
     validate_batch_memory=True,
     num_workers=0,
     output_dir=DEFAULT_OUTPUT_DIR,
+    private_residual_weight=0.05,
+    private_residual_max_l1=0.5,
 ):
     config = build_v31_config(
         {
@@ -158,6 +162,8 @@ def train(
             "validate_batch_memory": validate_batch_memory,
             "num_workers": num_workers,
             "output_dir": output_dir,
+            "private_residual_weight": private_residual_weight,
+            "private_residual_max_l1": private_residual_max_l1,
         }
     )
     torch.manual_seed(config["seed"])

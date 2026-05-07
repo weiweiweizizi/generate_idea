@@ -1,22 +1,22 @@
 #!/usr/bin/env python
 """
-Export patient-level matrix-visualization bundles.
+导出患者级 matrix-visualization 矩阵束。
 
-What this script does:
-- Load one checkpoint and one patient sequence.
-- Reconstruct per-window composed matrices from free and side basis coefficients.
-- Export `.npz` bundles for visualization plus a CSV of side predictions.
-- Preserve the underlying free/side basis banks used for reconstruction.
+此脚本功能：
+- 加载一个 checkpoint 和一个患者序列。
+- 利用 free/side basis 系数重建每个窗口的组合矩阵。
+- 导出 `.npz` 矩阵束（供可视化使用）和 side 预测 CSV。
+- 同时保留用于重建的 free/side basis bank，供后续可视化工具使用。
 
-Typical usage:
-1. Default patient export:
+典型用法：
+1. 默认患者导出：
    `python scripts/disentangleNet/analysis/export_matrix_vis_patient.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt`
-2. Export a specific patient:
+2. 指定患者导出：
    `python scripts/disentangleNet/analysis/export_matrix_vis_patient.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt \\
       --subject 844697`
-3. Custom data roots and output:
+3. 自定义数据根和输出目录：
    `python scripts/disentangleNet/analysis/export_matrix_vis_patient.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt \\
       --data_roots data/win20-step20/IMR,data/win20-step20/TT \\
@@ -48,6 +48,10 @@ from scripts.disentangleNet.data import FacialMotionSequenceDataset
 
 
 def resolve_target_spec(*, data_roots: str, subject: str):
+    """
+    在 data_roots 中查找目标患者所属的数据集 spec。
+    返回匹配的第一个 spec（患者只需存在于其中一个 root）。
+    """
     for spec in build_specs(data_roots):
         if (spec.root / subject).exists():
             return spec
@@ -61,6 +65,14 @@ def compose_window_matrix(
     side_weights: np.ndarray,
     side_basis_bank: np.ndarray,
 ) -> np.ndarray:
+    """
+    将 free path 和 side path 的 basis 组合为单帧窗口矩阵。
+
+    公式：M = Σ_k(shared_weights[k] * shared_basis_bank[k])
+              + Σ_k(side_weights[k] * side_basis_bank[k])
+
+    矩阵维度：(basis_size, basis_size)，与距离矩阵 D 对应。
+    """
     composed = np.einsum("k,kxy->xy", shared_weights, shared_basis_bank, optimize=True)
     if side_basis_bank.size and side_weights.size:
         composed = composed + np.einsum("k,kxy->xy", side_weights, side_basis_bank, optimize=True)
@@ -68,6 +80,15 @@ def compose_window_matrix(
 
 
 def masked_group_mean(values: torch.Tensor, valid_mask: torch.Tensor) -> torch.Tensor:
+    """
+    计算 group 内有效帧的加权平均。
+
+    参数：
+    - values：[B, T, ...] 形状的逐帧特征
+    - valid_mask：[B, T] 二值掩码，标记有效帧
+
+    返回：[B, ...] 的组平均表征，供 side 分类使用。
+    """
     if values.ndim < 3:
         raise ValueError(f"Expected at least [B, T, ...], got {tuple(values.shape)}")
     if values.ndim > 3:
@@ -85,8 +106,23 @@ def export_patient_bundle(
     shared_basis_bank: np.ndarray,
     side_basis_bank: np.ndarray,
 ) -> dict[str, Any]:
+    """
+    将患者的重建数据聚合为标准化的 .npz 束和 CSV 文件。
+
+    npz 包含内容：
+    - window_indices / prev_window_indices：窗口索引序列
+    - side_pred / side_true：side 预测与真实标签
+    - shared_basis_coeffs / side_basis_coeffs：逐窗口 basis 系数
+    - free_path_usage / side_path_usage：路径 usage 向量
+    - composed_basis_matrices：逐窗口重建矩阵
+    - shared_basis_bank / side_basis_bank：basis bank（供可视化重建用）
+    - group_id：窗口所属的 group id
+
+    CSV 包含窗口级的 side 预测详情（可读标签名）。
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # 按 window_idx 排序，保证时序连贯
     patient_rows = sorted(patient_rows, key=lambda row: int(row["window_idx"]))
     if not patient_rows:
         raise ValueError("patient_rows must not be empty")
@@ -118,6 +154,7 @@ def export_patient_bundle(
         group_id=np.asarray([row["group_id"] for row in patient_rows], dtype=object),
     )
 
+    # 构建 side 预测 CSV（带可读标签名）
     side_df = pd.DataFrame(
         [
             {
@@ -164,14 +201,14 @@ def export(
     batch_size: int = 8,
 ) -> dict[str, Any]:
     """
-    Main CLI entry for exporting one patient's reconstructed matrix sequence.
+    主 CLI 入口：导出单个患者的矩阵重建序列。
 
-    Parameters:
-    - `checkpoint_path`: trained checkpoint
-    - `subject`: subject id to export
-    - `data_roots`: optional dataset roots; defaults to checkpoint config
-    - `output_dir`: optional custom destination
-    - `batch_size`: grouped-sequence loader batch size
+    参数：
+    - `checkpoint_path`：训练好的 checkpoint 路径
+    - `subject`：要导出的患者 ID
+    - `data_roots`：可选的数据集根目录列表；默认使用 checkpoint 中的配置
+    - `output_dir`：可选的自定义输出目录
+    - `batch_size`：DataLoader 的 batch size（按 group 分组）
     """
     checkpoint = Path(checkpoint_path).expanduser().resolve()
     if not checkpoint.exists():
@@ -184,6 +221,7 @@ def export(
     if not resolved_data_roots:
         raise ValueError("data_roots must be provided either via argument or checkpoint config")
 
+    # 确定数据集 spec
     spec = resolve_target_spec(data_roots=str(resolved_data_roots), subject=subject)
     dataset = FacialMotionSequenceDataset(
         spec,
@@ -205,19 +243,24 @@ def export(
     patient_rows: list[dict[str, Any]] = []
     shared_basis_bank = None
     side_basis_bank = None
+
     with torch.no_grad():
         for batch in loader:
             outputs = model(batch["images"].to(device), return_group_pooled=True)
+
+            # 从首个 batch 中保存 basis bank（所有 basis 共享同一 bank）
             if shared_basis_bank is None:
                 shared_basis_bank = outputs["basis"].detach().cpu().numpy().astype(np.float32)
             if side_basis_bank is None:
                 side_basis_bank = outputs["side_basis"].detach().cpu().numpy().astype(np.float32)
 
+            # group 级别的 side 预测（取 group 内有效帧平均后分类）
             valid_mask_torch = batch["valid_mask"].to(device)
             group_side_rep = masked_group_mean(outputs["side_path_representation"], valid_mask_torch)
             group_side_logits = model.classify_side_group(group_side_rep)
             group_side_pred = group_side_logits.argmax(dim=1).detach().cpu().numpy().astype(np.int64)
 
+            # 提取逐帧特征
             free_rep = outputs["free_path_representation"].detach().cpu().numpy().astype(np.float32)
             side_rep = outputs["side_path_representation"].detach().cpu().numpy().astype(np.float32)
             free_usage = outputs["free_path_usage"].detach().cpu().numpy().astype(np.float32)
@@ -228,6 +271,7 @@ def export(
             subjects = list(batch["subject"])
             dataset_names = list(batch["dataset_name"])
             side_true = batch["side_label"].cpu().numpy().astype(np.int64)
+            # prev_window_indices：[num_groups, T] 形状，存储每个 group 中每帧对应的上一窗口索引
             prev_window_groups = [
                 [
                     int(per_frame_values[batch_idx].item())
@@ -245,6 +289,7 @@ def export(
                 for frame_idx, keep in enumerate(valid_mask[batch_idx]):
                     if not keep:
                         continue
+                    # 组合该帧的 basis 矩阵
                     shared_weights = free_rep[batch_idx, frame_idx]
                     side_weights = side_rep[batch_idx, frame_idx]
                     composed = compose_window_matrix(

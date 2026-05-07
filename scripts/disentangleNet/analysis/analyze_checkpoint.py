@@ -1,27 +1,27 @@
 #!/usr/bin/env python
 """
-Inspect one disentangleNet checkpoint at the group level.
+检查单个 disentangleNet checkpoint 的 group 级别行为。
 
-What this script does:
-- Load a trained checkpoint plus its evaluation split.
-- Export free/side basis banks and compact heatmap visualizations.
-- Collect group-level latent / representation tensors.
-- Fit lightweight linear probes for side label and dataset label.
-- Summarize reconstruction, usage, latent alignment, and probe behavior.
+此脚本功能：
+- 加载已训练 checkpoint 及其评测 split。
+- 导出 free/side basis banks 及紧凑热图可视化。
+- 收集 group 级 latent/表征地 tensors。
+- 拟合轻量级线性 probe 用于 side 标签和 dataset 标签。
+- 汇总重建、usage、latent 对齐和 probe 行为。
 
-Typical usage:
-1. Default validation split:
+典型用法：
+1. 默认 validation split：
    `python scripts/disentangleNet/analysis/analyze_checkpoint.py \\
       outputs/disentangleNet/v31_current_verify/best.pt`
-2. Evaluate all available grouped data:
+2. 评估所有可用分组数据：
    `python scripts/disentangleNet/analysis/analyze_checkpoint.py \\
       outputs/disentangleNet/v31_current_verify/best.pt --split all`
-3. Write artifacts to a custom directory:
+3. 写入自定义目录：
    `python scripts/disentangleNet/analysis/analyze_checkpoint.py \\
       outputs/disentangleNet/v31_current_verify/best.pt \\
       --output_dir outputs/disentangleNet/v31_current_verify/custom_analysis`
 
-Main outputs:
+主要输出：
 - `<output_dir>/summary.json`
 - `<output_dir>/basis_bank.npy`
 - `<output_dir>/basis_bank_heatmap.png`
@@ -60,23 +60,26 @@ SKLEARN_LOGISTIC_REGRESSION = None
 SKLEARN_IMPORT_ERROR = None
 SKLEARN_IMPORT_ATTEMPTED = False
 
-# 1.加载模型和数据，提取特征，拟合线性探针，并保存分析结果和可视化图像。
-# 2.提取basis（包括2+6+3共11个basis），同时画成heatmap
-# 4.打探针：
-#   - side probe: 用side_rep预测side_label，free_rep预测side_label
-#   - dataset probe: 用side_rep预测dataset_label，free_rep预测dataset_label，
-# 5.输出：analysis/summary.json，basis_bank.npy，basis_bank_heatmap.png，side_basis_bank.npy，side_basis_bank_heatmap.png（如果有的话）
+# 脚本功能概述：
+# 1. 加载模型和数据，提取特征，拟合线性探针，并保存分析结果和可视化图像。
+# 2. 提取 basis（包括 2+6+3 共 11 个 basis），同时画成 heatmap
+# 4. 打探针：
+#   - side probe: 用 side_rep 预测 side_label，free_rep 预测 side_label
+#   - dataset probe: 用 side_rep 预测 dataset_label，free_rep 预测 dataset_label，
+# 5. 输出：analysis/summary.json，basis_bank.npy，basis_bank_heatmap.png，
+#    side_basis_bank.npy，side_basis_bank_heatmap.png（如果有的话）
 
 
 def resolve_primary_label_view(config: dict) -> str:
-    """Choose the default label semantics for one checkpoint."""
-
+    """根据 checkpoint 配置确定默认标签语义"""
     target_label_mode = str(config.get("target_label_mode", "side"))
     if target_label_mode in {"label5class", "both"}:
         return "label5class"
     return "side"
 
+
 def parse_levels(levels) -> tuple[int, ...]:
+    """解析 levels 配置字符串或列表"""
     if isinstance(levels, str):
         return tuple(int(v) for v in levels.split(",") if str(v).strip())
     if isinstance(levels, (tuple, list)):
@@ -85,6 +88,7 @@ def parse_levels(levels) -> tuple[int, ...]:
 
 
 def build_specs(data_roots: str) -> list[DatasetSpec]:
+    """从数据根路径字符串构建 DatasetSpec 列表"""
     roots = [Path(root).expanduser() for root in data_roots.split(",") if root.strip()]
     return [
         DatasetSpec(root=root, dataset_label=idx, dataset_name=root.name)
@@ -105,12 +109,14 @@ def build_eval_dataset(
     apply_deleted_filter: bool,
     split: str,
 ):
+    """构建评测数据集（train / val / all）"""
     datasets = []
 
     for spec in specs:
         train_subjects, val_subjects = subject_split(spec, val_ratio=val_ratio, seed=seed)
         subjects = train_subjects if split == "train" else val_subjects
 
+        # global scale 仅在 signed_normalize == "global" 时计算（跨所有训练样本）
         global_scale = None
         if signed_normalize == "global":
             global_scale = FacialMotionSequenceDataset.compute_global_scale(
@@ -141,14 +147,12 @@ def build_eval_dataset(
 
 
 def basis_to_rgb_image(basis: np.ndarray, vmax: float) -> Image.Image:
-    """Render one basis matrix into a simple RdBu-style RGB image."""
-
+    """将单个 basis 矩阵渲染为 RdBu 风格的 RGB 图像（正值为红，负值为蓝，近零为白）"""
     clipped = np.clip(basis / vmax, -1.0, 1.0)
     positive = np.clip(clipped, 0.0, 1.0)
     negative = np.clip(-clipped, 0.0, 1.0)
 
     rgb = np.zeros((*basis.shape, 3), dtype=np.uint8)
-    # Positive values -> red, negative values -> blue, near zero -> white.
     rgb[..., 0] = (255 * (1.0 - negative)).astype(np.uint8)
     rgb[..., 1] = (255 * (1.0 - np.maximum(positive, negative))).astype(np.uint8)
     rgb[..., 2] = (255 * (1.0 - positive)).astype(np.uint8)
@@ -156,8 +160,7 @@ def basis_to_rgb_image(basis: np.ndarray, vmax: float) -> Image.Image:
 
 
 def plot_basis_grid(basis: np.ndarray, levels: tuple[int, ...], output_path: Path) -> None:
-    """Save all action bases as a compact heatmap grid without matplotlib."""
-
+    """将所有 basis 保存为紧凑热图网格（不依赖 matplotlib）"""
     total = basis.shape[0]
     cols = min(4, total)
     rows = int(np.ceil(total / cols))
@@ -195,8 +198,7 @@ def plot_basis_grid(basis: np.ndarray, levels: tuple[int, ...], output_path: Pat
 
 
 def masked_mean_per_sequence(values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    """Pool each grouped sequence with a boolean valid-frame mask."""
-
+    """用布尔 valid-frame mask 对分组序列做均值池化"""
     mask = mask.to(device=values.device, dtype=values.dtype)
     expanded_mask = mask
     while expanded_mask.ndim < values.ndim:
@@ -210,8 +212,7 @@ def masked_mean_per_sequence(values: torch.Tensor, mask: torch.Tensor) -> torch.
 
 
 def get_logistic_regression_cls():
-    """Try to import sklearn LogisticRegression once and cache the result."""
-
+    """尝试一次性导入 sklearn LogisticRegression 并缓存结果"""
     global SKLEARN_LOGISTIC_REGRESSION, SKLEARN_IMPORT_ERROR, SKLEARN_IMPORT_ATTEMPTED
 
     if SKLEARN_IMPORT_ATTEMPTED:
@@ -225,7 +226,7 @@ def get_logistic_regression_cls():
                 from sklearn.linear_model import LogisticRegression
 
         SKLEARN_LOGISTIC_REGRESSION = LogisticRegression
-    except Exception as exc:  # pragma: no cover - depends on local env
+    except Exception as exc:
         SKLEARN_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
 
     return SKLEARN_LOGISTIC_REGRESSION, SKLEARN_IMPORT_ERROR
@@ -239,8 +240,7 @@ def fit_torch_linear_probe(
     *,
     seed: int,
 ) -> float:
-    """Fallback linear probe used when sklearn is unavailable."""
-
+    """sklearn 不可用时的 PyTorch 线性探针后备方案"""
     torch.manual_seed(seed)
 
     x_train = torch.from_numpy(train_x).float()
@@ -270,8 +270,7 @@ def build_stratified_splits(
     test_ratio: float,
     num_repeats: int,
 ) -> tuple[list[tuple[np.ndarray, np.ndarray]], str | None]:
-    """Create repeated stratified holdout splits for small-sample probe evaluation."""
-
+    """为小样本探针评估创建重复分层 holdout splits"""
     classes, encoded = np.unique(labels, return_inverse=True)
     if classes.size < 2:
         return [], "need at least 2 classes"
@@ -314,8 +313,7 @@ def fit_linear_probe(
     test_ratio: float = 0.2,
     num_repeats: int = 20,
 ) -> dict:
-    """Fit a lightweight linear probe on held-out groups."""
-
+    """在 held-out groups 上拟合轻量级线性探针"""
     features = np.asarray(features, dtype=np.float32)
     labels = np.asarray(labels, dtype=np.int64)
 
@@ -367,6 +365,7 @@ def fit_linear_probe(
         train_y = encoded[train_indices]
         test_y = encoded[test_indices]
 
+        # 标准化
         mean = train_x.mean(axis=0, keepdims=True)
         std = train_x.std(axis=0, keepdims=True)
         std = np.where(std < 1e-6, 1.0, std)
@@ -385,7 +384,7 @@ def fit_linear_probe(
                 classifier.fit(train_x, train_y)
                 accuracy = float((classifier.predict(test_x) == test_y).mean())
                 backend = "sklearn_logistic_regression"
-            except Exception as exc:  # pragma: no cover - depends on local env
+            except Exception as exc:
                 import_error = f"{type(exc).__name__}: {exc}"
                 accuracy = fit_torch_linear_probe(
                     train_x,
@@ -415,8 +414,7 @@ def fit_linear_probe(
 
 
 def compute_linear_r2(source: np.ndarray, target: np.ndarray) -> float | None:
-    """Measure how well one representation can linearly reconstruct another."""
-
+    """衡量一个表征能否线性重构另一个表征"""
     if source.ndim != 2 or target.ndim != 2:
         return None
     if source.shape[0] != target.shape[0] or source.shape[0] < 2:
@@ -447,8 +445,10 @@ def pool_group_tensor(
     empty_feature_dim: int | None = None,
     force_sequence: bool = False,
 ) -> torch.Tensor:
-    """Prefer canonical group-pooled outputs, with fallback for old checkpoints."""
-
+    """
+    优先使用 canonical group-pooled outputs；
+    对旧 checkpoint 有 fallback 逻辑。
+    """
     sequence_tensor = outputs.get(sequence_key)
 
     if force_sequence:
@@ -479,8 +479,7 @@ def collect_group_representations(
     *,
     require_canonical_group_reps: bool,
 ) -> dict:
-    """Collect round-1 analysis artifacts and code usage in one pass."""
-
+    """在一次 forward pass 中收集 round-1 分析产物和 code usage 统计"""
     level_counts = [torch.zeros(level, dtype=torch.long) for level in model.levels]
     total_valid_frames = 0
     side_usage_sum = None
@@ -508,6 +507,7 @@ def collect_group_representations(
             outputs = model(x, return_group_pooled=True)
             decoded_indices = outputs["decoded_indices"]
 
+            # 统计各 level 的 decoded basis 使用频次
             for level_idx, frame_indices in enumerate(decoded_indices):
                 flat_indices = frame_indices[valid_mask].reshape(-1).cpu()
                 if flat_indices.numel() == 0:
@@ -518,11 +518,13 @@ def collect_group_representations(
             valid_frames = int(valid_mask.sum().item())
             total_valid_frames += valid_frames
 
+            # 重建误差统计
             side_recon_l1 = outputs["shared_side_reconstruction"].abs().mean(dim=(2, 3, 4))
             free_recon_l1 = outputs["shared_free_reconstruction"].abs().mean(dim=(2, 3, 4))
             side_recon_l1_sum += float(side_recon_l1[valid_mask].sum().item())
             free_recon_l1_sum += float(free_recon_l1[valid_mask].sum().item())
 
+            # 路径 usage 统计
             side_path_usage = outputs["side_path_usage"]
             free_path_usage = outputs["free_path_usage"]
             if side_path_usage.ndim == 3:
@@ -540,6 +542,7 @@ def collect_group_representations(
                     free_usage_sum = torch.zeros_like(masked_free_usage)
                 free_usage_sum += masked_free_usage.cpu()
 
+            # 收集 group 级表征
             group_valid_mask = valid_mask.any(dim=1)
             if group_valid_mask.any():
                 group_side_rep = pool_group_tensor(
@@ -630,6 +633,7 @@ def collect_group_representations(
             if max_batches is not None and seen_batches >= max_batches:
                 break
 
+    # 汇总 usage
     usage_summary = {"total_valid_frames": total_valid_frames, "levels": []}
     for level_idx, counts in enumerate(level_counts):
         counts_list = counts.tolist()
@@ -694,8 +698,7 @@ def build_probe_summary(
     *,
     primary_label_view: str,
 ) -> tuple[dict, dict, dict, dict]:
-    """Fit post-hoc side and dataset probes from pooled group representations."""
-
+    """从 pooled group 表征拟合事后 side 和 dataset probes"""
     side_rep = group_representations["group_pooled_side_rep"]
     free_rep = group_representations["group_pooled_free_rep"]
     private_rep = group_representations["group_pooled_private_rep"]
@@ -769,14 +772,14 @@ def analyze(
     output_dir: str | None = None,
 ):
     """
-    Main CLI entry for checkpoint-level inspection.
+    主入口函数。
 
-    Parameters:
-    - `checkpoint_path`: trained checkpoint to inspect
-    - `data_roots`: optional comma-separated dataset roots; defaults to checkpoint config
-    - `split`: `train` or `val`
-    - `batch_size`, `max_batches`, `num_workers`: evaluation loader controls
-    - `output_dir`: destination for exported artifacts; defaults to `<checkpoint_dir>/analysis`
+    参数：
+    - `checkpoint_path`：待检查的已训练 checkpoint
+    - `data_roots`：可选的数据集根路径，默认使用 checkpoint 配置
+    - `split`：`train` 或 `val`
+    - `batch_size`、`max_batches`、`num_workers`：DataLoader 控制参数
+    - `output_dir`：输出目录，默认为 `<checkpoint_dir>/analysis`
     """
     checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.exists():
@@ -829,7 +832,6 @@ def analyze(
     private_adapter_enabled = bool(config.get("private_adapter_enabled", False))
     discrete_side_loss_enabled = bool(config.get("discrete_side_loss_enabled", True))
     num_side_classes = int(config.get("num_side_classes", 3))
-    num_label5_classes = int(config.get("num_label5_classes", 5))
     target_label_mode = str(config.get("target_label_mode", "side"))
     primary_label_view = resolve_primary_label_view(config)
 
@@ -866,7 +868,6 @@ def analyze(
         private_dim=private_dim,
         private_decoder_hidden_dim=private_decoder_hidden_dim,
         num_side_classes=num_side_classes,
-        num_label5_classes=num_label5_classes,
         num_dataset_classes=len(specs),
         target_label_mode=target_label_mode,
         private_residual_weight=float(config.get("private_residual_weight", 0.25)),
@@ -899,6 +900,7 @@ def analyze(
     ).to(device)
     load_result = model.load_state_dict(ckpt["model"], strict=False)
 
+    # 导出 structured basis banks
     basis = model.get_structured_basis().detach().cpu().numpy()
     basis_path = output_dir / "basis_bank.npy"
     np.save(basis_path, basis)
@@ -914,6 +916,7 @@ def analyze(
         side_basis_plot_path = output_dir / "side_basis_bank_heatmap.png"
         plot_basis_grid(side_basis, (side_basis.shape[0],), side_basis_plot_path)
 
+    # 收集 group 级表征
     analysis_outputs = collect_group_representations(
         model,
         loader,

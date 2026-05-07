@@ -98,12 +98,26 @@ def validate_label_supervision_config(config: Mapping[str, Any]) -> None:
         raise ValueError("disentangleNet v31 training only supports target_label_mode='side'")
     if int(config["num_side_classes"]) != 3:
         raise ValueError("disentangleNet_trainprobe requires num_side_classes=3")
-    for key in ("group_side_loss_weight",):
+    for key in (
+        "mouth_group_side_loss_weight",
+        "mouth_cross_group_side_loss_weight",
+        "other_group_side_loss_weight",
+    ):
         if float(config[key]) < 0:
             raise ValueError(f"{key} must be >= 0")
 
-    if float(config["group_side_loss_weight"]) <= 0:
-        raise ValueError("side mode requires group_side_loss_weight > 0")
+    total = (
+        float(config["mouth_group_side_loss_weight"])
+        + float(config["mouth_cross_group_side_loss_weight"])
+        + float(config["other_group_side_loss_weight"])
+    )
+    if abs(total - 1.0) > 1e-6:
+        raise ValueError("mouth/cross/other group-side weights must sum to 1")
+    if float(config["other_group_side_loss_weight"]) > min(
+        float(config["mouth_group_side_loss_weight"]),
+        float(config["mouth_cross_group_side_loss_weight"]),
+    ):
+        raise ValueError("other_group_side_loss_weight must be the smallest branch weight")
 
 
 def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
@@ -114,7 +128,11 @@ def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
     config.setdefault("private_pool_size", 1)
     config.setdefault("free_z_dim", None)
     config.setdefault("side_z_dim", None)
+    config.setdefault("private_dim", 32)
+    config.setdefault("private_decoder_hidden_dim", None)
     config.setdefault("private_adapter_enabled", False)
+    config.setdefault("private_residual_weight", 0.05)
+    config.setdefault("private_residual_max_l1", 0.5)
     config.setdefault("side_basis_init_path", None)
     config.setdefault("discrete_side_loss_enabled", True)
     config.setdefault("side_semantic_enabled", False)
@@ -129,7 +147,9 @@ def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
     config.setdefault("severity_loss_weight", 0.0)
     config.setdefault("target_label_mode", "side")
     config.setdefault("num_side_classes", 3)
-    config.setdefault("group_side_loss_weight", None)
+    config.setdefault("mouth_group_side_loss_weight", 0.45)
+    config.setdefault("mouth_cross_group_side_loss_weight", 0.45)
+    config.setdefault("other_group_side_loss_weight", 0.10)
 
     side_cont_weight, side_disc_weight = resolve_side_weights(
         config["side_weight"],
@@ -138,8 +158,6 @@ def prepare_train_config(raw_config: Mapping[str, Any]) -> dict[str, Any]:
     )
     config["side_cont_weight"] = side_cont_weight
     config["side_disc_weight"] = side_disc_weight
-    if config["group_side_loss_weight"] is None:
-        config["group_side_loss_weight"] = config["side_loss_weight"]
 
     validate_action_basis_init(
         config["action_basis_init_path"],

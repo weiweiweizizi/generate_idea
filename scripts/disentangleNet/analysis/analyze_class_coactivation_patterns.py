@@ -1,27 +1,27 @@
 #!/usr/bin/env python
 """
-Compare patient-level coactivation structure across classes.
+对比不同类别的患者共激活结构。
 
-What this script does:
-- Read `patient_activation_profiles.csv`.
-- Select either patient-mean `usage` or `activation` features.
-- Compute class-wise correlation matrices.
-- Run a permutation MANOVA-style omnibus test.
-- Run pairwise permutation tests on correlation differences.
-- Export heatmaps, delta heatmaps, CSV tables, and a Markdown report.
+此脚本功能：
+- 读取 `patient_activation_profiles.csv`。
+- 选择患者均值的 `usage` 或 `activation` 特征。
+- 计算类别级相关矩阵。
+- 运行置换 MANOVA 风格 omnibus 检验。
+- 运行类别间相关差异的成对置换检验。
+- 导出热图、delta 热图、CSV 表和 Markdown 报告。
 
-Typical usage:
-1. Side-label coactivation on activations:
+典型用法：
+1. side 标签共激活（基于 activation）：
    `python scripts/disentangleNet/analysis/analyze_class_coactivation_patterns.py analyze \\
       --class_col side_label_name --feature_family activation`
-2. Dataset coactivation on usage:
+2. dataset 共激活（基于 usage）：
    `python scripts/disentangleNet/analysis/analyze_class_coactivation_patterns.py analyze \\
       --class_col dataset_name --feature_family usage`
-3. Stronger permutation budget:
+3. 增大置换次数：
    `python scripts/disentangleNet/analysis/analyze_class_coactivation_patterns.py analyze \\
       --class_col label_5class --feature_family activation --n_perm 4000`
 
-Default outputs:
+默认输出路径：
 - `.../patient_pattern_analysis/coactivation/by_<class_col>/<feature_family>/`
 """
 
@@ -45,6 +45,10 @@ if __package__ in {None, ""}:
 
 
 def benjamini_hochberg(p_values: np.ndarray) -> np.ndarray:
+    """
+    Benjamini-Hochberg FDR 校正。
+    输入 p 值数组，输出 q 值数组（BH 校正后 p 值）。
+    """
     p_values = np.asarray(p_values, dtype=np.float64)
     n = len(p_values)
     order = np.argsort(p_values)
@@ -59,11 +63,16 @@ def benjamini_hochberg(p_values: np.ndarray) -> np.ndarray:
 
 
 def corr_matrix(values: np.ndarray) -> np.ndarray:
+    """计算列间相关矩阵，处理 NaN/Inf"""
     corr = np.corrcoef(values, rowvar=False)
     return np.nan_to_num(corr, nan=0.0, posinf=0.0, neginf=0.0)
 
 
 def permanova_pseudo_f(values: np.ndarray, labels: np.ndarray) -> float:
+    """
+    计算 PERMANOVA pseudo-F 统计量（单因素）。
+    衡量组间差异相对于组内差异的显著性。
+    """
     unique_labels = np.unique(labels)
     n_samples = values.shape[0]
     n_groups = len(unique_labels)
@@ -93,6 +102,10 @@ def permutation_permanova(
     n_perm: int,
     seed: int,
 ) -> dict:
+    """
+    置换检验：估算 pseudo-F 的经验 p 值。
+    对标签做随机置换，比较观察统计量在置换分布中的位置。
+    """
     rng = np.random.default_rng(seed)
     observed = permanova_pseudo_f(values, labels)
     perm_stats = np.empty(n_perm, dtype=np.float64)
@@ -116,6 +129,10 @@ def permutation_corr_diff(
     n_perm: int,
     seed: int,
 ) -> pd.DataFrame:
+    """
+    检验两组间相关矩阵差异的统计显著性。
+    返回每个 basis 对的 delta_corr、p 值和 BH 校正 q 值。
+    """
     rng = np.random.default_rng(seed)
     mask = np.isin(labels, [group_a, group_b])
     subset_values = values[mask]
@@ -163,6 +180,7 @@ def matrix_to_long(
     *,
     value_name: str,
 ) -> pd.DataFrame:
+    """将方形相关矩阵转为长表格式（basis_i, basis_j, value）"""
     rows = []
     for i in range(len(basis_names)):
         for j in range(len(basis_names)):
@@ -189,6 +207,10 @@ def plot_heatmap(
     cmap: str,
     significance_mask: np.ndarray | None = None,
 ) -> None:
+    """
+    渲染热图到 PNG。
+    significance_mask 会在显著的格子对上叠加黑色圆点标记。
+    """
     fig, ax = plt.subplots(figsize=(8, 7))
     im = ax.imshow(matrix, cmap=cmap, vmin=vmin, vmax=vmax)
     ax.set_xticks(np.arange(len(basis_names)))
@@ -218,6 +240,10 @@ def build_focus_features(
     family: str,
     std_threshold: float,
 ) -> tuple[pd.DataFrame, list[str], np.ndarray]:
+    """
+    根据特征族（usage / activation）提取 basis 特征列。
+    过滤掉标准差过低的 basis（near-constant 特征）。
+    """
     if family == "activation":
         cols = [col for col in patient_df.columns if col.startswith("basis_activation_b")]
         basis_names = [col.replace("basis_activation_", "") for col in cols]
@@ -243,6 +269,10 @@ def build_class_corr_tables(
     *,
     class_col: str,
 ) -> tuple[dict[str, np.ndarray], pd.DataFrame]:
+    """
+    计算每个类别的患者特征相关矩阵。
+    返回：类别名->相关矩阵字典 + 长表 DataFrame。
+    """
     matrices = {}
     long_rows = []
     labels = patient_df[class_col].to_numpy(dtype=object)
@@ -260,6 +290,10 @@ def build_delta_matrix(
     pairwise_df: pd.DataFrame,
     basis_names: list[str],
 ) -> tuple[np.ndarray, np.ndarray]:
+    """
+    将成对检验结果转换为 delta 相关矩阵和显著性矩阵。
+    用于渲染 delta 热图。
+    """
     size = len(basis_names)
     delta = np.zeros((size, size), dtype=np.float64)
     sig = np.zeros((size, size), dtype=bool)
@@ -282,6 +316,7 @@ def build_report(
     pairwise_results: pd.DataFrame,
     class_corr_matrices: dict[str, np.ndarray],
 ) -> str:
+    """生成 Markdown 报告，包含 omnibus 检验结果、类别强相关和显著差异对"""
     lines = [
         f"# {family.title()} Coactivation Report",
         "",
@@ -345,15 +380,15 @@ def analyze(
     seed: int = 42,
 ):
     """
-    Main CLI entry for class-conditional coactivation analysis.
+    主入口函数。
 
-    Parameters:
-    - `patient_profiles_csv`: patient-level feature table
-    - `output_dir`: optional custom destination
-    - `class_col`: grouping column such as `side_label_name`, `dataset_name`, `score`, `label_5class`
-    - `feature_family`: `activation` or `usage`
-    - `std_threshold`: drop near-constant basis before correlation analysis
-    - `n_perm`, `seed`: permutation test controls
+    参数：
+    - `patient_profiles_csv`：患者级特征表
+    - `output_dir`：可选的自定义输出目录
+    - `class_col`：分组列，如 `side_label_name`、`dataset_name`、`score`、`label_5class`
+    - `feature_family`：`activation` 或 `usage`
+    - `std_threshold`：过滤近常数 basis 的标准差阈值
+    - `n_perm`、`seed`：置换检验控制参数
     """
     patient_path = Path(patient_profiles_csv).expanduser().resolve()
     if not patient_path.exists():
@@ -374,12 +409,14 @@ def analyze(
     )
     labels = patient_df[class_col].to_numpy(dtype=object)
 
+    # 计算类别相关矩阵
     class_corr_matrices, class_corr_df = build_class_corr_tables(
         patient_df,
         values,
         basis_names,
         class_col=class_col,
     )
+    # Omnibus 置换检验
     permanova_result = permutation_permanova(
         values,
         labels,
@@ -387,6 +424,7 @@ def analyze(
         seed=seed,
     )
 
+    # 成对置换检验
     pairwise_tables = []
     class_names = sorted(patient_df[class_col].unique().tolist())
     for idx_a in range(len(class_names)):
@@ -417,6 +455,7 @@ def analyze(
     corr_dir.mkdir(parents=True, exist_ok=True)
     delta_dir.mkdir(parents=True, exist_ok=True)
 
+    # 渲染各类别相关热图
     for class_name, corr in class_corr_matrices.items():
         plot_heatmap(
             corr,
@@ -428,6 +467,7 @@ def analyze(
             cmap="coolwarm",
         )
 
+    # 渲染 delta 热图（标记显著差异）
     for comparison, subset in pairwise_df.groupby("comparison"):
         delta_matrix, sig_mask = build_delta_matrix(subset, basis_names)
         vmax = max(float(np.abs(delta_matrix).max()), 1e-6)
@@ -442,6 +482,7 @@ def analyze(
             significance_mask=sig_mask,
         )
 
+    # 类别均值热图（特征 × 类别）
     mean_by_class = patient_df.groupby(class_col)[features_df.columns.tolist()].mean()
     mean_by_class.index.name = class_col
     fig, ax = plt.subplots(figsize=(10, 4))
@@ -457,6 +498,7 @@ def analyze(
     fig.savefig(mean_heatmap_path, dpi=220)
     plt.close(fig)
 
+    # 保存数据文件
     basis_manifest_path = destination / "basis_manifest.csv"
     class_corr_path = destination / "class_correlation_long.csv"
     pairwise_path = destination / "pairwise_corr_diff_tests.csv"

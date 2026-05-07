@@ -312,7 +312,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--region", choices=["full", "mouth"], default="mouth")
     parser.add_argument(
         "--grouped_dir",
-        default="data/win20-step20/svd_multi_patient_grouped_results",
+        default="outputs/pilot_feasibility/svd/win20-step20/svd_multi_patient_grouped_results",
     )
     parser.add_argument("--tt_svd_dir", default="data/win20-step20/TT-SVD")
     parser.add_argument("--imr_svd_dir", default="data/win20-step20/IMR-SVD")

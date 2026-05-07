@@ -24,7 +24,9 @@ def load_action_basis_init(
 
     basis = torch.from_numpy(np.load(init_path)).float()
     expected_shape = (total_basis_num, basis_size, basis_size)
-    if tuple(basis.shape) != expected_shape:
+    if tuple(basis.shape) == (total_basis_num + 3, basis_size, basis_size):
+        basis = basis[:total_basis_num]
+    elif tuple(basis.shape) != expected_shape:
         raise ValueError(
             f"Action basis init shape mismatch: got {tuple(basis.shape)}, expected {expected_shape}"
         )
@@ -43,7 +45,9 @@ def load_side_basis_init(
 
     basis = torch.from_numpy(np.load(init_path)).float()
     expected_shape = (side_basis_count, basis_size, basis_size)
-    if tuple(basis.shape) != expected_shape:
+    if tuple(basis.shape) == (side_basis_count + 8, basis_size, basis_size):
+        basis = basis[-side_basis_count:]
+    elif tuple(basis.shape) != expected_shape:
         raise ValueError(
             f"Side basis init shape mismatch: got {tuple(basis.shape)}, expected {expected_shape}"
         )

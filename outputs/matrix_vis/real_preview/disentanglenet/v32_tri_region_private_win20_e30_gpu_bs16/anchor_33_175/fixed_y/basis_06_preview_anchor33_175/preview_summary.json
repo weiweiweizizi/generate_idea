@@ -1,0 +1,13 @@
+{
+  "x_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v32_tri_region_private_win20_e30_gpu_bs16/anchor_33_175/basis_06/axis_x/solution.npz",
+  "y_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v32_tri_region_private_win20_e30_gpu_bs16/anchor_33_175/fixed_y_axis_y/solution.npz",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_private_win20_e30_gpu_bs16/anchor_33_175/fixed_y/basis_06_preview_anchor33_175",
+  "num_frames": 20,
+  "num_subset_points": 341,
+  "anchor_point_ids": [
+    33,
+    175
+  ],
+  "anchor_point_id": 33,
+  "subset_layout_region_names": null
+}

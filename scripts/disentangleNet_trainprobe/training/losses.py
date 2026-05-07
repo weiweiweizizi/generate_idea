@@ -12,6 +12,39 @@ def masked_mean(values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     return (values * mask).sum() / denom
 
 
+def weighted_branch_group_side_loss(
+    branch_group_side_logits: dict[str, torch.Tensor | None],
+    *,
+    side_labels: torch.Tensor,
+    group_valid_mask: torch.Tensor,
+    loss_weights: dict,
+) -> tuple[torch.Tensor | None, dict[str, float]]:
+    """Compute the requested weighted CE over the three masked side branches."""
+
+    branch_weights = {
+        "mouth_self": float(loss_weights["mouth_side_group"]),
+        "mouth_cross_other": float(loss_weights["mouth_cross_side_group"]),
+        "other_self": float(loss_weights["other_side_group"]),
+    }
+    total = sum(branch_weights.values())
+    if abs(total - 1.0) > 1e-6:
+        raise ValueError(f"Branch side-group weights must sum to 1, got {total}")
+
+    losses = []
+    metrics = {}
+    for branch_name, branch_weight in branch_weights.items():
+        logits = branch_group_side_logits.get(branch_name)
+        if logits is None or branch_weight == 0.0:
+            continue
+        branch_loss = F.cross_entropy(logits[group_valid_mask], side_labels)
+        losses.append(branch_weight * branch_loss)
+        metrics[f"{branch_name}_side_group_ce"] = float(branch_loss.detach().cpu())
+
+    if not losses:
+        return None, metrics
+    return torch.stack(losses).sum(), metrics
+
+
 def step_model(model, batch, device, loss_weights):
     x = batch["images"].to(device)
     valid_mask = batch["valid_mask"].to(device)
@@ -56,27 +89,26 @@ def step_model(model, batch, device, loss_weights):
     if side_loss_cont is not None:
         side_loss_cont_value = masked_mean(side_loss_cont, supervision_mask)
 
-    side_group_rep = outputs["side_path_representation"]
-    if side_group_rep is None:
-        raise RuntimeError("side_path_representation is required for group supervision")
-    if side_group_rep.ndim != 3:
-        raise ValueError(
-            "group supervision expects grouped side_path_representation with shape B x T x D"
-        )
     group_valid_mask = supervision_mask.any(dim=1)
     if group_valid_mask.any():
-        group_side_logits = outputs["group_side_logits"]
         group_side_labels = batch["side_label"].to(device)[group_valid_mask]
-        if group_side_logits is not None:
-            side_group_loss_value = F.cross_entropy(
-                group_side_logits[group_valid_mask],
-                group_side_labels,
+        branch_group_side_logits = outputs["branch_group_side_logits"]
+        if branch_group_side_logits:
+            side_group_loss_value, branch_side_metrics = weighted_branch_group_side_loss(
+                branch_group_side_logits,
+                side_labels=group_side_labels,
+                group_valid_mask=group_valid_mask,
+                loss_weights=loss_weights,
             )
+        else:
+            branch_side_metrics = {}
+    else:
+        branch_side_metrics = {}
 
     if side_loss_cont_value is not None:
         total_loss = total_loss + loss_weights["side_cont"] * side_loss_cont_value
     if side_group_loss_value is not None:
-        total_loss = total_loss + loss_weights["side_group"] * side_group_loss_value
+        total_loss = total_loss + side_group_loss_value
 
     loss_metrics = {
         "loss": float(total_loss.detach().cpu()),
@@ -97,11 +129,13 @@ def step_model(model, batch, device, loss_weights):
         loss_metrics["side_ce"] = float(side_loss_cont_value.detach().cpu())
     if side_group_loss_value is not None:
         loss_metrics["side_group_ce"] = float(side_group_loss_value.detach().cpu())
+    loss_metrics.update(branch_side_metrics)
     loss_metrics["free_side_adv"] = 0.0
 
     probe_outputs = {
         "side_logits": outputs["side_logits"],
         "group_side_logits": outputs["group_side_logits"],
+        "branch_group_side_logits": outputs["branch_group_side_logits"],
     }
 
     return total_loss, loss_metrics, probe_outputs

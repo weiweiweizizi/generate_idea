@@ -114,6 +114,7 @@ def run_batch(
     fixed_y_config: str = DEFAULT_FIXED_Y_CONFIG,
     fixed_y_solution: str = DEFAULT_FIXED_Y_SOLUTION,
     anchor_point_id: int = 14,
+    anchor_point_ids: str | list[int] | tuple[int, ...] | None = None,
     run_fixed_y_if_missing: bool = True,
     run_fixed_y_preview: bool = True,
     run_no_motion_y_preview: bool = False,
@@ -141,6 +142,15 @@ def run_batch(
         fixed_y_config=fixed_y_config,
         fixed_y_solution=fixed_y_solution,
         anchor_point_id=anchor_point_id,
+        anchor_point_ids=anchor_point_ids,
+    )
+    resolved_anchor_point_ids = generation.get("anchor_point_ids") or [int(anchor_point_id)]
+    manifest = json.loads(Path(generation["manifest_path"]).read_text(encoding="utf-8"))
+    subset_layout_region_names = manifest.get("point_layout_region_names")
+    preview_title = (
+        "normalized facemesh + face regions preview"
+        if subset_layout_region_names is None
+        else "normalized facemesh + selected face regions preview"
     )
 
     fixed_y_solution_path = Path(generation["fixed_y_solution"])
@@ -186,7 +196,9 @@ def run_batch(
                     x_solution=str(x_solution_path),
                     y_solution=str(fixed_y_solution_path),
                     output_dir=job["fixed_y_preview_output_dir"],
-                    anchor_point_id=int(anchor_point_id),
+                    anchor_point_ids=resolved_anchor_point_ids,
+                    subset_layout_region_names=subset_layout_region_names,
+                    title=preview_title,
                 )
             )
         if run_no_motion_y_preview:
@@ -200,15 +212,17 @@ def run_batch(
                     x_solution=str(x_solution_path),
                     y_solution=str(no_motion_y_solution_path),
                     output_dir=job["no_motion_y_preview_output_dir"],
-                    anchor_point_id=int(anchor_point_id),
-                    title="normalized facemesh + mouth regions preview (y static)",
+                    anchor_point_ids=resolved_anchor_point_ids,
+                    subset_layout_region_names=subset_layout_region_names,
+                    title=f"{preview_title} (y static)",
                 )
             )
 
     summary = {
         "manifest_path": generation["manifest_path"],
         "generated_dir": generation["generated_dir"],
-        "anchor_point_id": int(anchor_point_id),
+        "anchor_point_ids": resolved_anchor_point_ids,
+        "anchor_point_id": int(resolved_anchor_point_ids[0]),
         "fixed_y_solution": generation["fixed_y_solution"],
         "num_total_jobs": len(axis_results),
         "num_axis_runs": len(axis_results),

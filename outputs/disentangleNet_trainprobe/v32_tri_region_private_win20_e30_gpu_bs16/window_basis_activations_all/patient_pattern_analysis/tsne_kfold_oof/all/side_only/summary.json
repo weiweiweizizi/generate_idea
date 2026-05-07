@@ -1,0 +1,178 @@
+{
+  "patient_profiles_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/patient_activation_profiles.csv",
+  "output_root": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only",
+  "n_patients": 267,
+  "oof_mode": true,
+  "oof_summary": {
+    "subject_fold_assignments_csv": "/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/kfold_report_verify_mpl/subject_fold_assignments.csv",
+    "num_folds": 5,
+    "num_patients_oof": 267,
+    "patients_per_fold": {
+      "0": 54,
+      "1": 54,
+      "2": 54,
+      "3": 51,
+      "4": 54
+    }
+  },
+  "feature_families": [
+    "usage",
+    "activation",
+    "combined"
+  ],
+  "excluded_basis_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "plots_per_family": 10,
+  "total_plots": 30,
+  "families": [
+    {
+      "feature_family": "usage",
+      "feature_count": 3,
+      "feature_columns": [
+        "basis_usage_b8",
+        "basis_usage_b9",
+        "basis_usage_b10"
+      ],
+      "excluded_basis_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "n_samples": 267,
+      "perplexity_requested": 30.0,
+      "perplexity_used": 30.0,
+      "random_state": 42,
+      "embeddings": {
+        "tsne_2d": {
+          "embedding_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_2d/usage_tsne_2d_embeddings.csv",
+          "plot_paths": {
+            "dataset_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_2d/usage_tsne_2d_by_dataset_name.png",
+            "side_label_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_2d/usage_tsne_2d_by_side_label_name.png",
+            "score": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_2d/usage_tsne_2d_by_score.png",
+            "label_5class": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_2d/usage_tsne_2d_by_label_5class.png",
+            "combined": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_2d/usage_tsne_2d_combined.png"
+          }
+        },
+        "tsne_3d": {
+          "embedding_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_3d/usage_tsne_3d_embeddings.csv",
+          "plot_paths": {
+            "dataset_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_3d/usage_tsne_3d_by_dataset_name.png",
+            "side_label_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_3d/usage_tsne_3d_by_side_label_name.png",
+            "score": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_3d/usage_tsne_3d_by_score.png",
+            "label_5class": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_3d/usage_tsne_3d_by_label_5class.png",
+            "combined": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_3d/usage_tsne_3d_combined.png",
+            "combined_gif": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/usage/tsne_3d/usage_tsne_3d_combined.gif"
+          }
+        }
+      }
+    },
+    {
+      "feature_family": "activation",
+      "feature_count": 3,
+      "feature_columns": [
+        "basis_activation_b8",
+        "basis_activation_b9",
+        "basis_activation_b10"
+      ],
+      "excluded_basis_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "n_samples": 267,
+      "perplexity_requested": 30.0,
+      "perplexity_used": 30.0,
+      "random_state": 42,
+      "embeddings": {
+        "tsne_2d": {
+          "embedding_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_2d/activation_tsne_2d_embeddings.csv",
+          "plot_paths": {
+            "dataset_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_2d/activation_tsne_2d_by_dataset_name.png",
+            "side_label_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_2d/activation_tsne_2d_by_side_label_name.png",
+            "score": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_2d/activation_tsne_2d_by_score.png",
+            "label_5class": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_2d/activation_tsne_2d_by_label_5class.png",
+            "combined": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_2d/activation_tsne_2d_combined.png"
+          }
+        },
+        "tsne_3d": {
+          "embedding_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_3d/activation_tsne_3d_embeddings.csv",
+          "plot_paths": {
+            "dataset_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_3d/activation_tsne_3d_by_dataset_name.png",
+            "side_label_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_3d/activation_tsne_3d_by_side_label_name.png",
+            "score": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_3d/activation_tsne_3d_by_score.png",
+            "label_5class": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_3d/activation_tsne_3d_by_label_5class.png",
+            "combined": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_3d/activation_tsne_3d_combined.png",
+            "combined_gif": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/activation/tsne_3d/activation_tsne_3d_combined.gif"
+          }
+        }
+      }
+    },
+    {
+      "feature_family": "combined",
+      "feature_count": 6,
+      "feature_columns": [
+        "basis_usage_b8",
+        "basis_usage_b9",
+        "basis_usage_b10",
+        "basis_activation_b8",
+        "basis_activation_b9",
+        "basis_activation_b10"
+      ],
+      "excluded_basis_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "n_samples": 267,
+      "perplexity_requested": 30.0,
+      "perplexity_used": 30.0,
+      "random_state": 42,
+      "embeddings": {
+        "tsne_2d": {
+          "embedding_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_2d/combined_tsne_2d_embeddings.csv",
+          "plot_paths": {
+            "dataset_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_2d/combined_tsne_2d_by_dataset_name.png",
+            "side_label_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_2d/combined_tsne_2d_by_side_label_name.png",
+            "score": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_2d/combined_tsne_2d_by_score.png",
+            "label_5class": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_2d/combined_tsne_2d_by_label_5class.png",
+            "combined": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_2d/combined_tsne_2d_combined.png"
+          }
+        },
+        "tsne_3d": {
+          "embedding_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_3d/combined_tsne_3d_embeddings.csv",
+          "plot_paths": {
+            "dataset_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_3d/combined_tsne_3d_by_dataset_name.png",
+            "side_label_name": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_3d/combined_tsne_3d_by_side_label_name.png",
+            "score": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_3d/combined_tsne_3d_by_score.png",
+            "label_5class": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_3d/combined_tsne_3d_by_label_5class.png",
+            "combined": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_3d/combined_tsne_3d_combined.png",
+            "combined_gif": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/all/side_only/combined/tsne_3d/combined_tsne_3d_combined.gif"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -19,7 +19,7 @@ projection:
   anchor_point_ids: [109, 10, 338, 108, 151, 337]
 
 basis:
-  source: data/win20-step20/svd_multi_patient_grouped_results/by_side/bilateral_normal/PC1_x.npy
+  source: outputs/pilot_feasibility/svd/win20-step20/svd_multi_patient_grouped_results/by_side/bilateral_normal/PC1_x.npy
   basis_index: 0
   matrix_shape: square
   value_semantics: mean_distance_delta

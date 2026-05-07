@@ -1,0 +1,17 @@
+{
+  "wide_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/window_basis_activations_wide.csv",
+  "num_patients": 267,
+  "num_rankings": 160,
+  "pattern_counts": {
+    "mixed_or_boundary": 233,
+    "right_like_diffuse_low_coeff": 34
+  },
+  "paths": {
+    "patient_profiles_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/patient_activation_profiles.csv",
+    "summary_by_side_label_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/summary_by_side_label.csv",
+    "summary_by_dataset_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/summary_by_dataset.csv",
+    "summary_by_dataset_and_side_label_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/summary_by_dataset_and_side_label.csv",
+    "patient_extreme_rankings_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/patient_extreme_rankings.csv",
+    "report_md": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/report.md"
+  }
+}

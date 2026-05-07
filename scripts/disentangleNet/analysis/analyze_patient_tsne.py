@@ -1,44 +1,37 @@
 #!/usr/bin/env python
 """
-Patient-level t-SNE visualization for disentangleNet basis representations.
+disentangleNet basis 表征的患者级 t-SNE 可视化。
 
-What this script is for:
-- Read the patient-level summary table exported from
-  `patient_profile_summary/patient_activation_profiles.csv`.
-- Build three feature families:
-  1. `usage`: patient-mean `basis_usage_b*`
-  2. `activation`: patient-mean `basis_activation_b*`
-  3. `combined`: concatenate usage + activation
-- Run t-SNE in both 2D and 3D for each feature family.
-- Export one embedding CSV plus five plots for each dimensionality:
-  `dataset_name`, `side_label_name`, `score`, `label_5class`, and a combined view.
-- For the 3D combined view, also export a rotating GIF.
+此脚本功能：
+- 读取 `patient_profile_summary/patient_activation_profiles.csv`。
+- 构建三种特征族：
+  1. `usage`：患者均值的 `basis_usage_b*`
+  2. `activation`：患者均值的 `basis_activation_b*`
+  3. `combined`：usage + activation 拼接
+- 对每种特征族运行 2D 和 3D t-SNE。
+- 导出嵌入 CSV 和五张图（按 dataset_name、side_label_name、score、label_5class 和 combined view）。
+- 3D combined view 额外导出旋转 GIF。
 
-How to use:
-1. Default run:
+典型用法：
+1. 默认运行：
    `python scripts/disentangleNet/analysis/analyze_patient_tsne.py analyze`
-2. Exclude some basis indices, for example ignore side basis:
+2. 排除某些 basis（如排除 side basis）：
    `python scripts/disentangleNet/analysis/analyze_patient_tsne.py analyze \\
       --output_root outputs/.../patient_pattern_analysis/tsne/all/no_side \\
       --exclude_basis_indices 8,9,10`
-3. Keep only side basis by excluding free basis:
+3. 仅保留 side basis（排除 free basis）：
    `python scripts/disentangleNet/analysis/analyze_patient_tsne.py analyze \\
       --output_root outputs/.../patient_pattern_analysis/tsne/all/side_only \\
       --exclude_basis_indices 0,1,2,3,4,5,6,7`
 
-Where results go:
-- The top-level output directory is controlled by `--output_root`.
-- For each feature family, results are written to:
+结果输出位置：
+- 顶层目录由 `--output_root` 控制。
+- 每种特征族的结果写入：
   `<output_root>/<feature_family>/tsne_2d/`
   `<output_root>/<feature_family>/tsne_3d/`
-- Each of those folders contains:
-  - one embedding CSV
-  - four class-colored plots
-  - one combined plot
-  - in `tsne_3d/`, one extra combined rotating GIF
-- The root output directory also contains:
-  - `report.md`
-  - `summary.json`
+- 每个目录包含：嵌入 CSV、四个分类着色图、一个 combined 图。
+  `tsne_3d/` 额外包含一个 combined 旋转 GIF。
+- 顶层目录还包含：`report.md` 和 `summary.json`。
 """
 
 from __future__ import annotations
@@ -64,6 +57,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 
+# 颜色配置
 DATASET_COLORS = {
     "IMR": "#1f77b4",
     "TT": "#d62728",
@@ -85,7 +79,7 @@ LABEL5_CMAP = plt.get_cmap("coolwarm")
 
 
 def load_patient_profiles(patient_profiles_csv: Path) -> pd.DataFrame:
-    """Load the patient-level feature table used as the t-SNE input."""
+    """加载患者级特征表作为 t-SNE 输入"""
     df = pd.read_csv(patient_profiles_csv)
     required_cols = ["dataset_name", "subject", "side_label_name", "score", "label_5class"]
     missing = [col for col in required_cols if col not in df.columns]
@@ -94,13 +88,59 @@ def load_patient_profiles(patient_profiles_csv: Path) -> pd.DataFrame:
     return df
 
 
+def canonicalize_subject(value) -> str:
+    """规范化 subject id，使患者表和 fold manifest 能对齐"""
+    text = str(value).strip()
+    if text.endswith(".0"):
+        text = text[:-2]
+    if not text:
+        return text
+    if text.isdigit():
+        stripped = text.lstrip("0")
+        return stripped or "0"
+    return text
+
+
+def build_oof_patient_profiles(
+    patient_df: pd.DataFrame,
+    *,
+    subject_fold_assignments_csv: Path,
+) -> tuple[pd.DataFrame, dict]:
+    """通过拼接每个 fold 的验证子集构建 OOF 患者表"""
+    fold_df = pd.read_csv(subject_fold_assignments_csv, dtype={"subject": str}).copy()
+    if "subject" not in fold_df.columns or "fold" not in fold_df.columns:
+        raise ValueError("subject_fold_assignments_csv must contain `subject` and `fold` columns")
+
+    patient_df = patient_df.copy()
+    patient_df["_subject_key"] = patient_df["subject"].map(canonicalize_subject)
+    fold_df["_subject_key"] = fold_df["subject"].map(canonicalize_subject)
+
+    fold_map = fold_df.drop_duplicates("_subject_key", keep="first")[["_subject_key", "fold"]]
+    merged = patient_df.merge(fold_map, on="_subject_key", how="left", validate="one_to_one")
+    if merged["fold"].isna().any():
+        missing = merged.loc[merged["fold"].isna(), "subject"].astype(str).tolist()
+        raise RuntimeError(f"Missing fold assignments for subjects: {missing[:10]}")
+
+    merged["fold"] = merged["fold"].astype(int)
+    merged["oof_role"] = "val"
+    merged = merged.sort_values(["fold", "dataset_name", "subject"]).reset_index(drop=True)
+    counts_by_fold = merged.groupby("fold")["subject"].count().sort_index().astype(int).to_dict()
+    merged = merged.drop(columns=["_subject_key"])
+    return merged, {
+        "subject_fold_assignments_csv": str(subject_fold_assignments_csv.resolve()),
+        "num_folds": int(len(counts_by_fold)),
+        "num_patients_oof": int(merged.shape[0]),
+        "patients_per_fold": {str(k): int(v) for k, v in counts_by_fold.items()},
+    }
+
+
 def parse_basis_index(col_name: str) -> int:
-    """Extract the trailing basis index from `basis_usage_b10`-style columns."""
+    """从 `basis_usage_b10` 风格列名提取末尾 basis 索引"""
     return int(col_name.rsplit("b", 1)[1])
 
 
 def parse_exclude_basis_indices(exclude_basis_indices) -> list[int]:
-    """Normalize Fire CLI input into a sorted list of basis indices to exclude."""
+    """将 Fire CLI 输入规范化为要排除的 basis 索引排序列表"""
     if exclude_basis_indices is None:
         return []
     if isinstance(exclude_basis_indices, str):
@@ -113,7 +153,7 @@ def parse_exclude_basis_indices(exclude_basis_indices) -> list[int]:
 
 
 def filter_basis_columns(cols: list[str], exclude_basis_indices: list[int]) -> list[str]:
-    """Drop all columns whose basis index is in `exclude_basis_indices`."""
+    """删除所有 basis 索引在排除列表中的列"""
     if not exclude_basis_indices:
         return cols
     exclude_set = set(exclude_basis_indices)
@@ -126,7 +166,7 @@ def feature_columns(
     *,
     exclude_basis_indices: list[int],
 ) -> list[str]:
-    """Select feature columns for one family after optional basis exclusion."""
+    """根据特征族选择 basis 特征列（支持可选排除）"""
     if feature_family == "usage":
         cols = [col for col in patient_df.columns if col.startswith("basis_usage_b")]
         return filter_basis_columns(cols, exclude_basis_indices)
@@ -144,7 +184,7 @@ def feature_columns(
 
 
 def tsne_perplexity(n_samples: int, requested: float) -> float:
-    """Keep perplexity in a safe range for the current sample count."""
+    """将 perplexity 限制在安全范围内（不超过样本数 - 1）"""
     upper = max(5.0, min(float(requested), float(n_samples - 1)))
     adaptive = max(5.0, min(upper, float((n_samples - 1) // 3)))
     return adaptive
@@ -157,7 +197,7 @@ def compute_embedding(
     perplexity: float,
     random_state: int,
 ) -> np.ndarray:
-    """Standardize features first, then compute one t-SNE embedding."""
+    """先标准化特征，再计算 t-SNE 嵌入"""
     scaled = StandardScaler().fit_transform(values)
     tsne = TSNE(
         n_components=n_components,
@@ -170,6 +210,7 @@ def compute_embedding(
 
 
 def categorical_handles(color_map: dict, marker: str = "o") -> list[Line2D]:
+    """为类别变量生成 legend handles"""
     handles = []
     for label, color in color_map.items():
         handles.append(
@@ -189,6 +230,7 @@ def categorical_handles(color_map: dict, marker: str = "o") -> list[Line2D]:
 
 
 def numeric_handles(color_map: dict, marker: str = "o") -> list[Line2D]:
+    """为数值变量（有序类别）生成 legend handles"""
     handles = []
     for label, color in sorted(color_map.items()):
         handles.append(
@@ -208,6 +250,7 @@ def numeric_handles(color_map: dict, marker: str = "o") -> list[Line2D]:
 
 
 def make_axes(n_components: int):
+    """根据维数创建 matplotlib figure 和 axes（2D 或 3D）"""
     if n_components == 2:
         fig, ax = plt.subplots(figsize=(8.6, 7.2))
     elif n_components == 3:
@@ -229,6 +272,7 @@ def scatter_points(
     sizes,
     alpha: float = 0.9,
 ):
+    """在 axes 上绘制散点（支持单 markers 或 per-point markers）"""
     if n_components == 2:
         if isinstance(markers, str):
             ax.scatter(
@@ -288,6 +332,7 @@ def scatter_points(
 
 
 def style_axes(ax, *, n_components: int, title: str):
+    """设置 axes 的标题和坐标轴标签"""
     ax.set_title(title)
     ax.set_xlabel("t-SNE 1")
     ax.set_ylabel("t-SNE 2")
@@ -305,7 +350,7 @@ def plot_group_colored(
     output_path: Path,
     title: str,
 ) -> None:
-    """Plot one embedding with color determined by a single grouping variable."""
+    """按单一分组变量着色绘制嵌入散点图"""
     fig, ax = make_axes(n_components)
 
     if group_col == "dataset_name":
@@ -368,12 +413,12 @@ def plot_combined(
     rotation_duration: float = 0.12,
 ) -> None:
     """
-    Plot one embedding with a denser visual encoding.
-
-    Encoding:
-    - marker shape: dataset_name (`IMR=o`, `TT=^`)
-    - point fill color: label_5class diverging colormap centered at 2
-    - point edge color: side_label_name
+    使用更丰富视觉编码绘制嵌入散点图。
+    编码规则：
+    - marker 形状：dataset_name（IMR=o，TT=^）
+    - 点填充颜色：label_5class 中心为 2 的 diverging colormap
+    - 点边框颜色：side_label_name
+    3D 模式下若提供了 gif_output_path，还导出旋转 GIF。
     """
     fig, ax = make_axes(n_components)
 
@@ -396,6 +441,7 @@ def plot_combined(
     )
     style_axes(ax, n_components=n_components, title=title)
 
+    # 双图例
     dataset_handles = [
         Line2D(
             [0],
@@ -432,6 +478,7 @@ def plot_combined(
     fig.tight_layout()
     fig.savefig(output_path, dpi=220)
 
+    # 3D 旋转 GIF
     if n_components == 3 and gif_output_path is not None:
         frames = []
         for azim in np.linspace(0.0, 360.0, rotation_frames, endpoint=False):
@@ -453,7 +500,7 @@ def export_feature_family(
     random_state: int,
     exclude_basis_indices: list[int],
 ) -> dict:
-    """Run 2D/3D t-SNE for one feature family and export CSVs + plots."""
+    """对一种特征族运行 2D/3D t-SNE，导出嵌入 CSV 和各种着色图"""
     cols = feature_columns(
         patient_df,
         feature_family,
@@ -476,6 +523,7 @@ def export_feature_family(
         "embeddings": {},
     }
 
+    # 元数据列（用于嵌入 CSV 附带信息）
     base_meta_cols = [
         "dataset_name",
         "dataset_label",
@@ -498,6 +546,7 @@ def export_feature_family(
         dim_dir = family_dir / f"tsne_{n_components}d"
         dim_dir.mkdir(parents=True, exist_ok=True)
 
+        # 嵌入 CSV
         embed_cols = [f"tsne_{n_components}d_{idx + 1}" for idx in range(n_components)]
         embed_df = patient_df[meta_cols].copy()
         for idx, col in enumerate(embed_cols):
@@ -505,6 +554,7 @@ def export_feature_family(
         embedding_csv = dim_dir / f"{feature_family}_tsne_{n_components}d_embeddings.csv"
         embed_df.to_csv(embedding_csv, index=False)
 
+        # 按类别着色图
         plot_paths = {}
         for group_col in ("dataset_name", "side_label_name", "score", "label_5class"):
             output_path = dim_dir / f"{feature_family}_tsne_{n_components}d_by_{group_col}.png"
@@ -518,6 +568,7 @@ def export_feature_family(
             )
             plot_paths[group_col] = str(output_path.resolve())
 
+        # combined 图（+ 可选 GIF）
         combined_path = dim_dir / f"{feature_family}_tsne_{n_components}d_combined.png"
         combined_gif_path = None
         if n_components == 3:
@@ -543,7 +594,7 @@ def export_feature_family(
 
 
 def build_report(summary: dict) -> str:
-    """Write a short machine-generated index of the exported result folders."""
+    """生成机器可读的索引 Markdown 报告"""
     lines = [
         "# Patient-level t-SNE Report",
         "",
@@ -555,9 +606,20 @@ def build_report(summary: dict) -> str:
         f"- plots_per_family: `10`",
         f"- total_plots: `{summary['total_plots']}`",
         "",
-        "## Families",
-        "",
     ]
+    if summary.get("oof_mode"):
+        lines.extend(
+            [
+                "## OOF Mode",
+                "",
+                f"- subject_fold_assignments_csv: `{summary['oof_summary']['subject_fold_assignments_csv']}`",
+                f"- num_folds: `{summary['oof_summary']['num_folds']}`",
+                f"- num_patients_oof: `{summary['oof_summary']['num_patients_oof']}`",
+                f"- patients_per_fold: `{summary['oof_summary']['patients_per_fold']}`",
+                "",
+            ]
+        )
+    lines.extend(["## Families", ""])
     for family in summary["families"]:
         lines.extend(
             [
@@ -585,25 +647,35 @@ def analyze(
         "outputs/disentangleNet/v31_current_verify/window_basis_activations_all/"
         "patient_pattern_analysis/tsne/all/all_basis"
     ),
+    subject_fold_assignments_csv: str = "",
     exclude_basis_indices: str = "",
     perplexity: float = 30.0,
     random_state: int = 42,
 ) -> None:
     """
-    Main CLI entry.
+    主入口函数。
 
-    Parameters:
-    - `patient_profiles_csv`: patient-level input table
-    - `output_root`: root directory where all plots/embeddings will be written
-    - `exclude_basis_indices`: comma-separated basis ids to ignore
-    - `perplexity`: requested t-SNE perplexity
-    - `random_state`: fixed seed for reproducibility
+    参数：
+    - `patient_profiles_csv`：患者级输入表
+    - `output_root`：所有图/嵌入的根目录
+    - `subject_fold_assignments_csv`：可选的 k-fold manifest；
+      若提供则构建 OOF 患者表（拼接每 fold 验证子集）
+    - `exclude_basis_indices`：逗号分隔的待忽略 basis id
+    - `perplexity`：请求的 t-SNE perplexity
+    - `random_state`：固定随机种子以保证可复现性
     """
     patient_profiles_path = Path(patient_profiles_csv)
     output_root_path = Path(output_root)
     output_root_path.mkdir(parents=True, exist_ok=True)
 
     patient_df = load_patient_profiles(patient_profiles_path)
+    oof_summary = None
+    if subject_fold_assignments_csv:
+        patient_df, oof_summary = build_oof_patient_profiles(
+            patient_df,
+            subject_fold_assignments_csv=Path(subject_fold_assignments_csv),
+        )
+        patient_df.to_csv(output_root_path / "patient_profiles_oof.csv", index=False)
     excluded_basis = parse_exclude_basis_indices(exclude_basis_indices)
 
     family_summaries = []
@@ -623,6 +695,8 @@ def analyze(
         "patient_profiles_csv": str(patient_profiles_path.resolve()),
         "output_root": str(output_root_path.resolve()),
         "n_patients": int(patient_df.shape[0]),
+        "oof_mode": bool(oof_summary is not None),
+        "oof_summary": oof_summary,
         "feature_families": ["usage", "activation", "combined"],
         "excluded_basis_indices": excluded_basis,
         "plots_per_family": 10,

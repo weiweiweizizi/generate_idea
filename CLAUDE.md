@@ -58,32 +58,32 @@ regions = ["forehead", "eyebrow", "eyehole", "eye_contour",
 ### Decomposition Methods
 | Script | Purpose |
 |--------|---------|
-| `scripts/svd_single_patient.py` | Single-patient SVD ΔD decomposition |
-| `scripts/svd_multi_patient.py` | Multi-patient joint SVD |
-| `scripts/svd_single_patient_raw.py` | RAW vs DIFF comparison |
-| `scripts/svd_multi_patient_win5.py` | Multi-patient SVD on win5-step5 data |
-| `scripts/nmf_baseline_x_y.py` | NMF baseline (failed) |
-| `scripts/tucker_multi_patient.py` | Tucker decomposition attempt |
+| `scripts/pilot_feasibility/svd/svd_single_patient.py` | Single-patient SVD ΔD decomposition |
+| `scripts/pilot_feasibility/svd/svd_multi_patient.py` | Multi-patient joint SVD |
+| `scripts/pilot_feasibility/svd/svd_single_patient_raw.py` | RAW vs DIFF comparison |
+| `scripts/pilot_feasibility/svd/svd_multi_patient_win5.py` | Multi-patient SVD on win5-step5 data |
+| `scripts/pilot_feasibility/nmf/nmf_baseline_x_y.py` | NMF baseline (failed) |
+| `scripts/pilot_feasibility/tucker/tucker_multi_patient.py` | Tucker decomposition attempt |
 
 ### DMD (Dynamic Mode Decomposition)
 | Script | Purpose |
 |--------|---------|
-| `scripts/dmd_single_patient.py` | Single-patient DMD with spatial mode heatmaps |
-| `scripts/dmd_multi_patient.py` | Multi-patient joint DMD |
-| `scripts/dmd_blendshape_correlation.py` | DMD mode vs blendshape correlation |
+| `scripts/pilot_feasibility/dmd/dmd_single_patient.py` | Single-patient DMD with spatial mode heatmaps |
+| `scripts/pilot_feasibility/dmd/dmd_multi_patient.py` | Multi-patient joint DMD |
+| `scripts/pilot_feasibility/dmd/dmd_blendshape_correlation.py` | DMD mode vs blendshape correlation |
 
 ### Blendshape Validation
 | Script | Purpose |
 |--------|---------|
-| `scripts/blendshape_correlation_analysis.py` | SVD time coeff vs blendshape correlation (win20) |
-| `scripts/blendshape_correlation_analysis_win5.py` | Blendshape correlation with win5 data |
-| `scripts/blendshape_correlation_analysis_win10.py` | Blendshape correlation with win10 data |
+| `scripts/pilot_feasibility/blendshape/blendshape_correlation_analysis.py` | SVD time coeff vs blendshape correlation (win20) |
+| `scripts/pilot_feasibility/blendshape/blendshape_correlation_analysis_win5.py` | Blendshape correlation with win5 data |
+| `scripts/pilot_feasibility/blendshape/blendshape_correlation_analysis_win10.py` | Blendshape correlation with win10 data |
 
 ### Grassmann Analysis
 | Script | Purpose |
 |--------|---------|
-| `scripts/grassmann_analysis.py` | Early Grassmann analysis |
-| `scripts/grassmann_cross_analysis.py` | Cross-dataset Grassmann validation |
+| `scripts/pilot_feasibility/grassmann/grassmann_analysis.py` | Early Grassmann analysis |
+| `scripts/pilot_feasibility/grassmann/grassmann_cross_analysis.py` | Cross-dataset Grassmann validation |
 
 **Conda env**: `conda activate openmmlab`
 

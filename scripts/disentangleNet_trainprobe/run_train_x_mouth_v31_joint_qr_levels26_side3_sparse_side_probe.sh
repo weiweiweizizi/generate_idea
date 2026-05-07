@@ -14,4 +14,4 @@ python scripts/disentangleNet_trainprobe/train.py \
   --data_roots=data/win20-step20/IMR,data/win20-step20/TT \
   --epochs=50 \
   --batch_size=64 \
-  --output_dir=outputs/disentangleNet_trainprobe/v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50
+  --output_dir=outputs/disentangleNet_trainprobe/v32_tri_region_masked_win20_e50

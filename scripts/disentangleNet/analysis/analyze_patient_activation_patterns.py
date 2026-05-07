@@ -1,24 +1,24 @@
 #!/usr/bin/env python
 """
-Aggregate window-level basis activations to the patient level.
+将窗口级 basis activation 聚合为患者级汇总。
 
-What this script does:
-- Read `window_basis_activations_wide.csv`.
-- Aggregate usage / activation / coeff statistics per patient.
-- Derive entropy, dominant-basis, gap, and heuristic pattern-label summaries.
-- Export patient profiles, group summaries, crosstabs, extreme rankings, and a Markdown report.
+此脚本功能：
+- 读取 `window_basis_activations_wide.csv`。
+- 按患者聚合 usage / activation / coeff 统计量。
+- 推导 entropy、dominant-basis、gap 和启发式 pattern-label 汇总。
+- 导出患者 profiles、group 汇总、交叉表、极值排名和 Markdown 报告。
 
-Typical usage:
-1. Default patient summary build:
+典型用法：
+1. 默认患者汇总构建：
    `python scripts/disentangleNet/analysis/analyze_patient_activation_patterns.py analyze`
-2. Build from another wide CSV:
+2. 从其他 wide CSV 构建：
    `python scripts/disentangleNet/analysis/analyze_patient_activation_patterns.py analyze \\
       --wide_csv outputs/.../window_basis_activations_wide.csv`
-3. Write to a custom destination:
+3. 写入自定义目录：
    `python scripts/disentangleNet/analysis/analyze_patient_activation_patterns.py analyze \\
       --output_dir outputs/.../patient_profile_summary_custom`
 
-Default outputs:
+默认输出路径：
 - `.../window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/`
 """
 
@@ -37,11 +37,13 @@ if __package__ in {None, ""}:
 
 
 def shannon_entropy(probs: np.ndarray) -> np.ndarray:
+    """计算每行（每患者）的 Shannon 熵"""
     clipped = np.clip(probs, 1e-12, None)
     return -(clipped * np.log(clipped)).sum(axis=1)
 
 
 def top_two_gap(values: np.ndarray) -> np.ndarray:
+    """计算每行最大值与次大值的差（dominant 程度）"""
     if values.shape[1] < 2:
         return np.zeros(values.shape[0], dtype=np.float64)
     sorted_values = np.sort(values, axis=1)
@@ -49,6 +51,11 @@ def top_two_gap(values: np.ndarray) -> np.ndarray:
 
 
 def build_patient_profiles(wide_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    将窗口级宽表聚合为患者级 profiles。
+    计算各 level 的 usage 统计、entropy、top2-gap、dominant basis。
+    基于 side_coeff / side_entropy / side_dom 的启发式规则生成 pattern_label。
+    """
     usage_cols = [c for c in wide_df.columns if c.startswith("basis_usage_b")]
     activation_cols = [c for c in wide_df.columns if c.startswith("basis_activation_b")]
     coeff_cols = [c for c in ("free_coeff_l0", "free_coeff_l1", "side_coeff") if c in wide_df.columns]
@@ -59,6 +66,7 @@ def build_patient_profiles(wide_df: pd.DataFrame) -> pd.DataFrame:
     if "label_5class" in wide_df.columns:
         group_cols.append("label_5class")
 
+    # 均值 / 标准差 / 窗口计数
     patient_mean = wide_df.groupby(group_cols, as_index=False)[usage_cols + activation_cols + coeff_cols].mean()
     patient_std = wide_df.groupby(group_cols, as_index=False)[coeff_cols].std(ddof=0).rename(
         columns={col: f"{col}_std" for col in coeff_cols}
@@ -80,6 +88,7 @@ def build_patient_profiles(wide_df: pd.DataFrame) -> pd.DataFrame:
         how="left",
     )
 
+    # 分组统计
     free_l0_cols = [f"basis_usage_b{i}" for i in range(0, 2)]
     free_l1_cols = [f"basis_usage_b{i}" for i in range(2, 8)]
     side_cols = [f"basis_usage_b{i}" for i in range(8, 11)]
@@ -99,9 +108,10 @@ def build_patient_profiles(wide_df: pd.DataFrame) -> pd.DataFrame:
     patient["side_dominant_basis"] = side_usage.argmax(axis=1) + 8
 
     patient["free_l1_b5_minus_b6"] = patient["basis_usage_b5"] - patient["basis_usage_b6"]
-    patient["side_b10_minus_b9"] = patient["basis_usage_b10"] - patient["basis_usage_b9"]
-    patient["side_b10_minus_b8"] = patient["basis_usage_b10"] - patient["basis_usage_b8"]
+    patient["side_b10_minus_b9"] = patient["basis_usage_b9"] - patient["basis_usage_b10"]
+    patient["side_b10_minus_b8"] = patient["basis_usage_b8"] - patient["basis_usage_b10"]
 
+    # 启发式 pattern label
     pattern_labels = []
     for _, row in patient.iterrows():
         side_dom = int(row["side_dominant_basis"])
@@ -122,6 +132,7 @@ def build_patient_profiles(wide_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def summarize_by_group(patient_df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
+    """按给定分组列（side_label_name / dataset_name）汇总关键统计量"""
     summary_cols = [
         "window_count",
         "free_coeff_l0",
@@ -147,6 +158,10 @@ def summarize_by_group(patient_df: pd.DataFrame, group_cols: list[str]) -> pd.Da
 
 
 def build_rankings(patient_df: pd.DataFrame, *, top_n: int = 10) -> pd.DataFrame:
+    """
+    生成各指标的 top-N 和 bottom-N 患者排名。
+    用于发现极端案例。
+    """
     metrics = [
         "side_coeff",
         "side_entropy",
@@ -195,6 +210,7 @@ def build_rankings(patient_df: pd.DataFrame, *, top_n: int = 10) -> pd.DataFrame
 
 
 def build_crosstabs(patient_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """生成交叉表：dominant basis vs side_label / dataset / pattern_label"""
     return {
         "crosstab_free_l1_dominant_basis_by_side_label": pd.crosstab(
             patient_df["free_l1_dominant_basis"],
@@ -227,6 +243,7 @@ def build_report(
     crosstabs: dict[str, pd.DataFrame],
     ranking_df: pd.DataFrame,
 ) -> str:
+    """生成 Markdown 报告，包含主要发现、变异排名、汇总表和交叉表"""
     usage_std = patient_df[[c for c in patient_df.columns if c.startswith("basis_usage_b")]].std().sort_values(ascending=False)
     activation_std = patient_df[[c for c in patient_df.columns if c.startswith("basis_activation_b")]].std().sort_values(ascending=False)
 
@@ -293,11 +310,11 @@ def analyze(
     output_dir: str | None = None,
 ):
     """
-    Main CLI entry for patient-level profile aggregation.
+    主入口函数。
 
-    Parameters:
-    - `wide_csv`: window-level basis activation table
-    - `output_dir`: optional custom output directory
+    参数：
+    - `wide_csv`：窗口级 basis activation 宽表
+    - `output_dir`：可选的自定义输出目录
     """
     wide_path = Path(wide_csv).expanduser().resolve()
     if not wide_path.exists():

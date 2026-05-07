@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 """
-Build reusable index pages for patient-level t-SNE outputs.
+为患者级 t-SNE 输出构建可复用的索引页面。
 
-What this script does:
-- Read already-generated 2D t-SNE combined-view PNGs.
-- Compose them into 3x3 overview pages.
-- Default layout:
-  - rows: `All Patients`, `IMR Only`, `TT Only`
-  - columns: `All Basis`, `No Side`, `Side Only`
-- Export three overview PNGs:
+此脚本功能：
+- 读取已生成的 2D t-SNE combined-view PNG。
+- 将其组合成 3x3 概览页面。
+- 默认布局：
+  - 行：All Patients、IMR Only、TT Only
+  - 列：All Basis、No Side、Side Only
+- 导出三张概览 PNG：
   - `combined_2d_index.png`
   - `usage_2d_index.png`
   - `activation_2d_index.png`
 
-Default source folders:
+默认源文件夹：
 - `tsne/all/all_basis`
 - `tsne/all/no_side`
 - `tsne/all/side_only`
@@ -24,12 +24,11 @@ Default source folders:
 - `tsne/tt/no_side`
 - `tsne/tt/side_only`
 
-How to use:
+用法：
 `python scripts/disentangleNet/analysis/build_tsne_index_pages.py build`
 
-Results:
-- Written to
-  `outputs/disentangleNet/v31_current_verify/window_basis_activations_all/`
+结果输出到：
+- `outputs/disentangleNet/v31_current_verify/window_basis_activations_all/`
   `patient_pattern_analysis/tsne/index_pages/`
 """
 
@@ -49,6 +48,7 @@ DEFAULT_ANALYSIS_ROOT = Path(
 
 
 def load_font(size: int) -> ImageFont.ImageFont:
+    """尝试加载 DejaVu / Liberation 字体，回退到默认字体"""
     for candidate in (
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
@@ -60,6 +60,10 @@ def load_font(size: int) -> ImageFont.ImageFont:
 
 
 def fit_image(image: Image.Image, *, tile_width: int, tile_height: int) -> Image.Image:
+    """
+    将图像按比例缩放后居中放入 tile 区域。
+    白色背景，保持宽高比，不变形。
+    """
     image = image.convert("RGB")
     ratio = min(tile_width / image.width, tile_height / image.height)
     new_size = (max(1, int(image.width * ratio)), max(1, int(image.height * ratio)))
@@ -71,6 +75,7 @@ def fit_image(image: Image.Image, *, tile_width: int, tile_height: int) -> Image
 
 
 def tile_path(root_dir: Path, feature_family: str) -> Path:
+    """t-SNE combined PNG 的标准路径"""
     return root_dir / feature_family / "tsne_2d" / f"{feature_family}_tsne_2d_combined.png"
 
 
@@ -84,6 +89,13 @@ def build_page(
     tile_width: int = 720,
     tile_height: int = 600,
 ) -> None:
+    """
+    构建一页 3x3 网格索引图。
+
+    布局：左侧标签列（All Patients / IMR Only / TT Only）
+          顶部标题 + 列标签
+          主体为 tile 图片（带源目录标签）
+    """
     title_font = load_font(34)
     label_font = load_font(24)
     small_font = load_font(18)
@@ -108,17 +120,20 @@ def build_page(
     canvas = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(canvas)
 
+    # 页面标题
     draw.text((outer_pad, outer_pad), page_title, fill="black", font=title_font)
 
     grid_x0 = outer_pad + left_label_width
     grid_y0 = outer_pad + top_title_height + col_label_height
 
+    # 列标签
     for col_idx, label in enumerate(column_labels):
         x = grid_x0 + col_idx * (tile_width + gutter_x) + tile_width / 2
         bbox = draw.textbbox((0, 0), label, font=label_font)
         text_w = bbox[2] - bbox[0]
         draw.text((x - text_w / 2, outer_pad + top_title_height), label, fill="black", font=label_font)
 
+    # 行 + tiles
     for row_idx, (row_label, roots) in enumerate(row_specs):
         y = grid_y0 + row_idx * (tile_height + gutter_y)
         bbox = draw.textbbox((0, 0), row_label, font=label_font)
@@ -138,6 +153,7 @@ def build_page(
             canvas.paste(tile, (x, y))
             draw.rectangle([x, y, x + tile_width, y + tile_height], outline="#bdbdbd", width=2)
 
+            # tile 右下角标注源目录名
             short_root = root.name
             bbox = draw.textbbox((0, 0), short_root, font=small_font)
             text_w = bbox[2] - bbox[0]
@@ -160,9 +176,17 @@ def build(
     analysis_root: str = str(DEFAULT_ANALYSIS_ROOT),
     output_dir: str = str(DEFAULT_ANALYSIS_ROOT / "index_pages"),
 ) -> None:
+    """
+    主入口函数：构建所有三张（combined / usage / activation）索引页面。
+
+    参数：
+    - `analysis_root`：t-SNE 输出根目录
+    - `output_dir`：索引页面输出目录
+    """
     analysis_root_path = Path(analysis_root)
     output_dir_path = Path(output_dir)
 
+    # 3 列配置
     col_labels = ["All Basis", "No Side", "Side Only"]
     row_specs = [
         (

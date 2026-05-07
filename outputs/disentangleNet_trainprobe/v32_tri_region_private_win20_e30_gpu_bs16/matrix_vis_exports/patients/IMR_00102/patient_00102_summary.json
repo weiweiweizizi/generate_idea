@@ -1,0 +1,12 @@
+{
+  "checkpoint_path": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/best.pt",
+  "dataset_name": "IMR",
+  "subject": "00102",
+  "mode": "x",
+  "region": "full",
+  "matrix_size": 341,
+  "num_valid_windows": 11,
+  "composition_rule": "sum_over_branches(free_rep*basis + side_rep*side_basis)",
+  "bundle_path": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/matrix_vis_exports/patients/IMR_00102/patient_00102_x_sequence.npz",
+  "side_predictions_csv": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/matrix_vis_exports/patients/IMR_00102/patient_00102_side_predictions.csv"
+}

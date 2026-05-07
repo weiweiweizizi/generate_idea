@@ -22,6 +22,7 @@ def _sequence_labels(labels: torch.Tensor, batch_size: int) -> torch.Tensor:
 def compute_probe_stats(outputs: dict, batch: dict, device: str) -> dict[str, float]:
     side_logits = outputs["side_logits"]
     group_side_logits = outputs["group_side_logits"]
+    branch_group_side_logits = outputs.get("branch_group_side_logits") or {}
     valid_mask = batch["valid_mask"].to(device)
     side_labels = batch["side_label"].to(device)
 
@@ -31,6 +32,9 @@ def compute_probe_stats(outputs: dict, batch: dict, device: str) -> dict[str, fl
         "group_side_correct": 0.0,
         "group_side_total": 0.0,
     }
+    for branch_name in branch_group_side_logits:
+        stats[f"{branch_name}_group_side_correct"] = 0.0
+        stats[f"{branch_name}_group_side_total"] = 0.0
 
     if side_logits is not None:
         side_logits = side_logits.detach()
@@ -60,6 +64,18 @@ def compute_probe_stats(outputs: dict, batch: dict, device: str) -> dict[str, fl
             stats["group_side_correct"] = float(correct.cpu())
             stats["group_side_total"] = float(group_valid_mask.sum().cpu())
 
+    group_valid_mask = valid_mask.any(dim=1)
+    if group_valid_mask.any():
+        for branch_name, branch_logits in branch_group_side_logits.items():
+            if branch_logits is None:
+                continue
+            branch_logits = branch_logits.detach()
+            group_labels = _sequence_labels(side_labels, branch_logits.shape[0])
+            predictions = branch_logits.argmax(dim=-1)
+            correct = (predictions[group_valid_mask] == group_labels[group_valid_mask]).sum()
+            stats[f"{branch_name}_group_side_correct"] = float(correct.cpu())
+            stats[f"{branch_name}_group_side_total"] = float(group_valid_mask.sum().cpu())
+
     return stats
 
 
@@ -74,4 +90,10 @@ def summarize_probe_stats(stats: dict[str, float]) -> dict[str, float]:
         metrics["side_acc"] = stats["side_correct"] / side_total
     if group_side_total > 0:
         metrics["group_side_acc"] = stats["group_side_correct"] / group_side_total
+    for key, total in stats.items():
+        if not key.endswith("_group_side_total") or key == "group_side_total" or total <= 0:
+            continue
+        prefix = key[: -len("_group_side_total")]
+        correct = stats.get(f"{prefix}_group_side_correct", 0.0)
+        metrics[f"{prefix}_group_side_acc"] = correct / total
     return metrics

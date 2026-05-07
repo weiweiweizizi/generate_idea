@@ -1,0 +1,12 @@
+dataset_name,subject,group_id,window_idx,prev_window_idx,side_pred,side_pred_name,side_true,side_true_name
+IMR,00102,IMR:00102:x:group000,2,1,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group000,3,2,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group000,5,4,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group000,6,5,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group001,7,6,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group001,9,8,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group001,11,10,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group001,13,12,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group002,15,14,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group002,17,16,1,Normal,1,Normal
+IMR,00102,IMR:00102:x:group002,18,17,1,Normal,1,Normal

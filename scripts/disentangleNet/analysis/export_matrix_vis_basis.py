@@ -1,22 +1,22 @@
 #!/usr/bin/env python
 """
-Export matrix-visualization basis bundles from one checkpoint.
+从指定 checkpoint 导出 basis 矩阵束，供下游 matrix-visualization 工具使用。
 
-What this script does:
-- Load structured free and side basis matrices from a checkpoint.
-- Export them as `.npy` arrays for downstream matrix-visualization tools.
-- Optionally render compact heatmap grids.
-- Save a JSON manifest describing level boundaries, point layout, and file semantics.
+此脚本功能：
+- 从 checkpoint 加载结构化的 free 和 side basis 矩阵。
+- 将其导出为 `.npy` 数组，供 matrix-visualization 使用。
+- 可选地渲染紧凑的热图网格。
+- 保存一份 JSON manifest，记录 level 边界、点布局和文件语义。
 
-Typical usage:
-1. Default export:
+典型用法：
+1. 默认导出：
    `python scripts/disentangleNet/analysis/export_matrix_vis_basis.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt`
-2. Disable heatmaps:
+2. 禁用热图：
    `python scripts/disentangleNet/analysis/export_matrix_vis_basis.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt \\
       --save_heatmaps False`
-3. Custom destination:
+3. 自定义输出目录：
    `python scripts/disentangleNet/analysis/export_matrix_vis_basis.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt \\
       --output_dir outputs/disentangleNet/v31_current_verify/matrix_vis_exports/basis_custom`
@@ -41,6 +41,10 @@ from scripts.disentangleNet.model.basis import get_joint_structured_basis
 
 
 def parse_levels(levels) -> tuple[int, ...]:
+    """
+    解析 levels 配置，支持字符串（逗号分隔）、元组或列表格式。
+    返回整数元组，例如 (2, 3, 6)。
+    """
     if isinstance(levels, str):
         return tuple(int(v) for v in levels.split(",") if str(v).strip())
     if isinstance(levels, (tuple, list)):
@@ -49,6 +53,10 @@ def parse_levels(levels) -> tuple[int, ...]:
 
 
 def compute_level_boundaries(levels: tuple[int, ...]) -> list[int]:
+    """
+    根据各 level 的 basis 数量计算累积边界索引。
+    例如 levels=(2,3,6) → [0, 2, 5, 11]。
+    """
     boundaries = [0]
     running = 0
     for level in levels:
@@ -58,10 +66,12 @@ def compute_level_boundaries(levels: tuple[int, ...]) -> list[int]:
 
 
 def resolve_bridge_point_layout(*, region: str) -> str:
+    """根据 region 返回 bridge 模块使用的点布局方案名称"""
     return "face_regions_grouped"
 
 
 def resolve_bridge_point_layout_region_names(*, region: str) -> list[str] | None:
+    """根据 region 返回 bridge 模块使用的区域子名称列表"""
     if region == "mouth":
         return ["around_mouth", "mouth"]
     return None
@@ -71,6 +81,16 @@ def extract_structured_basis_from_checkpoint(
     *,
     checkpoint: dict[str, Any],
 ) -> tuple[dict[str, Any], np.ndarray, np.ndarray]:
+    """
+    从 checkpoint 中解析结构化的 shared basis 和 side basis。
+
+    流程：
+    1. 读取 config 和 model state_dict
+    2. 提取 action_basis_bank 和 side_basis_bank
+    3. 调用 get_joint_structured_basis 构造层次化 basis 结构
+
+    返回：(config字典, shared_basis矩阵, side_basis矩阵)
+    """
     config = dict(checkpoint.get("config", {}))
     state_dict = checkpoint.get("model", {})
     if "action_basis_bank" not in state_dict:
@@ -79,6 +99,7 @@ def extract_structured_basis_from_checkpoint(
     action_basis = state_dict["action_basis_bank"].detach().cpu().float()
     side_basis = state_dict.get("side_basis_bank")
     if side_basis is None:
+        # 若无 side basis，填充空 tensor
         side_basis = torch.zeros((0, action_basis.shape[-1], action_basis.shape[-1]), dtype=torch.float32)
     else:
         side_basis = side_basis.detach().cpu().float()
@@ -113,6 +134,12 @@ def build_basis_manifest(
     exported_basis_path: Path,
     exported_side_basis_path: Path,
 ) -> dict[str, Any]:
+    """
+    构造 basis 导出的 manifest 元数据。
+
+    包含 checkpoint 来源、矩阵维度、level 结构、bridge 调用方式等，
+    供下游 matrix-visualization 工具在加载时使用。
+    """
     levels = parse_levels(config.get("levels", "2,3,6"))
     return {
         "checkpoint_path": str(checkpoint_path),
@@ -146,6 +173,15 @@ def export_basis_bundle(
     side_basis: np.ndarray,
     save_heatmaps: bool,
 ) -> dict[str, Any]:
+    """
+    执行实际的 basis 导出逻辑。
+
+    步骤：
+    1. 创建输出目录
+    2. 保存 basis_bank_x.npy 和 side_basis_bank_x.npy
+    3. 可选：调用 plot_basis_grid 渲染热图
+    4. 生成 manifest.json 和 export_summary.json
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     basis_path = output_dir / "basis_bank_x.npy"
@@ -157,9 +193,11 @@ def export_basis_bundle(
     side_basis_plot_path = None
     levels = parse_levels(config.get("levels", "2,3,6"))
     if save_heatmaps:
+        # 渲染 shared basis 热图（按 level 分块）
         basis_plot_path = output_dir / "basis_bank_x_heatmap.png"
         plot_basis_grid(basis, levels, basis_plot_path)
         if side_basis.shape[0] > 0:
+            # side basis 不分层，统一作为一个 block 渲染
             side_basis_plot_path = output_dir / "side_basis_bank_x_heatmap.png"
             plot_basis_grid(side_basis, (side_basis.shape[0],), side_basis_plot_path)
 
@@ -208,12 +246,12 @@ def export(
     save_heatmaps: bool = True,
 ) -> dict[str, Any]:
     """
-    Main CLI entry for exporting basis bundles for matrix visualization.
+    主 CLI 入口：导出 basis 矩阵束供 matrix 可视化使用。
 
-    Parameters:
-    - `checkpoint_path`: trained checkpoint
-    - `output_dir`: optional custom destination
-    - `save_heatmaps`: whether to render compact PNG heatmaps in addition to `.npy` exports
+    参数：
+    - `checkpoint_path`：训练好的 checkpoint 路径
+    - `output_dir`：可选的自定义输出目录
+    - `save_heatmaps`：是否额外渲染 PNG 热图
     """
     checkpoint = Path(checkpoint_path).expanduser().resolve()
     if not checkpoint.exists():

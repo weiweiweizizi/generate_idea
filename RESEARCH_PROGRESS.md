@@ -29,6 +29,20 @@
 
 ## 2.1 `scripts/lq` 已完成主结构探索
 
+当前 `scripts/lq` 的运行结果目录已经统一收纳到：
+
+- `outputs/lq/win20-step20/`
+
+当前实际保留的目录索引从 `v20` 开始，覆盖：
+
+- `v20-v21` private-cap tradeoff
+- `v22-v23` side semantic bank
+- `v24-v28` side 路由结构探测
+- `v29-v31` laterality / joint-QR 收敛
+- `v32` severity 辅助分支
+
+更早的 `v10-v19` 仍然保留为文档层结论，但不再作为 `outputs/` 顶层目录索引。
+
 当前可以稳定保留的结论：
 
 1. 早期 collapse 的真正缓解来自官方 `FSQ` 替换，而不是简单调 loss

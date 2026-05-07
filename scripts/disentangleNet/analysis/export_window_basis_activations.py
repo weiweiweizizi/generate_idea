@@ -1,27 +1,27 @@
 #!/usr/bin/env python
 """
-Export window-level basis usage, coefficients, and activations.
+导出窗口级 basis usage、系数和 activation。
 
-What this script does:
-- Re-run one checkpoint on grouped windows.
-- Keep only valid patient windows after disentangleNet grouping/padding logic.
-- Export a wide table with one row per real window.
-- Export a long table with one row per `(window, basis)` pair.
-- Merge back metadata such as frames, side, score, and label_5class.
+此脚本功能：
+- 在分组窗口上重新运行 checkpoint。
+- 仅保留 disentangleNet grouping/padding 逻辑后的有效患者窗口。
+- 导出每行一个真实窗口的宽表。
+- 导出每行一个 (window, basis) 对的长表。
+- 合并元数据（帧数、side、score、label_5class）。
 
-Typical usage:
-1. Export all windows:
+典型用法：
+1. 导出所有窗口：
    `python scripts/disentangleNet/analysis/export_window_basis_activations.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt --split all`
-2. Export validation windows only:
+2. 仅导出验证窗口：
    `python scripts/disentangleNet/analysis/export_window_basis_activations.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt --split val`
-3. Custom destination:
+3. 自定义输出目录：
    `python scripts/disentangleNet/analysis/export_window_basis_activations.py export \\
       --checkpoint_path outputs/disentangleNet/v31_current_verify/best.pt \\
       --output_dir outputs/disentangleNet/v31_current_verify/window_basis_activations_custom`
 
-Main outputs:
+主要输出：
 - `<output_dir>/window_basis_activations_wide.csv`
 - `<output_dir>/window_basis_activations_long.csv`
 - `<output_dir>/basis_manifest.csv`
@@ -60,6 +60,7 @@ def resolve_subjects_for_split(
     val_ratio: float,
     seed: int,
 ) -> list[str]:
+    """根据 split 参数（all / train / val）解析要使用的 subject 列表"""
     if split == "all":
         meta = pd.read_csv(spec.root / "metadata.csv")
         subject_width = infer_subject_width(spec)
@@ -86,6 +87,7 @@ def build_analysis_dataset(
     apply_deleted_filter: bool,
     split: str,
 ):
+    """构建分析用数据集（支持 all / train / val）"""
     datasets = []
 
     for spec in specs:
@@ -127,6 +129,7 @@ def build_analysis_dataset(
 
 
 def load_metadata_manifest(specs) -> pd.DataFrame:
+    """从各 dataset 的 metadata.csv 加载窗口元数据（side / score / label_5class 等）"""
     manifests = []
     for spec in specs:
         subject_width = infer_subject_width(spec)
@@ -158,6 +161,7 @@ def load_metadata_manifest(specs) -> pd.DataFrame:
 
 
 def build_free_basis_manifest(levels: tuple[int, ...]) -> list[dict]:
+    """为 free path 的各 level basis 构建 manifest 表"""
     rows = []
     offset = 0
     for level_index, level_size in enumerate(levels):
@@ -179,6 +183,7 @@ def build_free_basis_manifest(levels: tuple[int, ...]) -> list[dict]:
 
 
 def build_side_basis_manifest(*, side_basis_count: int, free_basis_count: int) -> list[dict]:
+    """为 side path 的各 basis 构建 manifest 表"""
     rows = []
     for local_basis_index in range(side_basis_count):
         rows.append(
@@ -196,6 +201,7 @@ def build_side_basis_manifest(*, side_basis_count: int, free_basis_count: int) -
 
 
 def collate_prev_window_indices(prev_window_indices) -> np.ndarray:
+    """将嵌套列表格式的 prev_window_indices 整理为 (batch, seq_len) numpy 数组"""
     if not prev_window_indices:
         return np.zeros((0, 0), dtype=np.int64)
 
@@ -221,6 +227,12 @@ def extract_rows(
     levels: tuple[int, ...],
     side_basis_count: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    遍历整个 loader，提取每个有效窗口的：
+    - wide row（所有 basis 的 usage/activation 展开在一行）
+    - long rows（每 (window, basis) 一行）
+    - basis manifest
+    """
     free_basis_rows = build_free_basis_manifest(levels)
     free_basis_count = sum(levels)
     side_basis_rows = build_side_basis_manifest(
@@ -279,6 +291,7 @@ def extract_rows(
                         ),
                     }
 
+                    # level-wise free coefficients 和 decoded indices
                     for level_index in range(len(levels)):
                         row[f"free_coeff_l{level_index}"] = float(
                             free_coefficients[batch_idx, frame_idx, level_index]
@@ -286,7 +299,6 @@ def extract_rows(
                         row[f"free_decoded_index_l{level_index}"] = int(
                             decoded_indices[level_index][batch_idx, frame_idx]
                         )
-
                         level_start = int(free_level_offsets[level_index])
                         level_end = level_start + int(levels[level_index])
                         level_usage = free_usage[batch_idx, frame_idx, level_start:level_end]
@@ -297,6 +309,7 @@ def extract_rows(
                     row["side_coeff"] = float(side_coefficients[batch_idx, frame_idx, 0])
                     row["side_argmax_usage_index"] = int(np.argmax(side_usage[batch_idx, frame_idx]))
 
+                    # 所有 free basis 的 usage 和 activation
                     for basis_index in range(free_basis_count):
                         row[f"basis_usage_b{basis_index}"] = float(
                             free_usage[batch_idx, frame_idx, basis_index]
@@ -305,6 +318,7 @@ def extract_rows(
                             free_activation[batch_idx, frame_idx, basis_index]
                         )
 
+                    # 所有 side basis 的 usage 和 activation
                     for side_basis_index in range(side_basis_count):
                         global_basis_index = free_basis_count + side_basis_index
                         row[f"basis_usage_b{global_basis_index}"] = float(
@@ -316,6 +330,7 @@ def extract_rows(
 
                     wide_rows.append(row)
 
+                    # 构建 long rows
                     base_long = {
                         "dataset_name": dataset_names[batch_idx],
                         "dataset_label": int(dataset_labels[batch_idx]),
@@ -331,38 +346,30 @@ def extract_rows(
                         ),
                     }
 
+                    # free basis long rows
                     for basis_row in free_basis_rows:
                         level_index = int(basis_row["level_index"])
                         local_basis_index = int(basis_row["local_basis_index"])
                         global_basis_index = int(basis_row["basis_global_index"])
                         decoded_local = int(decoded_indices[level_index][batch_idx, frame_idx])
-                        argmax_local = int(
-                            row[f"free_argmax_usage_index_l{level_index}"]
-                        )
+                        argmax_local = int(row[f"free_argmax_usage_index_l{level_index}"])
                         long_rows.append(
                             {
                                 **base_long,
                                 **basis_row,
                                 "usage": float(free_usage[batch_idx, frame_idx, global_basis_index]),
-                                "raw_coeff": float(
-                                    free_coefficients[batch_idx, frame_idx, level_index]
-                                ),
-                                "activation": float(
-                                    free_activation[batch_idx, frame_idx, global_basis_index]
-                                ),
+                                "raw_coeff": float(free_coefficients[batch_idx, frame_idx, level_index]),
+                                "activation": float(free_activation[batch_idx, frame_idx, global_basis_index]),
                                 "decoded_index_local": decoded_local,
-                                "decoded_index_global": int(
-                                    free_level_offsets[level_index] + decoded_local
-                                ),
+                                "decoded_index_global": int(free_level_offsets[level_index] + decoded_local),
                                 "argmax_usage_index_local": argmax_local,
-                                "argmax_usage_index_global": int(
-                                    free_level_offsets[level_index] + argmax_local
-                                ),
+                                "argmax_usage_index_global": int(free_level_offsets[level_index] + argmax_local),
                                 "is_decoded_basis": int(local_basis_index == decoded_local),
                                 "is_argmax_usage_basis": int(local_basis_index == argmax_local),
                             }
                         )
 
+                    # side basis long rows
                     side_argmax_local = int(row["side_argmax_usage_index"])
                     for basis_row in side_basis_rows:
                         local_basis_index = int(basis_row["local_basis_index"])
@@ -372,15 +379,11 @@ def extract_rows(
                                 **basis_row,
                                 "usage": float(side_usage[batch_idx, frame_idx, local_basis_index]),
                                 "raw_coeff": float(side_coefficients[batch_idx, frame_idx, 0]),
-                                "activation": float(
-                                    side_activation[batch_idx, frame_idx, local_basis_index]
-                                ),
+                                "activation": float(side_activation[batch_idx, frame_idx, local_basis_index]),
                                 "decoded_index_local": None,
                                 "decoded_index_global": None,
                                 "argmax_usage_index_local": side_argmax_local,
-                                "argmax_usage_index_global": int(
-                                    free_basis_count + side_argmax_local
-                                ),
+                                "argmax_usage_index_global": int(free_basis_count + side_argmax_local),
                                 "is_decoded_basis": None,
                                 "is_argmax_usage_basis": int(local_basis_index == side_argmax_local),
                             }
@@ -392,6 +395,7 @@ def extract_rows(
 
 
 def merge_metadata(df: pd.DataFrame, metadata_manifest: pd.DataFrame) -> pd.DataFrame:
+    """将窗口元数据（side / score / label_5class）合并到提取的 wide/long 表中"""
     merged = df.merge(
         metadata_manifest,
         how="left",
@@ -418,6 +422,7 @@ def summarize_outputs(
     wide_df: pd.DataFrame,
     long_df: pd.DataFrame,
 ) -> dict:
+    """生成汇总信息（窗口数、subject 数、basis 配置等）"""
     return {
         "checkpoint_path": str(checkpoint_path),
         "split": split,
@@ -442,14 +447,14 @@ def export(
     output_dir: str | None = None,
 ):
     """
-    Main CLI entry for window-level basis export.
+    主入口函数。
 
-    Parameters:
-    - `checkpoint_path`: trained checkpoint
-    - `data_roots`: optional dataset roots; defaults to checkpoint config
-    - `split`: `all`, `train`, or `val`
-    - `batch_size`, `num_workers`: loader controls
-    - `output_dir`: destination for wide/long CSV exports
+    参数：
+    - `checkpoint_path`：已训练 checkpoint
+    - `data_roots`：可选的数据集根路径，默认使用 checkpoint 配置
+    - `split`：`all`、`train` 或 `val`
+    - `batch_size`、`num_workers`：DataLoader 控制参数
+    - `output_dir`：宽表/长表 CSV 导出目录
     """
     checkpoint = Path(checkpoint_path).expanduser().resolve()
     if not checkpoint.exists():
@@ -517,12 +522,8 @@ def export(
     wide_df = merge_metadata(wide_df, metadata_manifest)
     long_df = merge_metadata(long_df, metadata_manifest)
 
-    wide_df = wide_df.sort_values(
-        ["dataset_name", "subject", "window_idx"]
-    ).reset_index(drop=True)
-    long_df = long_df.sort_values(
-        ["dataset_name", "subject", "window_idx", "basis_global_index"]
-    ).reset_index(drop=True)
+    wide_df = wide_df.sort_values(["dataset_name", "subject", "window_idx"]).reset_index(drop=True)
+    long_df = long_df.sort_values(["dataset_name", "subject", "window_idx", "basis_global_index"]).reset_index(drop=True)
     basis_manifest = basis_manifest.sort_values(["basis_global_index"]).reset_index(drop=True)
 
     wide_path = destination / "window_basis_activations_wide.csv"

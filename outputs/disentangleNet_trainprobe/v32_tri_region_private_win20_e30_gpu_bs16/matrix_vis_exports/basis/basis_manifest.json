@@ -1,0 +1,23 @@
+{
+  "checkpoint_path": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/best.pt",
+  "mode": "x",
+  "region": "full",
+  "matrix_size": 341,
+  "num_basis": 8,
+  "levels": [
+    2,
+    6
+  ],
+  "side_basis_count": 3,
+  "basis_orthogonalization": "joint_global_qr",
+  "quantizer_type": "residual_fsq",
+  "point_layout": "face_regions_grouped",
+  "point_layout_region_names": null,
+  "value_semantics": "mean_distance_delta",
+  "exported_basis_path": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/matrix_vis_exports/basis/basis_bank_x.npy",
+  "exported_side_basis_path": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/matrix_vis_exports/basis/side_basis_bank_x.npy",
+  "artifacts": {
+    "basis_bank_heatmap": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/matrix_vis_exports/basis/basis_bank_x_heatmap.png",
+    "side_basis_bank_heatmap": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/matrix_vis_exports/basis/side_basis_bank_x_heatmap.png"
+  }
+}

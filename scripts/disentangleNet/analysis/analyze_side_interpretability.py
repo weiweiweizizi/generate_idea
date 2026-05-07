@@ -1,27 +1,27 @@
 #!/usr/bin/env python
 """
-Inspect side-basis behavior from one checkpoint.
+检查单个 checkpoint 的 side-basis 行为。
 
-What this script does:
-- Load one checkpoint plus its grouped evaluation split.
-- Export raw side basis matrices.
-- Measure basis magnitude, symmetry after left/right swap, and block-wise mass concentration.
-- Aggregate group-level side usage and side coefficients.
-- Export basis statistics, group semantics, and a compact JSON summary.
+此脚本功能：
+- 加载单个 checkpoint 及其分组评测 split。
+- 导出原始 side basis 矩阵。
+- 测量 basis 幅值、左右交换后的对称性、block 级质量集中度。
+- 聚合 group 级 side usage 和 side coefficients。
+- 导出 basis 统计、group 语义和紧凑 JSON 汇总。
 
-Typical usage:
-1. Default validation split:
+典型用法：
+1. 默认 validation split：
    `python scripts/disentangleNet/analysis/analyze_side_interpretability.py \\
       outputs/disentangleNet/v31_current_verify/best.pt`
-2. Evaluate all grouped samples:
+2. 评估所有分组样本：
    `python scripts/disentangleNet/analysis/analyze_side_interpretability.py \\
       outputs/disentangleNet/v31_current_verify/best.pt --split all`
-3. Override block boundaries:
+3. 覆盖 block 边界：
    `python scripts/disentangleNet/analysis/analyze_side_interpretability.py \\
       outputs/disentangleNet/v31_current_verify/best.pt \\
       --block_boundaries 0,22,45,82,119`
 
-Main outputs:
+主要输出：
 - `<output_dir>/side_basis_stats.csv`
 - `<output_dir>/group_side_semantics.csv`
 - `<output_dir>/summary.json`
@@ -49,14 +49,15 @@ from scripts.disentangleNet.analysis.analyze_checkpoint import (
 )
 from scripts.disentangleNet.model.distnet import DistNet
 
-# 1.加载checkpoint
-# 2.side basis基矩阵统计
-#   - 每个basis的fro_norm, l1_sum, mean_abs, max_abs
-#   - 每个basis与swap后的cosine相似度和l1差异 同一个部位，交换左右，分析basis关于左右是否对称
-#   - 每个basis在block上的绝对值分布，分析是否集中在某些block上
-# 3.每个group的side semantics统计
-#   - 每个group的side basis usage和side coeff的均值，分析不同
-# 4.汇总和输出：side_interpretability/summary.json，side_basis_stats.csv，group_side_semantics.csv
+# 脚本功能概述：
+# 1. 加载 checkpoint
+# 2. side basis 基矩阵统计
+#   - 每个 basis 的 fro_norm、l1_sum、mean_abs、max_abs
+#   - 每个 basis 与 swap 后的 cosine 相似度和 l1 差异（分析左右对称性）
+#   - 每个 basis 在 block 上的绝对值分布（分析是否集中在某些 block 上）
+# 3. 每个 group 的 side semantics 统计
+#   - 每个 group 的 side basis usage 和 side coeff 的均值
+# 4. 汇总输出：summary.json，side_basis_stats.csv，group_side_semantics.csv
 
 SIDE_LABEL_NAMES = {
     0: "Left",
@@ -66,6 +67,7 @@ SIDE_LABEL_NAMES = {
 
 
 def parse_levels(levels) -> tuple[int, ...]:
+    """解析 levels 配置字符串或列表"""
     if isinstance(levels, str):
         return tuple(int(v) for v in levels.split(",") if str(v).strip())
     if isinstance(levels, (tuple, list)):
@@ -74,6 +76,7 @@ def parse_levels(levels) -> tuple[int, ...]:
 
 
 def masked_group_mean(values: torch.Tensor, valid_mask: torch.Tensor) -> torch.Tensor:
+    """用 valid_mask 对每个分组序列做加权均值池化"""
     if values.ndim < 3:
         raise ValueError(f"Expected at least [B, T, ...], got {tuple(values.shape)}")
     if values.ndim > 3:
@@ -88,6 +91,7 @@ def load_model_from_checkpoint(
     *,
     num_dataset_classes: int,
 ) -> tuple[DistNet, dict]:
+    """从 checkpoint 加载 DistNet 模型并恢复配置"""
     ckpt = torch.load(checkpoint_path, map_location="cpu")
     config = ckpt.get("config", {})
 
@@ -124,7 +128,6 @@ def load_model_from_checkpoint(
         side_z_dim = int(side_z_dim)
     private_adapter_enabled = bool(config.get("private_adapter_enabled", False))
     num_side_classes = int(config.get("num_side_classes", 3))
-    num_label5_classes = int(config.get("num_label5_classes", 5))
     target_label_mode = str(config.get("target_label_mode", "side"))
 
     model = DistNet(
@@ -136,7 +139,6 @@ def load_model_from_checkpoint(
         private_dim=private_dim,
         private_decoder_hidden_dim=private_decoder_hidden_dim,
         num_side_classes=num_side_classes,
-        num_label5_classes=num_label5_classes,
         num_dataset_classes=num_dataset_classes,
         target_label_mode=target_label_mode,
         private_residual_weight=float(config.get("private_residual_weight", 0.25)),
@@ -175,6 +177,11 @@ def load_model_from_checkpoint(
 
 
 def build_swap_permutation(boundaries: list[int]) -> np.ndarray:
+    """
+    构建左右 block 交换的索引排列。
+    交换 segments[0] <-> segments[1]（around_left <-> around_right），
+    segments[2] <-> segments[3]（mouth_left <-> mouth_right）。
+    """
     if boundaries != [0, 22, 45, 82, 119]:
         raise ValueError(f"Unsupported boundaries for left-right block swap: {boundaries}")
     segments = [np.arange(boundaries[i], boundaries[i + 1]) for i in range(len(boundaries) - 1)]
@@ -183,6 +190,12 @@ def build_swap_permutation(boundaries: list[int]) -> np.ndarray:
 
 
 def compute_side_basis_stats(side_basis: np.ndarray, boundaries: list[int]) -> tuple[pd.DataFrame, np.ndarray]:
+    """
+    计算 side basis 统计量：
+    - 各 basis 的 Frobenius 范数、l1 和、mean_abs、max_abs
+    - 左右交换后的 cosine 相似度和 l1 差异
+    - block 级质量分布（对角块 vs 非对角块）
+    """
     if side_basis.ndim != 3:
         raise ValueError(f"Expected side basis bank [K, H, W], got {side_basis.shape}")
 
@@ -191,6 +204,7 @@ def compute_side_basis_stats(side_basis: np.ndarray, boundaries: list[int]) -> t
     norms = np.clip(norms, 1e-8, None)
     cosine = (flat / norms) @ (flat / norms).T
 
+    # 左右交换后的 basis
     swap_perm = build_swap_permutation(boundaries)
     side_basis_swapped = side_basis[:, swap_perm][:, :, swap_perm]
 
@@ -199,6 +213,7 @@ def compute_side_basis_stats(side_basis: np.ndarray, boundaries: list[int]) -> t
     for idx in range(side_basis.shape[0]):
         basis = side_basis[idx]
         swapped = side_basis_swapped[idx]
+        # block 级绝对值质量矩阵
         block_matrix = np.zeros((len(boundaries) - 1, len(boundaries) - 1), dtype=np.float64)
         for row_idx in range(len(boundaries) - 1):
             rs = slice(boundaries[row_idx], boundaries[row_idx + 1])
@@ -250,6 +265,10 @@ def collect_group_side_semantics(
     loader: DataLoader,
     device: str,
 ) -> pd.DataFrame:
+    """
+    遍历整个数据集，收集每个 group 的 side semantics 信息。
+    返回 DataFrame：group_id / subject / usage / rep / coeff 等。
+    """
     rows: list[dict] = []
     model.eval()
     with torch.no_grad():
@@ -262,6 +281,7 @@ def collect_group_side_semantics(
             if not group_valid_mask.any():
                 continue
 
+            # masked mean pooling
             usage = masked_group_mean(outputs["side_path_usage"], valid_mask)
             rep = masked_group_mean(outputs["side_path_representation"], valid_mask)
             coeff = masked_group_mean(outputs["side_path_coefficients"], valid_mask).squeeze(-1)
@@ -302,6 +322,13 @@ def collect_group_side_semantics(
 
 
 def summarise_group_side_semantics(df: pd.DataFrame, side_basis_count: int) -> dict:
+    """
+    对 group side semantics 表做汇总统计：
+    - 按 side_label 和 dataset_name 分组均值
+    - usage/coeff 与 side_coeff 的相关性
+    - 各 basis 的 top 使用 group 和 top 正/负 rep group
+    - 探针准确率：usage / coeff / usage+coeff 预测 side_label 和 dataset_label
+    """
     usage_cols = [f"usage_b{i}" for i in range(side_basis_count)]
     rep_cols = [f"rep_b{i}" for i in range(side_basis_count)]
 
@@ -312,6 +339,7 @@ def summarise_group_side_semantics(df: pd.DataFrame, side_basis_count: int) -> d
     side_labels = df["side_label"].to_numpy(dtype=np.int64)
     dataset_labels = df["dataset_label"].to_numpy(dtype=np.int64)
 
+    # 多组探针
     side_probe_usage = fit_linear_probe(usage, side_labels, seed=42)
     dataset_probe_usage = fit_linear_probe(usage, dataset_labels, seed=42)
     side_probe_coeff = fit_linear_probe(coeff, side_labels, seed=42)
@@ -352,6 +380,7 @@ def summarise_group_side_semantics(df: pd.DataFrame, side_basis_count: int) -> d
         "top_groups_by_negative_rep": {},
     }
 
+    # 按 side_label 分组均值
     for side_label, side_name in SIDE_LABEL_NAMES.items():
         subset = df[df["side_label"] == side_label]
         if subset.empty:
@@ -368,6 +397,7 @@ def summarise_group_side_semantics(df: pd.DataFrame, side_basis_count: int) -> d
             "std": float(subset["side_coeff_mean"].std(ddof=0)),
         }
 
+    # 按 dataset_name 分组均值
     for dataset_name in sorted(df["dataset_name"].unique().tolist()):
         subset = df[df["dataset_name"] == dataset_name]
         summary["usage_means_by_dataset"][dataset_name] = {
@@ -379,6 +409,7 @@ def summarise_group_side_semantics(df: pd.DataFrame, side_basis_count: int) -> d
             "std": float(subset["side_coeff_mean"].std(ddof=0)),
         }
 
+    # basis 与 side_coeff 的相关性
     coeff_vector = df["side_coeff_mean"].to_numpy(dtype=np.float64)
     for basis_idx in range(side_basis_count):
         usage_vector = df[f"usage_b{basis_idx}"].to_numpy(dtype=np.float64)
@@ -388,6 +419,7 @@ def summarise_group_side_semantics(df: pd.DataFrame, side_basis_count: int) -> d
             corr = float(np.corrcoef(usage_vector, coeff_vector)[0, 1])
         summary["basis_coeff_correlations"][f"b{basis_idx}"] = corr
 
+        # top groups by usage / positive rep / negative rep
         top_usage = df.nlargest(5, f"usage_b{basis_idx}")[
             ["group_id", "dataset_name", "subject", "side_label_name", f"usage_b{basis_idx}", "side_coeff_mean", f"rep_b{basis_idx}"]
         ]
@@ -414,15 +446,15 @@ def analyze(
     block_boundaries: str = "0,22,45,82,119",
 ):
     """
-    Main CLI entry for side-basis interpretability analysis.
+    主入口函数。
 
-    Parameters:
-    - `checkpoint_path`: trained checkpoint
-    - `data_roots`: optional comma-separated dataset roots; defaults to checkpoint config
-    - `split`: `train` or `val`
-    - `batch_size`, `num_workers`: loader controls
-    - `output_dir`: destination for basis statistics and group semantics
-    - `block_boundaries`: comma-separated matrix partition boundaries for block-mass summaries
+    参数：
+    - `checkpoint_path`：已训练 checkpoint
+    - `data_roots`：可选的数据集根路径，默认使用 checkpoint 配置
+    - `split`：`train` 或 `val`
+    - `batch_size`、`num_workers`：DataLoader 控制参数
+    - `output_dir`：输出目录
+    - `block_boundaries`：逗号分隔的矩阵 block 边界，用于 block 质量统计
     """
     checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.exists():
@@ -473,6 +505,7 @@ def analyze(
     )
     model = model.to(device)
 
+    # side basis 统计
     side_basis = model.get_side_basis().detach().cpu().numpy()
     boundaries = [int(v) for v in block_boundaries.split(",") if v.strip()]
     side_basis_stats_df, side_basis_block_abs_mass = compute_side_basis_stats(side_basis, boundaries)
@@ -481,6 +514,7 @@ def analyze(
     np.save(output_dir / "side_basis_block_abs_mass.npy", side_basis_block_abs_mass.astype(np.float32))
     np.save(output_dir / "side_basis_bank.npy", side_basis.astype(np.float32))
 
+    # group 级 side semantics
     group_side_df = collect_group_side_semantics(model, loader, device)
     group_side_path = output_dir / "group_side_semantics.csv"
     group_side_df.to_csv(group_side_path, index=False)

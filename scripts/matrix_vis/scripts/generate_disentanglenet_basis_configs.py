@@ -85,7 +85,12 @@ def sanitize_run_name(manifest_path: Path) -> str:
     return candidate.replace(" ", "_")
 
 
-def build_projection_section(*, x_template: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+def build_projection_section(
+    *,
+    x_template: dict[str, Any],
+    manifest: dict[str, Any],
+    anchor_point_ids: list[int],
+) -> dict[str, Any]:
     """构造 matrix_vis 投影段，固定为 subset-layout + axis-x 模式。"""
     projection = dict(x_template.get("projection", {}))
     region_names = manifest.get("point_layout_region_names")
@@ -95,31 +100,48 @@ def build_projection_section(*, x_template: dict[str, Any], manifest: dict[str, 
         "extractor_name": "mediapipe",
         "region_names": region_names,
     }
-    projection["anchor_point_ids"] = [14]
+    projection["anchor_point_ids"] = [int(point_id) for point_id in anchor_point_ids]
     projection["axis"] = "x"
     projection["source_axis_index"] = 0
     return projection
 
 
-def _anchor_tag(anchor_point_id: int) -> str:
-    return f"anchor_{int(anchor_point_id)}"
+def _anchor_tag(anchor_point_ids: list[int]) -> str:
+    return "anchor_" + "_".join(str(int(point_id)) for point_id in anchor_point_ids)
 
 
 def build_fixed_y_config(
     *,
     fixed_y_template: dict[str, Any],
+    manifest: dict[str, Any],
     run_name: str,
-    anchor_point_id: int,
+    anchor_point_ids: list[int],
 ) -> dict[str, Any]:
     """基于模板生成 fixed-y `axis_y` 配置。"""
-    anchor_tag = _anchor_tag(anchor_point_id)
+    anchor_tag = _anchor_tag(anchor_point_ids)
     payload = json.loads(json.dumps(fixed_y_template))
     payload["experiment"]["name"] = f"disentanglenet_{run_name}_{anchor_tag}_fixed_y_axis_y"
     payload["experiment"]["output_dir"] = (
         f"outputs/matrix_vis/real/disentanglenet/{run_name}/{anchor_tag}/fixed_y_axis_y"
     )
-    payload["projection"]["anchor_point_ids"] = [int(anchor_point_id)]
+    payload["projection"] = build_projection_section(
+        x_template=fixed_y_template,
+        manifest=manifest,
+        anchor_point_ids=anchor_point_ids,
+    )
+    payload["projection"]["axis"] = "y"
+    payload["projection"]["source_axis_index"] = 1
     payload["projection"].pop("anchor_point_id", None)
+    basis_matrix_layout = dict(payload.get("basis", {}).get("matrix_layout", {}))
+    basis_matrix_layout["name"] = manifest["point_layout"]
+    basis_matrix_layout["source"] = "scripts/matrix_vis/configs/landmarks/mediapipe_face_regions_full.yaml"
+    basis_matrix_layout["extractor_name"] = "mediapipe"
+    region_names = manifest.get("point_layout_region_names")
+    if region_names is None:
+        basis_matrix_layout.pop("region_names", None)
+    else:
+        basis_matrix_layout["region_names"] = region_names
+    payload.setdefault("basis", {})["matrix_layout"] = basis_matrix_layout
     return payload
 
 
@@ -145,10 +167,10 @@ def build_axis_config(
     basis_label: str,
     basis_index: int,
     basis_stack_path: str,
-    anchor_point_id: int,
+    anchor_point_ids: list[int],
 ) -> dict[str, Any]:
     """为单个 free/side basis 生成一份 `axis_x` YAML payload。"""
-    anchor_tag = _anchor_tag(anchor_point_id)
+    anchor_tag = _anchor_tag(anchor_point_ids)
     experiment_name = f"disentanglenet_{run_name}_{basis_label}_{basis_index:02d}_axis_x"
     return {
         "experiment": {
@@ -159,7 +181,11 @@ def build_axis_config(
             ),
         },
         "mesh": dict(x_template.get("mesh", {})),
-        "projection": build_projection_section(x_template=x_template, manifest=manifest),
+        "projection": build_projection_section(
+            x_template=x_template,
+            manifest=manifest,
+            anchor_point_ids=anchor_point_ids,
+        ),
         "basis": build_basis_config(
             basis_stack_path=basis_stack_path,
             basis_index=basis_index,
@@ -169,9 +195,9 @@ def build_axis_config(
     }
 
 
-def _override_anchor_point_id(config: dict[str, Any], anchor_point_id: int) -> None:
+def _override_anchor_point_id(config: dict[str, Any], anchor_point_ids: list[int]) -> None:
     """统一把旧格式/新格式锚点字段收敛到 `anchor_point_ids`。"""
-    config["projection"]["anchor_point_ids"] = [int(anchor_point_id)]
+    config["projection"]["anchor_point_ids"] = [int(point_id) for point_id in anchor_point_ids]
     config["projection"].pop("anchor_point_id", None)
 
 
@@ -182,6 +208,7 @@ def generate_configs(
     fixed_y_config: str = DEFAULT_FIXED_Y_CONFIG,
     fixed_y_solution: str = DEFAULT_FIXED_Y_SOLUTION,
     anchor_point_id: int = 14,
+    anchor_point_ids: str | list[int] | tuple[int, ...] | None = None,
 ) -> dict[str, Any]:
     """根据 basis manifest 批量生成 fixed-y 与 axis-x 配置。
 
@@ -201,7 +228,15 @@ def generate_configs(
     x_template = load_yaml(x_template_file)
     fixed_y_template = load_yaml(fixed_y_config_file)
     run_name = sanitize_run_name(manifest_file)
-    anchor_tag = _anchor_tag(anchor_point_id)
+    if anchor_point_ids is None:
+        resolved_anchor_point_ids = [int(anchor_point_id)]
+    elif isinstance(anchor_point_ids, str):
+        resolved_anchor_point_ids = [int(part.strip()) for part in anchor_point_ids.split(",") if part.strip()]
+    else:
+        resolved_anchor_point_ids = [int(point_id) for point_id in anchor_point_ids]
+    if not resolved_anchor_point_ids:
+        raise ValueError("anchor_point_ids must not be empty")
+    anchor_tag = _anchor_tag(resolved_anchor_point_ids)
     base_dir = (
         Path(output_dir).expanduser().resolve()
         if output_dir is not None
@@ -211,8 +246,9 @@ def generate_configs(
 
     fixed_y_generated_config = build_fixed_y_config(
         fixed_y_template=fixed_y_template,
+        manifest=manifest,
         run_name=run_name,
-        anchor_point_id=anchor_point_id,
+        anchor_point_ids=resolved_anchor_point_ids,
     )
     fixed_y_generated_config_path = base_dir / "fixed_y_axis_y.yaml"
     dump_yaml(fixed_y_generated_config_path, fixed_y_generated_config)
@@ -253,23 +289,24 @@ def generate_configs(
                 basis_label=basis_label,
                 basis_index=basis_index,
                 basis_stack_path=str(job_spec["stack_path"]),
-                anchor_point_id=anchor_point_id,
+                anchor_point_ids=resolved_anchor_point_ids,
             )
-            _override_anchor_point_id(axis_config, anchor_point_id)
+            _override_anchor_point_id(axis_config, resolved_anchor_point_ids)
             axis_path = base_dir / f"{basis_label}_{basis_index:02d}_axis_x.yaml"
             dump_yaml(axis_path, axis_config)
             generated_axes.append(str(axis_path))
+            anchor_preview_tag = "_".join(str(int(point_id)) for point_id in resolved_anchor_point_ids)
 
             fixed_y_preview_dir = str(
                 Path(
                     f"outputs/matrix_vis/real_preview/disentanglenet/{run_name}/{anchor_tag}/fixed_y/"
-                    f"{basis_label}_{basis_index:02d}_mouth_regions_anchor{int(anchor_point_id)}"
+                    f"{basis_label}_{basis_index:02d}_preview_anchor{anchor_preview_tag}"
                 ).resolve()
             )
             no_motion_y_preview_dir = str(
                 Path(
                     f"outputs/matrix_vis/real_preview/disentanglenet/{run_name}/{anchor_tag}/no_motion_y/"
-                    f"{basis_label}_{basis_index:02d}_mouth_regions_anchor{int(anchor_point_id)}"
+                    f"{basis_label}_{basis_index:02d}_preview_anchor{anchor_preview_tag}"
                 ).resolve()
             )
             fixed_y_preview_output_dirs.append(fixed_y_preview_dir)
@@ -288,7 +325,8 @@ def generate_configs(
         "manifest_path": str(manifest_file),
         "generated_dir": str(base_dir),
         "run_name": run_name,
-        "anchor_point_id": int(anchor_point_id),
+        "anchor_point_ids": resolved_anchor_point_ids,
+        "anchor_point_id": int(resolved_anchor_point_ids[0]),
         "anchor_tag": anchor_tag,
         "num_basis": int(manifest["num_basis"]),
         "num_side_basis": side_basis_count,

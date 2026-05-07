@@ -16,6 +16,7 @@ FACE_WIDTH_POINTS = (127, 356)
 FACE_HEIGHT_POINTS = (10, 152)
 DEFAULT_REGION_NAMES = ("around_mouth", "mouth")
 DEFAULT_ANCHOR_POINT_ID = 14
+DEFAULT_ANCHOR_POINT_IDS = (DEFAULT_ANCHOR_POINT_ID,)
 DEFAULT_MESH_SOURCE = "/home/weizilin/code_reproduction/canonical_face/canonical_face_model.obj"
 DEFAULT_LANDMARK_CONFIG = "scripts/matrix_vis/configs/landmarks/mediapipe_face_regions_full.yaml"
 
@@ -54,15 +55,20 @@ def _align_subset_to_anchor(
     coordinates: np.ndarray,
     subset_ids: np.ndarray,
     normalized_mesh: np.ndarray,
-    anchor_point_id: int,
+    anchor_point_ids: tuple[int, ...],
 ) -> np.ndarray:
-    if anchor_point_id not in subset_ids.tolist():
-        raise ValueError(f"Anchor point {anchor_point_id} is not present in the composed subset")
+    if not anchor_point_ids:
+        raise ValueError("anchor_point_ids must be non-empty")
+    subset_id_list = subset_ids.tolist()
+    missing_anchor_ids = [anchor_point_id for anchor_point_id in anchor_point_ids if anchor_point_id not in subset_id_list]
+    if missing_anchor_ids:
+        raise ValueError(f"Anchor points {missing_anchor_ids} are not present in the composed subset")
     aligned = coordinates.astype(np.float32, copy=True)
-    anchor_local_idx = subset_ids.tolist().index(anchor_point_id)
-    anchor_target = normalized_mesh[anchor_point_id, :2].astype(np.float32, copy=False)
+    anchor_local_indices = [subset_id_list.index(anchor_point_id) for anchor_point_id in anchor_point_ids]
+    anchor_target = normalized_mesh[np.asarray(anchor_point_ids, dtype=np.int64), :2].astype(np.float32, copy=False).mean(axis=0)
     for frame_idx in range(aligned.shape[0]):
-        shift = anchor_target - aligned[frame_idx, anchor_local_idx]
+        anchor_current = aligned[frame_idx, anchor_local_indices].mean(axis=0)
+        shift = anchor_target - anchor_current
         aligned[frame_idx, :, 0] += shift[0]
         aligned[frame_idx, :, 1] += shift[1]
     return aligned
@@ -73,14 +79,14 @@ def _save_snapshot(
     output_path: Path,
     static_points: np.ndarray,
     subset_points: np.ndarray,
-    anchor_point: np.ndarray,
+    anchor_points: np.ndarray,
     title: str,
 ) -> None:
     plt = _load_matplotlib()
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.scatter(static_points[:, 0], static_points[:, 1], s=18, c="#d9d9d9")
     ax.scatter(subset_points[:, 0], subset_points[:, 1], s=24, c="#1f78b4")
-    ax.scatter(anchor_point[0], anchor_point[1], s=48, c="#d94841")
+    ax.scatter(anchor_points[:, 0], anchor_points[:, 1], s=48, c="#d94841")
     ax.set_title(title)
     ax.set_aspect("equal", adjustable="box")
     ax.grid(True, alpha=0.2)
@@ -94,7 +100,7 @@ def _save_frames(
     output_dir: Path,
     static_points: np.ndarray,
     subset_coordinates: np.ndarray,
-    anchor_point: np.ndarray,
+    anchor_points: np.ndarray,
 ) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     plt = _load_matplotlib()
@@ -110,7 +116,7 @@ def _save_frames(
         fig, ax = plt.subplots(figsize=(6, 4))
         ax.scatter(static_points[:, 0], static_points[:, 1], s=18, c="#d9d9d9")
         ax.scatter(subset_coordinates[frame_idx, :, 0], subset_coordinates[frame_idx, :, 1], s=24, c="#1f78b4")
-        ax.scatter(anchor_point[0], anchor_point[1], s=48, c="#d94841")
+        ax.scatter(anchor_points[:, 0], anchor_points[:, 1], s=48, c="#d94841")
         ax.set_xlim(x_min - x_pad, x_max + x_pad)
         ax.set_ylim(y_min - y_pad, y_max + y_pad)
         ax.set_aspect("equal", adjustable="box")
@@ -145,6 +151,8 @@ def run_preview_real_mouth_regions(
     mesh_source: str = DEFAULT_MESH_SOURCE,
     landmarks_config: str = DEFAULT_LANDMARK_CONFIG,
     anchor_point_id: int = DEFAULT_ANCHOR_POINT_ID,
+    anchor_point_ids: list[int] | tuple[int, ...] | None = None,
+    subset_layout_region_names: list[str] | tuple[str, ...] | None = DEFAULT_REGION_NAMES,
     title: str = "normalized facemesh + mouth regions preview",
 ) -> dict:
     x_solution_path = Path(x_solution).expanduser().resolve()
@@ -153,6 +161,7 @@ def run_preview_real_mouth_regions(
 
     x_payload = _load_solution(x_solution_path)
     y_payload = _load_solution(y_solution_path)
+    resolved_anchor_point_ids = tuple(int(point_id) for point_id in (anchor_point_ids or (anchor_point_id,)))
 
     standard_mesh = _load_canonical_obj_vertices(Path(mesh_source).expanduser().resolve())
     normalized_mesh = _normalize_standard_facemesh(standard_mesh)
@@ -160,7 +169,9 @@ def run_preview_real_mouth_regions(
         subset_layout="face_regions_grouped",
         subset_layout_source=Path(landmarks_config).expanduser().resolve(),
         subset_layout_extractor_name="mediapipe",
-        subset_layout_region_names=list(DEFAULT_REGION_NAMES),
+        subset_layout_region_names=(
+            list(subset_layout_region_names) if subset_layout_region_names is not None else None
+        ),
     )
     common_ids, time_grid, subset_coordinates = compose_xy_coordinates(
         x_solution=x_payload,
@@ -171,20 +182,21 @@ def run_preview_real_mouth_regions(
         coordinates=subset_coordinates,
         subset_ids=common_ids,
         normalized_mesh=normalized_mesh,
-        anchor_point_id=anchor_point_id,
+        anchor_point_ids=resolved_anchor_point_ids,
     )
+    anchor_points = normalized_mesh[np.asarray(resolved_anchor_point_ids, dtype=np.int64), :2]
 
     frame_paths = _save_frames(
         output_dir=destination / "frames",
         static_points=normalized_mesh[:, :2],
         subset_coordinates=subset_coordinates,
-        anchor_point=normalized_mesh[anchor_point_id, :2],
+        anchor_points=anchor_points,
     )
     _save_snapshot(
         output_path=destination / "snapshot_last_frame.png",
         static_points=normalized_mesh[:, :2],
         subset_points=subset_coordinates[-1],
-        anchor_point=normalized_mesh[anchor_point_id, :2],
+        anchor_points=anchor_points,
         title=title,
     )
     _save_gif(frame_paths, destination / "preview.gif")
@@ -193,7 +205,8 @@ def run_preview_real_mouth_regions(
         point_ids=common_ids.astype(np.int64),
         time_grid=time_grid.astype(np.float32),
         coordinates=subset_coordinates.astype(np.float32),
-        anchor_point_id=np.asarray(anchor_point_id, dtype=np.int64),
+        anchor_point_ids=np.asarray(resolved_anchor_point_ids, dtype=np.int64),
+        anchor_point_id=np.asarray(resolved_anchor_point_ids[0], dtype=np.int64),
     )
 
     summary = {
@@ -202,7 +215,9 @@ def run_preview_real_mouth_regions(
         "output_dir": str(destination),
         "num_frames": int(subset_coordinates.shape[0]),
         "num_subset_points": int(common_ids.shape[0]),
-        "anchor_point_id": int(anchor_point_id),
+        "anchor_point_ids": list(resolved_anchor_point_ids),
+        "anchor_point_id": int(resolved_anchor_point_ids[0]),
+        "subset_layout_region_names": list(subset_layout_region_names) if subset_layout_region_names is not None else None,
     }
     save_json(destination / "preview_summary.json", summary)
     print(json.dumps(summary, indent=2, ensure_ascii=False))

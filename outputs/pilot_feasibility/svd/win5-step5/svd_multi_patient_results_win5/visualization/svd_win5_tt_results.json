@@ -1,0 +1,492 @@
+{
+  "n_patients": 58,
+  "total_windows": 2821,
+  "patient_info": [
+    {
+      "subj_id": "497749",
+      "n_windows": 38
+    },
+    {
+      "subj_id": "581892",
+      "n_windows": 143
+    },
+    {
+      "subj_id": "675976",
+      "n_windows": 37
+    },
+    {
+      "subj_id": "707357",
+      "n_windows": 15
+    },
+    {
+      "subj_id": "740525",
+      "n_windows": 28
+    },
+    {
+      "subj_id": "806694",
+      "n_windows": 25
+    },
+    {
+      "subj_id": "840172",
+      "n_windows": 17
+    },
+    {
+      "subj_id": "844697",
+      "n_windows": 21
+    },
+    {
+      "subj_id": "844753",
+      "n_windows": 28
+    },
+    {
+      "subj_id": "845031",
+      "n_windows": 50
+    },
+    {
+      "subj_id": "845238",
+      "n_windows": 41
+    },
+    {
+      "subj_id": "845372",
+      "n_windows": 24
+    },
+    {
+      "subj_id": "845380",
+      "n_windows": 80
+    },
+    {
+      "subj_id": "845408",
+      "n_windows": 38
+    },
+    {
+      "subj_id": "845492",
+      "n_windows": 109
+    },
+    {
+      "subj_id": "846076",
+      "n_windows": 72
+    },
+    {
+      "subj_id": "846108",
+      "n_windows": 33
+    },
+    {
+      "subj_id": "846184",
+      "n_windows": 79
+    },
+    {
+      "subj_id": "846900",
+      "n_windows": 44
+    },
+    {
+      "subj_id": "847397",
+      "n_windows": 33
+    },
+    {
+      "subj_id": "847666",
+      "n_windows": 65
+    },
+    {
+      "subj_id": "849652",
+      "n_windows": 33
+    },
+    {
+      "subj_id": "850238",
+      "n_windows": 29
+    },
+    {
+      "subj_id": "850496",
+      "n_windows": 37
+    },
+    {
+      "subj_id": "850738",
+      "n_windows": 35
+    },
+    {
+      "subj_id": "850823",
+      "n_windows": 71
+    },
+    {
+      "subj_id": "850830",
+      "n_windows": 45
+    },
+    {
+      "subj_id": "851013",
+      "n_windows": 23
+    },
+    {
+      "subj_id": "851108",
+      "n_windows": 26
+    },
+    {
+      "subj_id": "851367",
+      "n_windows": 119
+    },
+    {
+      "subj_id": "851519",
+      "n_windows": 117
+    },
+    {
+      "subj_id": "851532",
+      "n_windows": 29
+    },
+    {
+      "subj_id": "851843",
+      "n_windows": 23
+    },
+    {
+      "subj_id": "859088",
+      "n_windows": 53
+    },
+    {
+      "subj_id": "859913",
+      "n_windows": 32
+    },
+    {
+      "subj_id": "860102",
+      "n_windows": 17
+    },
+    {
+      "subj_id": "860312",
+      "n_windows": 32
+    },
+    {
+      "subj_id": "860387",
+      "n_windows": 74
+    },
+    {
+      "subj_id": "860662",
+      "n_windows": 26
+    },
+    {
+      "subj_id": "861404",
+      "n_windows": 35
+    },
+    {
+      "subj_id": "861636",
+      "n_windows": 23
+    },
+    {
+      "subj_id": "861649",
+      "n_windows": 80
+    },
+    {
+      "subj_id": "861670",
+      "n_windows": 35
+    },
+    {
+      "subj_id": "861844",
+      "n_windows": 29
+    },
+    {
+      "subj_id": "861914",
+      "n_windows": 59
+    },
+    {
+      "subj_id": "862049",
+      "n_windows": 20
+    },
+    {
+      "subj_id": "862583",
+      "n_windows": 23
+    },
+    {
+      "subj_id": "862608",
+      "n_windows": 20
+    },
+    {
+      "subj_id": "862620",
+      "n_windows": 35
+    },
+    {
+      "subj_id": "862628",
+      "n_windows": 17
+    },
+    {
+      "subj_id": "862946",
+      "n_windows": 41
+    },
+    {
+      "subj_id": "863095",
+      "n_windows": 38
+    },
+    {
+      "subj_id": "863100",
+      "n_windows": 277
+    },
+    {
+      "subj_id": "863102",
+      "n_windows": 23
+    },
+    {
+      "subj_id": "863129",
+      "n_windows": 126
+    },
+    {
+      "subj_id": "863134",
+      "n_windows": 38
+    },
+    {
+      "subj_id": "863348",
+      "n_windows": 26
+    },
+    {
+      "subj_id": "863631",
+      "n_windows": 35
+    }
+  ],
+  "X_mode": {
+    "stacked_shape": [
+      2821,
+      116281
+    ],
+    "singular_values": [
+      47.24589157104492,
+      44.860103607177734,
+      27.05540657043457,
+      21.964523315429688,
+      16.413883209228516
+    ],
+    "energy": [
+      {
+        "pc": 1,
+        "singular_value": 47.24589157104492,
+        "energy_ratio": 38.9664303929451
+      },
+      {
+        "pc": 2,
+        "singular_value": 44.860103607177734,
+        "energy_ratio": 35.130397982287434
+      },
+      {
+        "pc": 3,
+        "singular_value": 27.05540657043457,
+        "energy_ratio": 12.778228634111946
+      },
+      {
+        "pc": 4,
+        "singular_value": 21.964523315429688,
+        "energy_ratio": 8.42182262087572
+      },
+      {
+        "pc": 5,
+        "singular_value": 16.413883209228516,
+        "energy_ratio": 4.703110721761738
+      }
+    ],
+    "semantic_regions": [
+      {
+        "pc": 1,
+        "dominant_region": "mouth",
+        "dominant_contribution": 3.508855402469635,
+        "all_regions": {
+          "forehead": 0.07130139856599271,
+          "eyebrow": 0.07294881506823003,
+          "eyehole": 0.6739819422364235,
+          "eye_contour": 0.08327982504852116,
+          "eye_iris": 0.004707112020696513,
+          "nose": 0.8094538934528828,
+          "around_mouth": 1.0800606571137905,
+          "mouth": 3.508855402469635,
+          "cheek": 0.19777510315179825,
+          "jaw": 0.02516031381674111
+        }
+      },
+      {
+        "pc": 2,
+        "dominant_region": "mouth",
+        "dominant_contribution": 8.23703333735466,
+        "all_regions": {
+          "forehead": 0.14051244361326098,
+          "eyebrow": 0.13879179023206234,
+          "eyehole": 1.0737736709415913,
+          "eye_contour": 0.05705860094167292,
+          "eye_iris": 0.009403115836903453,
+          "nose": 0.8392601273953915,
+          "around_mouth": 2.2360773757100105,
+          "mouth": 8.23703333735466,
+          "cheek": 0.47808345407247543,
+          "jaw": 0.05084654549136758
+        }
+      },
+      {
+        "pc": 3,
+        "dominant_region": "mouth",
+        "dominant_contribution": 4.2777277529239655,
+        "all_regions": {
+          "forehead": 0.4776355344802141,
+          "eyebrow": 0.5487054586410522,
+          "eyehole": 2.8739528730511665,
+          "eye_contour": 0.25116000324487686,
+          "eye_iris": 0.01686022151261568,
+          "nose": 0.6152492482215166,
+          "around_mouth": 1.1482499539852142,
+          "mouth": 4.2777277529239655,
+          "cheek": 0.9892888367176056,
+          "jaw": 0.05158074200153351
+        }
+      },
+      {
+        "pc": 4,
+        "dominant_region": "mouth",
+        "dominant_contribution": 2.068285457789898,
+        "all_regions": {
+          "forehead": 0.17598377307876945,
+          "eyebrow": 0.1994166523218155,
+          "eyehole": 1.3178114779293537,
+          "eye_contour": 0.21163211204111576,
+          "eye_iris": 0.025882295449264348,
+          "nose": 0.8211393840610981,
+          "around_mouth": 1.1118659749627113,
+          "mouth": 2.068285457789898,
+          "cheek": 0.2458409871906042,
+          "jaw": 0.013950765423942357
+        }
+      },
+      {
+        "pc": 5,
+        "dominant_region": "mouth",
+        "dominant_contribution": 2.835411950945854,
+        "all_regions": {
+          "forehead": 0.1920986920595169,
+          "eyebrow": 0.18936502747237682,
+          "eyehole": 1.4531146734952927,
+          "eye_contour": 0.29610060155391693,
+          "eye_iris": 0.02585866313893348,
+          "nose": 1.043843012303114,
+          "around_mouth": 1.0456044226884842,
+          "mouth": 2.835411950945854,
+          "cheek": 0.37028698716312647,
+          "jaw": 0.019819085719063878
+        }
+      }
+    ]
+  },
+  "Y_mode": {
+    "stacked_shape": [
+      2821,
+      116281
+    ],
+    "singular_values": [
+      94.52290344238281,
+      60.64517593383789,
+      28.27246856689453,
+      25.36851692199707,
+      18.85687828063965
+    ],
+    "energy": [
+      {
+        "pc": 1,
+        "singular_value": 94.52290344238281,
+        "energy_ratio": 61.998795926057014
+      },
+      {
+        "pc": 2,
+        "singular_value": 60.64517593383789,
+        "energy_ratio": 25.521233978662234
+      },
+      {
+        "pc": 3,
+        "singular_value": 28.27246856689453,
+        "energy_ratio": 5.546724664693
+      },
+      {
+        "pc": 4,
+        "singular_value": 25.36851692199707,
+        "energy_ratio": 4.465800372489608
+      },
+      {
+        "pc": 5,
+        "singular_value": 18.85687828063965,
+        "energy_ratio": 2.4674521766044326
+      }
+    ],
+    "semantic_regions": [
+      {
+        "pc": 1,
+        "dominant_region": "mouth",
+        "dominant_contribution": 5.1143549382686615,
+        "all_regions": {
+          "forehead": 0.014690571697428823,
+          "eyebrow": 0.012720953964162618,
+          "eyehole": 0.26576253585517406,
+          "eye_contour": 0.11242850450798869,
+          "eye_iris": 0.0028159160137875006,
+          "nose": 0.14065939467400312,
+          "around_mouth": 1.480936724692583,
+          "mouth": 5.1143549382686615,
+          "cheek": 0.07218308746814728,
+          "jaw": 0.015541125321760774
+        }
+      },
+      {
+        "pc": 2,
+        "dominant_region": "mouth",
+        "dominant_contribution": 6.137923523783684,
+        "all_regions": {
+          "forehead": 0.08059440297074616,
+          "eyebrow": 0.07581071113236248,
+          "eyehole": 1.0725670494139194,
+          "eye_contour": 0.23661290761083364,
+          "eye_iris": 0.010113734606420621,
+          "nose": 0.8962275460362434,
+          "around_mouth": 0.8791929110884666,
+          "mouth": 6.137923523783684,
+          "cheek": 0.18899774877354503,
+          "jaw": 0.0233647006098181
+        }
+      },
+      {
+        "pc": 3,
+        "dominant_region": "eyehole",
+        "dominant_contribution": 1.4974595047533512,
+        "all_regions": {
+          "forehead": 0.1387308002449572,
+          "eyebrow": 0.13037719763815403,
+          "eyehole": 1.4974595047533512,
+          "eye_contour": 0.7738299667835236,
+          "eye_iris": 0.009536967991152778,
+          "nose": 0.4747692495584488,
+          "around_mouth": 0.948709063231945,
+          "mouth": 1.1960618197917938,
+          "cheek": 0.12723410036414862,
+          "jaw": 0.023033071192912757
+        }
+      },
+      {
+        "pc": 4,
+        "dominant_region": "mouth",
+        "dominant_contribution": 3.1736142933368683,
+        "all_regions": {
+          "forehead": 0.16849354142323136,
+          "eyebrow": 0.1271143788471818,
+          "eyehole": 1.0300278663635254,
+          "eye_contour": 0.4432737361639738,
+          "eye_iris": 0.009776189108379185,
+          "nose": 1.6476050019264221,
+          "around_mouth": 1.6174042597413063,
+          "mouth": 3.1736142933368683,
+          "cheek": 0.46571437269449234,
+          "jaw": 0.03876502451021224
+        }
+      },
+      {
+        "pc": 5,
+        "dominant_region": "mouth",
+        "dominant_contribution": 4.035112634301186,
+        "all_regions": {
+          "forehead": 0.053016230231150985,
+          "eyebrow": 0.029465818079188466,
+          "eyehole": 1.1702677235007286,
+          "eye_contour": 0.7583141326904297,
+          "eye_iris": 0.019815124687738717,
+          "nose": 0.7487066090106964,
+          "around_mouth": 0.8781285956501961,
+          "mouth": 4.035112634301186,
+          "cheek": 0.08948494214564562,
+          "jaw": 0.02805563563015312
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+# Patient-level t-SNE Report
+
+- patient_profiles_csv: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/patient_profile_summary/patient_activation_profiles_imr.csv`
+- output_root: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side`
+- n_patients: `225`
+- feature_families: `usage, activation, combined`
+- excluded_basis_indices: `[8, 9, 10]`
+- plots_per_family: `10`
+- total_plots: `30`
+
+## OOF Mode
+
+- subject_fold_assignments_csv: `/home/weizilin/generate_idea/outputs/disentangleNet/v31_current_verify/kfold_report_verify_mpl/subject_fold_assignments.csv`
+- num_folds: `5`
+- num_patients_oof: `225`
+- patients_per_fold: `{'0': 46, '1': 45, '2': 45, '3': 45, '4': 44}`
+
+## Families
+
+### usage
+
+- feature_count: `8`
+- excluded_basis_indices: `[8, 9, 10]`
+- perplexity_used: `30.0`
+- random_state: `42`
+- 2D embeddings: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/usage/tsne_2d/usage_tsne_2d_embeddings.csv`
+- 3D embeddings: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/usage/tsne_3d/usage_tsne_3d_embeddings.csv`
+- 3D combined GIF: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/usage/tsne_3d/usage_tsne_3d_combined.gif`
+
+### activation
+
+- feature_count: `8`
+- excluded_basis_indices: `[8, 9, 10]`
+- perplexity_used: `30.0`
+- random_state: `42`
+- 2D embeddings: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/activation/tsne_2d/activation_tsne_2d_embeddings.csv`
+- 3D embeddings: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/activation/tsne_3d/activation_tsne_3d_embeddings.csv`
+- 3D combined GIF: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/activation/tsne_3d/activation_tsne_3d_combined.gif`
+
+### combined
+
+- feature_count: `16`
+- excluded_basis_indices: `[8, 9, 10]`
+- perplexity_used: `30.0`
+- random_state: `42`
+- 2D embeddings: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/combined/tsne_2d/combined_tsne_2d_embeddings.csv`
+- 3D embeddings: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/combined/tsne_3d/combined_tsne_3d_embeddings.csv`
+- 3D combined GIF: `/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_private_win20_e30_gpu_bs16/window_basis_activations_all/patient_pattern_analysis/tsne_kfold_oof/imr/no_side/combined/tsne_3d/combined_tsne_3d_combined.gif`

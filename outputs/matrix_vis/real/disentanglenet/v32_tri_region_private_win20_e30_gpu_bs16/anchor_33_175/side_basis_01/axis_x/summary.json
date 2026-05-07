@@ -1,0 +1,47 @@
+{
+  "experiment_name": "disentanglenet_v32_tri_region_private_win20_e30_gpu_bs16_side_basis_01_axis_x_anchor_33_175",
+  "output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v32_tri_region_private_win20_e30_gpu_bs16/anchor_33_175/side_basis_01/axis_x",
+  "axis": "x",
+  "num_subset_points": 341,
+  "num_pairwise_observations": 57970,
+  "observation_truncation": null,
+  "anchor_point_ids": [
+    33,
+    175
+  ],
+  "anchor_point_id": 33,
+  "plot_warning": null,
+  "comparison_plot_warning": null,
+  "comparison_metrics": null,
+  "diagnostics": {
+    "status": "solved",
+    "objective_value": -7384.044960188514,
+    "num_points": 341,
+    "num_time_steps": 20,
+    "num_observations": 57970,
+    "num_outer_iterations": 4,
+    "wall_time": {
+      "setup_time": 0.0,
+      "solve_times": [
+        6.233623281994369,
+        4.170634442998562,
+        4.010212002001936,
+        3.9257371810090262
+      ],
+      "total_time": 18.340206908003893
+    },
+    "solver_stats": {
+      "solver_name": "matrix_free_cg",
+      "num_iters": 35,
+      "solve_time": 3.9257371810090262,
+      "setup_time": 0.0,
+      "run_time": 18.340206908003893,
+      "outer_cg_iterations": [
+        57,
+        38,
+        36,
+        35
+      ]
+    }
+  }
+}

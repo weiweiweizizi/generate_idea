@@ -490,30 +490,7 @@ basis 轨迹重建与 preview 默认在：
 - `outputs/matrix_vis/real/disentanglenet/<run_name>/<anchor_tag>/...`
 - `outputs/matrix_vis/real_preview/disentanglenet/<run_name>/<anchor_tag>/...`
 
-## 八、这份 README 对串联整条分析链是否友好
 
-### 当前评价
-
-和之前相比，现在这份 README 对“串联整条分析链”已经**明显更友好**了，原因有三点：
-
-1. 它把任务按目标拆开了。
-   - 训练
-   - checkpoint 级分析
-   - 患者级解释
-   - `matrix_vis` 桥接
-
-2. 它把新加的分析脚本纳入了主叙事。
-   - `export_window_basis_activations.py`
-   - `analyze_patient_activation_patterns.py`
-   - `analyze_class_coactivation_patterns.py`
-   - `analyze_patient_tsne.py`
-   - `build_tsne_index_pages.py`
-
-3. 它把 `matrix_vis` 相关的“导出入口”和“真正重建入口”分清了。
-   - basis 链：`export_matrix_vis_basis.py -> run_disentanglenet_basis_batch.py`
-   - 患者链：`export_matrix_vis_patient.py -> reconstruct_patient_sequence.py`
-
-### 仍然存在的摩擦点
 
 如果站在第一次接手这个目录的人角度，这份 README 现在仍有两个小障碍：
 

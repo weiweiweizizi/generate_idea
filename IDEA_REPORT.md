@@ -59,13 +59,33 @@
 
 ## 3. `scripts/lq`：前置探索的关键数据
 
+当前 `lq_*` 运行目录已统一整理到：
+
+- `outputs/lq/win20-step20/`
+
+当前仓库实际保留的 `lq` 运行目录主要是 `v20-v32`：
+
+| 分组 | 保留目录 |
+|------|----------|
+| private-cap tradeoff | `outputs/lq/win20-step20/lq_x_mouth_v20_residual_fsq_sparse_shared_privatecap04_probe_win20_e50` |
+| private-cap tradeoff | `outputs/lq/win20-step20/lq_x_mouth_v21_residual_fsq_sparse_shared_privatecap06_probe_win20_e50` |
+| side semantic bank | `outputs/lq/win20-step20/lq_x_mouth_v22_side_semantic_bank_probe_win20_e50` |
+| side semantic bank | `outputs/lq/win20-step20/lq_x_mouth_v23_side_subspace_orth_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v24_free_side_adv_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v25_frame_qr_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v26_early_branch_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v27_side_basis_rep_tight_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v28_side_aware_pooling_probe_win20_e50` |
+| laterality / joint-QR | `outputs/lq/win20-step20/lq_x_mouth_v29_laterality_contrast_probe_win20_e50` |
+| laterality / joint-QR | `outputs/lq/win20-step20/lq_x_mouth_v30_joint_qr_levels26_side3_probe_win20_e50` |
+| laterality / joint-QR | `outputs/lq/win20-step20/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50` |
+| severity branch | `outputs/lq/win20-step20/lq_x_mouth_v32_joint_qr_levels26_side3_sparse_side_severity_probe_win20_e50` |
+
+更早期的 `v10-v19` 在当前仓库里主要以文档结论保留，不再作为 `outputs/` 顶层运行目录索引。
+
 ## 3.1 Collapse 被真正缓解的起点是 `v10`
 
 `v10` 是第一个可以被当作可信 baseline 的版本。
-
-运行目录：
-
-- `outputs/lq_x_mouth_v10_fsq_probe_win20`
 
 关键指标：
 

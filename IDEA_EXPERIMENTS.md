@@ -55,6 +55,33 @@
 
 ## 2. `scripts/lq`：前置探索时间线
 
+当前 `lq_*` 运行目录已统一整理到：
+
+- `outputs/lq/win20-step20/`
+
+当前仓库实际保留的目录索引如下：
+
+| 阶段 | 目录 |
+|------|------|
+| private-cap tradeoff | `outputs/lq/win20-step20/lq_x_mouth_v20_residual_fsq_sparse_shared_privatecap04_probe_win20_e50` |
+| private-cap tradeoff | `outputs/lq/win20-step20/lq_x_mouth_v21_residual_fsq_sparse_shared_privatecap06_probe_win20_e50` |
+| side semantic bank | `outputs/lq/win20-step20/lq_x_mouth_v22_side_semantic_bank_probe_win20_e50` |
+| side semantic bank | `outputs/lq/win20-step20/lq_x_mouth_v23_side_subspace_orth_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v24_free_side_adv_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v25_frame_qr_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v26_early_branch_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v27_side_basis_rep_tight_probe_win20_e50` |
+| side route probes | `outputs/lq/win20-step20/lq_x_mouth_v28_side_aware_pooling_probe_win20_e50` |
+| laterality / joint-QR | `outputs/lq/win20-step20/lq_x_mouth_v29_laterality_contrast_probe_win20_e50` |
+| laterality / joint-QR | `outputs/lq/win20-step20/lq_x_mouth_v30_joint_qr_levels26_side3_probe_win20_e50` |
+| laterality / joint-QR | `outputs/lq/win20-step20/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50` |
+| severity branch | `outputs/lq/win20-step20/lq_x_mouth_v32_joint_qr_levels26_side3_sparse_side_severity_probe_win20_e50` |
+
+说明：
+
+- `v10-v19` 仍然是重要的历史结论，但当前仓库里主要保留为文档记录
+- 当前磁盘上的 `lq` 运行目录索引从 `v20` 开始
+
 ## 2.1 Collapse 阶段：`v1` 到 `v9`
 
 这一阶段的主要结论很明确：
@@ -90,10 +117,6 @@
 `v10` 是一个关键分界点。它不是最终结构，但它是第一次让 code usage 明显好转的版本。
 
 ### 2.2.1 `v10`：第一个可接受的 anti-collapse baseline
-
-运行目录：
-
-- `outputs/lq_x_mouth_v10_fsq_probe_win20`
 
 关键指标：
 
@@ -156,7 +179,7 @@
 
 运行目录：
 
-- `outputs/lq_x_mouth_v22_side_semantic_bank_probe_win20_e50`
+- `outputs/lq/win20-step20/lq_x_mouth_v22_side_semantic_bank_probe_win20_e50`
 
 结构变化：
 
@@ -187,7 +210,7 @@
 
 运行目录：
 
-- `outputs/lq_x_mouth_v23_side_subspace_orth_probe_win20_e50`
+- `outputs/lq/win20-step20/lq_x_mouth_v23_side_subspace_orth_probe_win20_e50`
 
 关键结果：
 
@@ -219,7 +242,7 @@
 
 运行目录：
 
-- `outputs/lq_x_mouth_v29_laterality_contrast_probe_win20_e50`
+- `outputs/lq/win20-step20/lq_x_mouth_v29_laterality_contrast_probe_win20_e50`
 
 关键现象：
 
@@ -248,7 +271,7 @@
 
 运行目录：
 
-- `outputs/lq_x_mouth_v30_joint_qr_levels26_side3_probe_win20_e50`
+- `outputs/lq/win20-step20/lq_x_mouth_v30_joint_qr_levels26_side3_probe_win20_e50`
 
 关键结果：
 
@@ -278,7 +301,7 @@
 
 `scripts/lq` 里仍保留旧的：
 
-- `outputs/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50`
+- `outputs/lq/win20-step20/lq_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe_win20_e50`
 
 它延续的是 `lq` 阶段的实验轨迹，分析文件里还能看到旧的 11-basis 结构痕迹。
 
@@ -303,7 +326,7 @@
 
 运行目录：
 
-- `outputs/lq_x_mouth_v32_joint_qr_levels26_side3_sparse_side_severity_probe_win20_e50`
+- `outputs/lq/win20-step20/lq_x_mouth_v32_joint_qr_levels26_side3_sparse_side_severity_probe_win20_e50`
 
 这个版本主要回答：
 

@@ -7,24 +7,24 @@
 > 📌 **脚本与结果目录映射**
 > | 实验 | 脚本 | 结果目录 |
 > |------|------|---------|
-> | Idea 1 单患者验证 | `scripts/svd_single_patient.py` | `data/win20-step20/svd_single_patient_results/` |
-> | Idea 1 多患者联合 | `scripts/svd_multi_patient.py` | `data/win20-step20/svd_multi_patient_results/` |
-> | Idea 3 RAW vs DIFF | `scripts/svd_single_patient_raw.py` | `data/win20-step20/svd_single_patient_raw_results/` |
-> | Idea 4 Grassmann | `scripts/grassmann_cross_analysis.py` | `data/win20-step20/grassmann_cross_analysis_results/` |
-> | 早期Grassmann | `scripts/grassmann_analysis.py` | `data/win20-step20/grassmann_analysis_results/` |
-> | blendshape相关性 | `scripts/blendshape_correlation_analysis.py` | `data/win20-step20/blendshape_correlation_results/` |
-> | NMF基线(失败) | `scripts/nmf_baseline_x_y.py` | `data/win20-step20/nmf_results/` |
-> | Tucker尝试 | `scripts/tucker_multi_patient.py` | `data/win20-step20/tucker_multi_patient_results/` |
-> | Idea 1* DMD单患者 | `scripts/dmd_single_patient.py` | `data/win5-step5/dmd_single_patient_results/` |
-> | Idea 1* DMD多患者 | `scripts/dmd_multi_patient.py` | `data/win5-step5/dmd_multi_patient_results/` |
-> | Idea 1* DMD与blendshape相关性 | `scripts/dmd_blendshape_correlation.py` | `data/win5-step5/dmd_blendshape_correlation_results/` |
+> | Idea 1 单患者验证 | `scripts/pilot_feasibility/svd/svd_single_patient.py` | `outputs/pilot_feasibility/svd/win20-step20/svd_single_patient_results/` |
+> | Idea 1 多患者联合 | `scripts/pilot_feasibility/svd/svd_multi_patient.py` | `outputs/pilot_feasibility/svd/win20-step20/svd_multi_patient_results/` |
+> | Idea 3 RAW vs DIFF | `scripts/pilot_feasibility/svd/svd_single_patient_raw.py` | `outputs/pilot_feasibility/svd/win20-step20/svd_single_patient_raw_results/` |
+> | Idea 4 Grassmann | `scripts/pilot_feasibility/grassmann/grassmann_cross_analysis.py` | `outputs/pilot_feasibility/grassmann/win20-step20/grassmann_cross_analysis_results/` |
+> | 早期Grassmann | `scripts/pilot_feasibility/grassmann/grassmann_analysis.py` | `outputs/pilot_feasibility/grassmann/win20-step20/grassmann_analysis_results/` |
+> | blendshape相关性 | `scripts/pilot_feasibility/blendshape/blendshape_correlation_analysis.py` | `outputs/pilot_feasibility/blendshape/win20-step20/blendshape_correlation_results/` |
+> | NMF基线(失败) | `scripts/pilot_feasibility/nmf/nmf_baseline_x_y.py` | `outputs/pilot_feasibility/nmf/win20-step20/nmf_results/` |
+> | Tucker尝试 | `scripts/pilot_feasibility/tucker/tucker_multi_patient.py` | `outputs/pilot_feasibility/tucker/win20-step20/tucker_multi_patient_results/` |
+> | Idea 1* DMD单患者 | `scripts/pilot_feasibility/dmd/dmd_single_patient.py` | `outputs/pilot_feasibility/dmd/win5-step5/dmd_single_patient_results/` |
+> | Idea 1* DMD多患者 | `scripts/pilot_feasibility/dmd/dmd_multi_patient.py` | `outputs/pilot_feasibility/dmd/win5-step5/dmd_multi_patient_results/` |
+> | Idea 1* DMD与blendshape相关性 | `scripts/pilot_feasibility/dmd/dmd_blendshape_correlation.py` | `outputs/pilot_feasibility/dmd/win5-step5/dmd_blendshape_correlation_results/` |
 
 ---
 
 ## Idea 1 验证：SVD差分基线（2026-03-28）
 
-> **脚本**: `scripts/svd_single_patient.py`
-> **结果目录**: `data/win20-step20/svd_single_patient_results/`
+> **脚本**: `scripts/pilot_feasibility/svd/svd_single_patient.py`
+> **结果目录**: `outputs/pilot_feasibility/svd/win20-step20/svd_single_patient_results/`
 
 ### 问题发现：NMF无法直接用于差分数据
 
@@ -95,8 +95,8 @@ TT/845380（20窗口）能量稍分散：X: 86%, Y: 83.7%，说明多窗口患�
 
 ## Idea 1 补充：多患者联合SVD分解（2026-03-29）
 
-> **脚本**: `scripts/svd_multi_patient.py`
-> **结果目录**: `data/win20-step20/svd_multi_patient_results/`
+> **脚本**: `scripts/pilot_feasibility/svd/svd_multi_patient.py`
+> **结果目录**: `outputs/pilot_feasibility/svd/win20-step20/svd_multi_patient_results/`
 
 ### 实验设计
 
@@ -177,8 +177,8 @@ TT的前两个基能量更分散，说明TT数据包含更丰富的运动变化�
 
 ## Idea 3 验证：差分 vs 非差分距离矩阵对比（2026-03-29）
 
-> **脚本**: `scripts/svd_single_patient_raw.py` (单患者) / `scripts/svd_multi_patient_raw.py` (多患者)
-> **结果目录**: `data/win20-step20/svd_single_patient_raw_results/`
+> **脚本**: `scripts/pilot_feasibility/svd/svd_single_patient_raw.py` (单患者) / `scripts/pilot_feasibility/svd/svd_multi_patient_raw.py` (多患者)
+> **结果目录**: `outputs/pilot_feasibility/svd/win20-step20/svd_single_patient_raw_results/`
 
 ### 实验设计
 
@@ -229,8 +229,8 @@ TT的前两个基能量更分散，说明TT数据包含更丰富的运动变化�
 
 ## Idea 4 验证：Grassmann流形验证共享基（2026-03-30）
 
-> **脚本**: `scripts/grassmann_cross_analysis.py`
-> **结果目录**: `data/win20-step20/grassmann_cross_analysis_results/`
+> **脚本**: `scripts/pilot_feasibility/grassmann/grassmann_cross_analysis.py`
+> **结果目录**: `outputs/pilot_feasibility/grassmann/win20-step20/grassmann_cross_analysis_results/`
 
 ### 问题
 
@@ -278,8 +278,8 @@ TT的前两个基能量更分散，说明TT数据包含更丰富的运动变化�
 >
 > **目标**: 用DMD（动态模式分解）分析win5-step5数据，验证是否能捕捉到更细粒度的运动动态。
 >
-> **脚本**: `scripts/dmd_single_patient.py` (单患者), `scripts/dmd_multi_patient.py` (多患者联合)
-> **结果目录**: `data/win5-step5/dmd_single_patient_results/`, `data/win5-step5/dmd_multi_patient_results/`
+> **脚本**: `scripts/pilot_feasibility/dmd/dmd_single_patient.py` (单患者), `scripts/pilot_feasibility/dmd/dmd_multi_patient.py` (多患者联合)
+> **结果目录**: `outputs/pilot_feasibility/dmd/win5-step5/dmd_single_patient_results/`, `outputs/pilot_feasibility/dmd/win5-step5/dmd_multi_patient_results/`
 
 ### DMD vs SVD 对比
 
@@ -320,7 +320,7 @@ TT的前两个基能量更分散，说明TT数据包含更丰富的运动变化�
 #### 阶段2: DMD多患者联合分析 ✅ (2026-03-31)
 - 筛选条件: 30 ≤ 窗口数 ≤ 200
 - DMD rank = 50
-- 结果目录: `data/win5-step5/dmd_multi_patient_results/`
+- 结果目录: `outputs/pilot_feasibility/dmd/win5-step5/dmd_multi_patient_results/`
 - 模态保存: `saved_modes/{IMR,TT}/`
 
 **筛选结果**:
