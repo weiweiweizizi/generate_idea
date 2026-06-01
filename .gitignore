@@ -2,4 +2,6 @@
 .superpowers/
 __pycache__/
 *.pyc
-outputs/matrix_vis/.mplconfig/
+outputs/
+data/
+disentangle_modern_reconstructed/
