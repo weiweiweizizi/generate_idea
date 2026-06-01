@@ -11,6 +11,7 @@ from scripts.matrix_vis.core.types import (
     MeshConfig,
     SUPPORTED_MESH_DIMENSIONS,
     SUPPORTED_MESH_FORMATS,
+    SUPPORTED_NORMALIZATION_SCOPES,
     SUPPORTED_SUBSET_POLICIES,
 )
 from scripts.matrix_vis.io.paths import resolve_input_path, resolve_output_path
@@ -70,6 +71,9 @@ def load_compose_config(config_path: str | Path) -> ComposeConfig:
     mesh_dimension = _require_str(mesh_section, "dimension")
     if mesh_dimension not in SUPPORTED_MESH_DIMENSIONS:
         raise ValueError(f"Unsupported mesh.dimension: {mesh_dimension!r}")
+    normalization_scope = mesh_section.get("normalization_scope")
+    if normalization_scope is not None and normalization_scope not in SUPPORTED_NORMALIZATION_SCOPES:
+        raise ValueError(f"Unsupported mesh.normalization_scope: {normalization_scope!r}")
 
     subset_policy = compose_section.get("subset_policy", "intersection")
     if subset_policy not in SUPPORTED_SUBSET_POLICIES:
@@ -86,6 +90,7 @@ def load_compose_config(config_path: str | Path) -> ComposeConfig:
             format=mesh_format,
             dimension=mesh_dimension,
             point_ids=mesh_section.get("point_ids", "auto"),
+            normalization_scope=normalization_scope,
         ),
         inputs=ComposeInputConfig(
             x_solution=resolve_input_path(config_path, Path(_require_str(inputs_section, "x_solution"))),

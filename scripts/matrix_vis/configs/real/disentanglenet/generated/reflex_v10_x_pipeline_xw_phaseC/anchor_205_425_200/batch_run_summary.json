@@ -1,0 +1,109 @@
+{
+  "manifest_path": "/home/weizilin/generate_idea/outputs/disentangleNet/reflex_v10_x_pipeline_xw/phaseC/matrix_vis_exports/reflex_v10_x_pipeline_xw_phaseC/basis_manifest.json",
+  "generated_dir": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200",
+  "mode": "x",
+  "reconstruction_axis": "x",
+  "static_axis": "y",
+  "anchor_point_ids": [
+    205,
+    425,
+    200
+  ],
+  "anchor_point_id": 205,
+  "fixed_other_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y_axis_y/solution.npz",
+  "num_total_jobs": 10,
+  "num_axis_runs": 10,
+  "num_fixed_other_preview_runs": 0,
+  "num_no_motion_other_preview_runs": 0,
+  "axis_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_00/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_01/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_02/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_03/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_04/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_05/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_06/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_07/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/side_basis_00/axis_x",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/side_basis_01/axis_x"
+  ],
+  "fixed_other_preview_output_dirs": [],
+  "no_motion_other_preview_output_dirs": [],
+  "axis_jobs": [
+    {
+      "basis_label": "basis",
+      "basis_index": 0,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_00_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_00_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_00_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 1,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_01_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_01_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_01_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 2,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_02_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_02_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_02_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 3,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_03_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_03_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_03_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 4,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_04_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_04_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_04_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 5,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_05_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_05_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_05_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 6,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_06_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_06_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_06_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 7,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/basis_07_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/basis_07_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/basis_07_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "side_basis",
+      "basis_index": 0,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/side_basis_00_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/side_basis_00_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/side_basis_00_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "side_basis",
+      "basis_index": 1,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/side_basis_01_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y/side_basis_01_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/no_motion_y/side_basis_01_preview_anchor205_425_200"
+    }
+  ],
+  "fixed_y_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/reflex_v10_x_pipeline_xw_phaseC/anchor_205_425_200/fixed_y_axis_y/solution.npz",
+  "num_fixed_y_preview_runs": 0,
+  "num_no_motion_y_preview_runs": 0,
+  "fixed_y_preview_output_dirs": [],
+  "no_motion_y_preview_output_dirs": []
+}

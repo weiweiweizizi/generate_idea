@@ -29,6 +29,17 @@ N_COMPONENTS = 4  # 用于比较的主成分数量
 RANDOM_STATE = 42
 
 
+def list_available_datasets():
+    """返回 data/win20-step20 下可用的原始数据集目录名。"""
+    datasets = []
+    for path in sorted(DATA_ROOT.iterdir()):
+        if not path.is_dir() or path.name.endswith("-SVD"):
+            continue
+        if (path / "config.json").exists():
+            datasets.append(path.name)
+    return datasets
+
+
 def load_patient_windows(dataset_path, subj_id):
     """加载单个患者所有窗口的x和y矩阵"""
     subj_path = dataset_path / subj_id
@@ -341,9 +352,12 @@ def main():
     print("Grassmann流形分析 - 验证共享基是强迫还是必然存在")
     print("=" * 60)
 
+    datasets = list_available_datasets()
+    print(f"Datasets found: {datasets}")
+
     # 收集患者列表
     patients = []
-    for dataset in ["IMR", "TT"]:
+    for dataset in datasets:
         dataset_path = DATA_ROOT / dataset
         if not dataset_path.exists():
             continue

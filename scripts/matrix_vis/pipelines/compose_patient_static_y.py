@@ -8,6 +8,7 @@ import numpy as np
 from scripts.matrix_vis.core.landmark_layout import resolve_subset_layout
 from scripts.matrix_vis.core.projection import project_mesh_to_axis
 from scripts.matrix_vis.core.types import MeshConfig, ProjectionConfig
+from scripts.matrix_vis.io.load_patient_reference import load_subset_axis_positions
 from scripts.matrix_vis.io.load_mesh import load_mesh
 from scripts.matrix_vis.io.save_results import ensure_output_dir, load_solution_npz, save_json
 from scripts.matrix_vis.pipelines.preview_real_mouth_regions import run_preview_real_mouth_regions
@@ -28,7 +29,7 @@ def _build_y_projection() -> ProjectionConfig:
         axis="y",
         source_axis_index=1,
         subset_point_ids=subset_point_ids,
-        anchor_point_ids=(14,),
+        anchor_point_ids=(205, 425, 200),
         subset_layout="face_regions_grouped",
         subset_layout_source=Path(DEFAULT_LANDMARK_CONFIG).resolve(),
         subset_layout_extractor_name="mediapipe",
@@ -60,6 +61,7 @@ def compose_patient_static_y(
     sequence_dir: str,
     output_dir: str | None = None,
     mesh_source: str = DEFAULT_MESH_SOURCE,
+    initial_landmark_source: str | None = None,
 ) -> dict:
     sequence_path = Path(sequence_dir).expanduser().resolve()
     manifest = json.loads((sequence_path / "sequence_manifest.json").read_text(encoding="utf-8"))
@@ -109,7 +111,16 @@ def compose_patient_static_y(
 
     stitched_x_trajectory = np.concatenate(stitched_x, axis=1)
     stitched_time_grid = np.concatenate(stitched_time, axis=0)
-    static_y_axis = y_projection.subset_positions.astype(np.float32)
+    if initial_landmark_source is None:
+        static_y_axis = y_projection.subset_positions.astype(np.float32)
+        y_mode = "static_mesh_template"
+    else:
+        static_y_axis = load_subset_axis_positions(
+            landmark_source=initial_landmark_source,
+            subset_point_ids=y_projection.subset_point_ids,
+            axis="y",
+        )
+        y_mode = "static_patient_initial_landmark"
     static_y_trajectory = np.repeat(static_y_axis[:, None], stitched_time_grid.shape[0], axis=1)
 
     x_solution_path = destination / "stitched_x_solution.npz"
@@ -136,8 +147,10 @@ def compose_patient_static_y(
         output_dir=str(destination),
         mesh_source=mesh_source,
         landmarks_config=DEFAULT_LANDMARK_CONFIG,
-        anchor_point_id=14,
+        anchor_point_ids=tuple(int(point_id) for point_id in y_projection.anchor_point_ids.tolist()),
         title=sequence_path.name,
+        align_to_anchor=initial_landmark_source is None,
+        background_points_source=initial_landmark_source,
     )
 
     summary = {
@@ -146,7 +159,12 @@ def compose_patient_static_y(
         "num_windows": len(window_rows),
         "num_frames": int(stitched_time_grid.shape[0]),
         "subset_point_count": int(subset_ids.shape[0]),
-        "y_mode": "static_mesh_template",
+        "y_mode": y_mode,
+        "initial_landmark_source": (
+            str(Path(initial_landmark_source).expanduser().resolve())
+            if initial_landmark_source is not None
+            else None
+        ),
         "x_solution": str(x_solution_path),
         "y_solution": str(y_solution_path),
         "preview_output_dir": preview_summary["output_dir"],

@@ -1,0 +1,151 @@
+{
+  "manifest_path": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/matrix_vis_exports/basis/basis_manifest.json",
+  "generated_dir": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14",
+  "run_name": "v32_tri_region_masked_y_win20_e30_bs16_openmmlab",
+  "mode": "y",
+  "reconstruction_axis": "y",
+  "static_axis": "x",
+  "anchor_point_ids": [
+    14
+  ],
+  "anchor_point_id": 14,
+  "anchor_tag": "anchor_14",
+  "num_basis": 8,
+  "num_side_basis": 3,
+  "num_total_jobs": 11,
+  "fixed_y_template_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/imr_00228_win005_minus_win004/mouth_regions/anchor_014/matrix_free_cg/axis_y.yaml",
+  "fixed_y_template_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/imr_00228_win005_minus_win004/mouth_regions/anchor_014/matrix_free_cg/axis_y/solution.npz",
+  "fixed_other_config": null,
+  "fixed_other_solution": null,
+  "axis_configs": [
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_00_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_01_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_02_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_03_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_04_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_05_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_06_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_07_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/side_basis_00_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/side_basis_01_axis_y.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/side_basis_02_axis_y.yaml"
+  ],
+  "preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_00_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_01_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_02_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_03_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_04_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_05_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_06_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_07_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_00_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_01_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_02_preview_anchor14"
+  ],
+  "fixed_other_preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_00_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_01_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_02_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_03_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_04_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_05_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_06_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_07_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_00_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_01_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_02_preview_anchor14"
+  ],
+  "no_motion_other_preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_00_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_01_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_02_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_03_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_04_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_05_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_06_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_07_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/side_basis_00_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/side_basis_01_preview_anchor14",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/side_basis_02_preview_anchor14"
+  ],
+  "axis_jobs": [
+    {
+      "basis_label": "basis",
+      "basis_index": 0,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_00_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_00_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_00_preview_anchor14"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 1,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_01_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_01_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_01_preview_anchor14"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 2,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_02_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_02_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_02_preview_anchor14"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 3,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_03_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_03_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_03_preview_anchor14"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 4,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_04_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_04_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_04_preview_anchor14"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 5,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_05_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_05_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_05_preview_anchor14"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 6,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_06_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_06_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_06_preview_anchor14"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 7,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/basis_07_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/basis_07_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/basis_07_preview_anchor14"
+    },
+    {
+      "basis_label": "side_basis",
+      "basis_index": 0,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/side_basis_00_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_00_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/side_basis_00_preview_anchor14"
+    },
+    {
+      "basis_label": "side_basis",
+      "basis_index": 1,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/side_basis_01_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_01_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/side_basis_01_preview_anchor14"
+    },
+    {
+      "basis_label": "side_basis",
+      "basis_index": 2,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/side_basis_02_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/fixed_x/side_basis_02_preview_anchor14",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_14/no_motion_x/side_basis_02_preview_anchor14"
+    }
+  ]
+}

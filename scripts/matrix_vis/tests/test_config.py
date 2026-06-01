@@ -35,9 +35,12 @@ solver:
   lambda_data: 1.0
   lambda_acc: 10.0
   lambda_vel: 1.0
+  lambda_laplacian: 0.0
+  lambda_area_sign: 0.0
+  area_barrier_margin: 0.05
   enforce_order: true
   max_displacement: null
-  qp_backend: osqp
+  qp_backend: torch
 
 export:
   save_projected_mesh: true
@@ -68,6 +71,8 @@ def test_load_config_parses_valid_minimal_config(tmp_path: Path) -> None:
     assert config.projection.anchor_point_ids == (10, 13)
     assert config.projection.anchor_point_id == 10
     assert config.solver.num_time_steps == 25
+    assert config.solver.lambda_laplacian == 0.0
+    assert config.solver.lambda_area_sign == 0.0
     assert config.basis.value_semantics == "mean_distance_delta"
     assert config.mesh.source == (tmp_path / "toy/double_crescent_mesh.npy").resolve()
 
@@ -92,6 +97,14 @@ def test_load_config_supports_legacy_single_anchor_key(tmp_path: Path) -> None:
     config = load_config(write_config(tmp_path, legacy))
 
     assert config.projection.anchor_point_ids == (10,)
+
+
+def test_load_config_normalizes_legacy_qp_backend(tmp_path: Path) -> None:
+    legacy = VALID_CONFIG.replace("qp_backend: torch", "qp_backend: matrix_free_cg")
+
+    config = load_config(write_config(tmp_path, legacy))
+
+    assert config.solver.qp_backend == "torch"
 
 
 def test_load_config_resolves_grouped_face_region_subset_and_diff_sources(tmp_path: Path) -> None:
@@ -147,7 +160,7 @@ solver:
   lambda_vel: 1.0
   enforce_order: false
   max_displacement: null
-  qp_backend: osqp
+  qp_backend: torch
 
 export:
   save_projected_mesh: true
@@ -223,7 +236,7 @@ solver:
   lambda_vel: 1.0
   enforce_order: false
   max_displacement: null
-  qp_backend: osqp
+  qp_backend: torch
 
 export:
   save_projected_mesh: true

@@ -18,6 +18,7 @@ from scripts.disentangleNet_trainprobe.analysis.common import (
     SIDE_LABEL_NAMES,
     build_analysis_dataset,
     build_specs,
+    load_fold_manifest,
     load_metadata_manifest,
     load_model_from_checkpoint,
     parse_levels,
@@ -235,55 +236,56 @@ def merge_metadata(df: pd.DataFrame, metadata_manifest: pd.DataFrame) -> pd.Data
     return merged
 
 
-def export(
-    checkpoint_path: str,
-    data_roots: str | None = None,
-    split: str = "all",
-    batch_size: int = 64,
-    num_workers: int = 0,
-    output_dir: str | None = None,
+def summarize_frames(
+    *,
+    checkpoint_path: Path,
+    split: str,
+    levels: tuple[int, ...],
+    side_basis_count: int,
+    wide_df: pd.DataFrame,
+    long_df: pd.DataFrame,
+    data_roots: str,
+    mode: str,
+    region: str,
+    output_paths: dict,
+) -> dict:
+    return {
+        "checkpoint_path": str(checkpoint_path),
+        "split": split,
+        "num_window_rows": int(wide_df.shape[0]),
+        "num_long_rows": int(long_df.shape[0]),
+        "num_subjects": int(wide_df["subject"].nunique()),
+        "num_groups": int(wide_df["group_id"].nunique()),
+        "num_datasets": int(wide_df["dataset_name"].nunique()),
+        "free_levels": [int(v) for v in levels],
+        "free_basis_count": int(sum(levels)),
+        "side_basis_count": int(side_basis_count),
+        "total_basis_count": int(sum(levels) + side_basis_count),
+        "data_roots": str(data_roots),
+        "mode": mode,
+        "region": region,
+        "paths": output_paths,
+    }
+
+
+def export_dataset_rows(
+    *,
+    checkpoint: Path,
+    specs: list,
+    dataset,
+    destination: Path,
+    levels: tuple[int, ...],
+    side_basis_count: int,
+    resolved_data_roots: str,
+    mode: str,
+    region: str,
+    split: str,
+    batch_size: int,
+    num_workers: int,
 ):
-    checkpoint = Path(checkpoint_path).expanduser().resolve()
-    ckpt = torch.load(checkpoint, map_location="cpu")
-    config = dict(ckpt.get("config", {}))
-    resolved_data_roots = data_roots or config.get("data_roots")
-    if not resolved_data_roots:
-        raise ValueError("data_roots must be provided either via argument or checkpoint config")
-
-    mode = str(config.get("mode", "x"))
-    region = str(config.get("region", "full"))
-    use_difference = bool(config.get("use_difference", True))
-    signed_normalize = str(config.get("signed_normalize", "per_sample"))
-    val_ratio = float(config.get("val_ratio", 0.2))
-    seed = int(config.get("seed", 42))
-    group_size = int(config.get("group_size", 4))
-    apply_deleted_filter = bool(config.get("apply_deleted_filter", True))
-    levels = parse_levels(config.get("levels", "2,6"))
-    side_basis_count = int(config.get("side_basis_count", 3))
-
-    destination = (
-        Path(output_dir).expanduser().resolve()
-        if output_dir is not None
-        else checkpoint.parent / f"window_basis_activations_{split}"
-    )
     destination.mkdir(parents=True, exist_ok=True)
-
-    specs = build_specs(str(resolved_data_roots))
     metadata_manifest = load_metadata_manifest(specs)
-    dataset = build_analysis_dataset(
-        specs,
-        mode=mode,
-        region=region,
-        use_difference=use_difference,
-        signed_normalize=signed_normalize,
-        val_ratio=val_ratio,
-        seed=seed,
-        group_size=group_size,
-        apply_deleted_filter=apply_deleted_filter,
-        split=split,
-    )
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-
     model, _ = load_model_from_checkpoint(checkpoint, num_dataset_classes=len(specs))
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
@@ -311,30 +313,202 @@ def export(
     long_df.to_csv(long_path, index=False)
     basis_manifest.to_csv(manifest_path, index=False)
 
-    summary = {
-        "checkpoint_path": str(checkpoint),
-        "split": split,
-        "num_window_rows": int(wide_df.shape[0]),
-        "num_long_rows": int(long_df.shape[0]),
-        "num_subjects": int(wide_df["subject"].nunique()),
-        "num_groups": int(wide_df["group_id"].nunique()),
-        "num_datasets": int(wide_df["dataset_name"].nunique()),
-        "free_levels": [int(v) for v in levels],
-        "free_basis_count": int(sum(levels)),
-        "side_basis_count": int(side_basis_count),
-        "total_basis_count": int(sum(levels) + side_basis_count),
-        "data_roots": str(resolved_data_roots),
-        "mode": mode,
-        "region": region,
-        "paths": {
+    summary = summarize_frames(
+        checkpoint_path=checkpoint,
+        split=split,
+        levels=levels,
+        side_basis_count=side_basis_count,
+        wide_df=wide_df,
+        long_df=long_df,
+        data_roots=resolved_data_roots,
+        mode=mode,
+        region=region,
+        output_paths={
             "wide_csv": str(wide_path),
             "long_csv": str(long_path),
             "basis_manifest_csv": str(manifest_path),
         },
+    )
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    return summary, wide_df, long_df, basis_manifest
+
+
+def export(
+    checkpoint_path: str,
+    data_roots: str | None = None,
+    split: str = "all",
+    batch_size: int = 64,
+    num_workers: int = 0,
+    output_dir: str | None = None,
+):
+    checkpoint = Path(checkpoint_path).expanduser().resolve()
+    ckpt = torch.load(checkpoint, map_location="cpu")
+    config = dict(ckpt.get("config", {}))
+    resolved_data_roots = data_roots or config.get("data_roots")
+    if not resolved_data_roots:
+        raise ValueError("data_roots must be provided either via argument or checkpoint config")
+
+    mode = str(config.get("mode", "x"))
+    region = str(config.get("region", "full"))
+    use_difference = bool(config.get("use_difference", True))
+    signed_normalize = str(config.get("signed_normalize", "per_sample"))
+    val_ratio = float(config.get("val_ratio", 0.2))
+    seed = int(config.get("seed", 42))
+    group_size = int(config.get("group_size", 4))
+    apply_deleted_filter = bool(config.get("apply_deleted_filter", True))
+    levels = parse_levels(config.get("levels", "2,6"))
+    side_basis_count = int(config.get("side_basis_count", 3))
+
+    specs = build_specs(str(resolved_data_roots))
+    dataset = build_analysis_dataset(
+        specs,
+        mode=mode,
+        region=region,
+        use_difference=use_difference,
+        signed_normalize=signed_normalize,
+        val_ratio=val_ratio,
+        seed=seed,
+        group_size=group_size,
+        apply_deleted_filter=apply_deleted_filter,
+        split=split,
+        num_folds=int(config.get("num_folds", 1)),
+        fold_index=config.get("fold_index"),
+    )
+    destination = (
+        Path(output_dir).expanduser().resolve()
+        if output_dir is not None
+        else checkpoint.parent / f"window_basis_activations_{split}"
+    )
+    summary, _, _, _ = export_dataset_rows(
+        checkpoint=checkpoint,
+        specs=specs,
+        dataset=dataset,
+        destination=destination,
+        levels=levels,
+        side_basis_count=side_basis_count,
+        resolved_data_roots=str(resolved_data_roots),
+        mode=mode,
+        region=region,
+        split=split,
+        batch_size=batch_size,
+        num_workers=num_workers,
+    )
+    return summary
+
+
+def export_oof(
+    fold_manifest_path: str,
+    batch_size: int = 64,
+    num_workers: int = 0,
+    output_dir: str | None = None,
+):
+    manifest = load_fold_manifest(fold_manifest_path)
+    manifest_path = Path(fold_manifest_path).expanduser().resolve()
+    output_root = manifest_path.parent
+    destination = (
+        Path(output_dir).expanduser().resolve()
+        if output_dir is not None
+        else output_root / "window_basis_activations_oof"
+    )
+    per_fold_root = destination / "per_fold"
+    destination.mkdir(parents=True, exist_ok=True)
+    per_fold_root.mkdir(parents=True, exist_ok=True)
+
+    merged_wide_frames = []
+    merged_long_frames = []
+    basis_manifest_ref = None
+    fold_summaries = []
+
+    for fold_entry in manifest["folds"]:
+        fold_index = int(fold_entry["fold_index"])
+        checkpoint = Path(fold_entry["checkpoint_path"]).expanduser().resolve()
+        ckpt = torch.load(checkpoint, map_location="cpu")
+        config = dict(ckpt.get("config", {}))
+        resolved_data_roots = str(config.get("data_roots"))
+        specs = build_specs(resolved_data_roots)
+        subjects_by_dataset = {
+            row["dataset_name"]: row["val_subjects"]
+            for row in fold_entry["datasets"]
+        }
+        dataset = build_analysis_dataset(
+            specs,
+            mode=str(config.get("mode", "x")),
+            region=str(config.get("region", "full")),
+            use_difference=bool(config.get("use_difference", True)),
+            signed_normalize=str(config.get("signed_normalize", "per_sample")),
+            val_ratio=float(config.get("val_ratio", 0.2)),
+            seed=int(config.get("seed", 42)),
+            group_size=int(config.get("group_size", 4)),
+            apply_deleted_filter=bool(config.get("apply_deleted_filter", True)),
+            split="val",
+            num_folds=int(config.get("num_folds", manifest["num_folds"])),
+            fold_index=fold_index,
+            subjects_by_dataset=subjects_by_dataset,
+        )
+        fold_destination = per_fold_root / f"fold_{fold_index}"
+        summary, wide_df, long_df, basis_manifest = export_dataset_rows(
+            checkpoint=checkpoint,
+            specs=specs,
+            dataset=dataset,
+            destination=fold_destination,
+            levels=parse_levels(config.get("levels", "2,6")),
+            side_basis_count=int(config.get("side_basis_count", 3)),
+            resolved_data_roots=resolved_data_roots,
+            mode=str(config.get("mode", "x")),
+            region=str(config.get("region", "full")),
+            split="val",
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        summary["fold_index"] = fold_index
+        fold_summaries.append(summary)
+        wide_df = wide_df.copy()
+        long_df = long_df.copy()
+        wide_df["source_fold"] = fold_index
+        long_df["source_fold"] = fold_index
+        merged_wide_frames.append(wide_df)
+        merged_long_frames.append(long_df)
+        if basis_manifest_ref is None:
+            basis_manifest_ref = basis_manifest
+
+    merged_wide_df = pd.concat(merged_wide_frames, ignore_index=True).sort_values(
+        ["dataset_name", "subject", "window_idx", "source_fold"]
+    ).reset_index(drop=True)
+    merged_long_df = pd.concat(merged_long_frames, ignore_index=True).sort_values(
+        ["dataset_name", "subject", "window_idx", "basis_global_index", "source_fold"]
+    ).reset_index(drop=True)
+
+    duplicate_mask = merged_wide_df.duplicated(["dataset_name", "subject", "window_idx"], keep=False)
+    if duplicate_mask.any():
+        raise RuntimeError("Strict OOF export found duplicate patient-window rows across folds")
+
+    wide_path = destination / "window_basis_activations_wide.csv"
+    long_path = destination / "window_basis_activations_long.csv"
+    manifest_path_out = destination / "basis_manifest.csv"
+    summary_path = destination / "summary.json"
+    merged_wide_df.to_csv(wide_path, index=False)
+    merged_long_df.to_csv(long_path, index=False)
+    basis_manifest_ref.to_csv(manifest_path_out, index=False)
+
+    summary = {
+        "fold_manifest_path": str(manifest_path),
+        "num_folds": int(manifest["num_folds"]),
+        "num_window_rows": int(merged_wide_df.shape[0]),
+        "num_long_rows": int(merged_long_df.shape[0]),
+        "num_subjects": int(merged_wide_df["subject"].nunique()),
+        "num_groups": int(merged_wide_df["group_id"].nunique()),
+        "num_datasets": int(merged_wide_df["dataset_name"].nunique()),
+        "paths": {
+            "wide_csv": str(wide_path),
+            "long_csv": str(long_path),
+            "basis_manifest_csv": str(manifest_path_out),
+            "per_fold_root": str(per_fold_root),
+        },
+        "folds": fold_summaries,
     }
     summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     return summary
 
 
 if __name__ == "__main__":
-    fire.Fire({"export": export})
+    fire.Fire({"export": export, "export_oof": export_oof})

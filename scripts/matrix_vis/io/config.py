@@ -30,6 +30,12 @@ try:
 except ImportError:  # pragma: no cover - depends on local env
     yaml = None
 
+
+LEGACY_QP_BACKEND_ALIASES = {
+    "osqp": "torch",
+    "matrix_free_cg": "torch",
+}
+
 # 验证字段
 def _require_mapping(parent: dict[str, Any], key: str) -> dict[str, Any]:
     value = parent.get(key)
@@ -64,6 +70,10 @@ def _require_str(section: dict[str, Any], key: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"Expected '{key}' to be a non-empty string")
     return value.strip()
+
+
+def _normalize_qp_backend(value: str) -> str:
+    return LEGACY_QP_BACKEND_ALIASES.get(value, value)
 
 
 # 解析mesh.point_ids字段，支持"auto"或一个非空整数列表
@@ -288,7 +298,7 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
         matrix_layout_region_names=matrix_layout_region_names,
     )
 
-    qp_backend = _require_str(solver_section, "qp_backend")
+    qp_backend = _normalize_qp_backend(_require_str(solver_section, "qp_backend"))
     if qp_backend not in SUPPORTED_QP_BACKENDS:
         raise ValueError(f"Unsupported solver.qp_backend: {qp_backend!r}")
     max_displacement = solver_section.get("max_displacement")
@@ -305,11 +315,31 @@ def load_config(config_path: str | Path) -> MatrixVisConfig:
         max_displacement=float(max_displacement) if max_displacement is not None else None,
         qp_backend=qp_backend,
         max_observations=solver_section.get("max_observations"),
+        lambda_laplacian=_require_float(solver_section, "lambda_laplacian") if "lambda_laplacian" in solver_section else 0.0,
+        lambda_area_sign=_require_float(solver_section, "lambda_area_sign") if "lambda_area_sign" in solver_section else 0.0,
+        area_barrier_margin=_require_float(solver_section, "area_barrier_margin") if "area_barrier_margin" in solver_section else 0.05,
+        lambda_trajectory_tether=_require_float(solver_section, "lambda_trajectory_tether")
+        if "lambda_trajectory_tether" in solver_section
+        else 0.0,
+        geometry_topology_source=(
+            resolve_input_path(config_path, Path(_require_str(solver_section, "geometry_topology_source")))
+            if "geometry_topology_source" in solver_section
+            else None
+        ),
     )
     if solver.num_time_steps < 2:
         raise ValueError("solver.num_time_steps must be >= 2")
-    if solver.lambda_data < 0 or solver.lambda_acc < 0 or solver.lambda_vel < 0:
+    if (
+        solver.lambda_data < 0
+        or solver.lambda_acc < 0
+        or solver.lambda_vel < 0
+        or solver.lambda_laplacian < 0
+        or solver.lambda_area_sign < 0
+        or solver.lambda_trajectory_tether < 0
+    ):
         raise ValueError("solver weights must be >= 0")
+    if solver.area_barrier_margin < 0:
+        raise ValueError("solver.area_barrier_margin must be >= 0")
     if solver.max_observations is not None:
         if isinstance(solver.max_observations, bool) or not isinstance(solver.max_observations, int):
             raise ValueError("solver.max_observations must be null or integer")

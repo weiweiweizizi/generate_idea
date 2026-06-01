@@ -10,6 +10,8 @@ from .basis import (
     enforce_matrix_constraints,
     get_joint_structured_basis,
     orthogonality_loss,
+    project_basis_abs_max_,
+    scale_basis_abs_max,
     split_basis,
 )
 from .encoder import build_branch_adapter, build_branch_pool, build_motion_encoder
@@ -145,9 +147,15 @@ class RegionBranch(nn.Module):
             side_basis_count,
         )
         self.group_side_classifier = build_group_side_classifier(side_basis_count, num_side_classes)
+        self.project_basis_constraints_()
 
     def _masked_basis_banks(self) -> tuple[torch.Tensor, torch.Tensor]:
         return self.action_basis_bank * self.basis_mask, self.side_basis_bank * self.basis_mask
+
+    def project_basis_constraints_(self, target_abs_max: float = 0.05) -> None:
+        with torch.no_grad():
+            project_basis_abs_max_(self.action_basis_bank, target_abs_max=target_abs_max)
+            project_basis_abs_max_(self.side_basis_bank, target_abs_max=target_abs_max)
 
     def get_structured_basis_pair(self) -> tuple[torch.Tensor, torch.Tensor]:
         action_basis_bank, side_basis_bank = self._masked_basis_banks()
@@ -448,8 +456,9 @@ class DistNet(nn.Module):
 
         if self.use_dataset_aux:
             raise ValueError("disentangleNet_trainprobe does not support dataset auxiliary heads")
-        if self.basis_size != 341:
-            raise ValueError("disentangleNet_trainprobe requires basis_size=341")
+        # Allow basis_size != 341 for backward compatibility with v2 checkpoints trained with basis_size=119
+        # if self.basis_size != 341:
+        #     raise ValueError("disentangleNet_trainprobe requires basis_size=341")
         if self.quantizer_type != "residual_fsq":
             raise ValueError("disentangleNet_trainprobe requires quantizer_type='residual_fsq'")
         if self.discrete_side_loss_enabled:
@@ -743,7 +752,10 @@ class DistNet(nn.Module):
             side_basis = branch_side if side_basis is None else side_basis + branch_side
         assert shared_basis is not None
         assert side_basis is not None
-        return shared_basis, side_basis
+        return (
+            scale_basis_abs_max(shared_basis, target_abs_max=0.05),
+            scale_basis_abs_max(side_basis, target_abs_max=0.05),
+        )
 
     def _branch_orthogonality_loss(self) -> torch.Tensor:
         branch_losses = []
@@ -752,6 +764,10 @@ class DistNet(nn.Module):
             branch_all = torch.cat([branch_shared, branch_side], dim=0)
             branch_losses.append(orthogonality_loss(branch_all, branch_all.shape[0]))
         return torch.stack(branch_losses).mean()
+
+    def project_basis_constraints_(self, target_abs_max: float = 0.05) -> None:
+        for branch in self.branches.values():
+            branch.project_basis_constraints_(target_abs_max=target_abs_max)
 
     def _mean_branch_group_logits(
         self,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 
@@ -16,6 +17,7 @@ from scripts.disentangleNet_trainprobe.model.distnet import DistNet
 from scripts.disentangleNet_trainprobe.training import (
     build_dataloaders,
     build_datasets,
+    build_fold_manifest,
     build_specs,
     prepare_train_config,
     run_batch_memory_validation,
@@ -23,15 +25,14 @@ from scripts.disentangleNet_trainprobe.training import (
     save_best_checkpoint,
 )
 
-DEFAULT_ACTION_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_x_full.npy"
-DEFAULT_SIDE_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_x_full.npy"
-DEFAULT_OUTPUT_DIR = (
-    "outputs/disentangleNet_trainprobe/v32_tri_region_masked_win20_e50"
-)
+DEFAULT_X_ACTION_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_x_full.npy"
+DEFAULT_X_SIDE_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_x_full.npy"
+DEFAULT_Y_ACTION_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_y_full.npy"
+DEFAULT_Y_SIDE_BASIS_INIT_PATH = "scripts/lq/init_basis/basis_y_full.npy"
+DEFAULT_X_OUTPUT_DIR = "outputs/disentangleNet_trainprobe/v32_tri_region_masked_x_win20_e50"
+DEFAULT_Y_OUTPUT_DIR = "outputs/disentangleNet_trainprobe/v32_tri_region_masked_y_win20_e50"
 
 V31_FIXED_CONFIG = {
-    "action_basis_init_path": DEFAULT_ACTION_BASIS_INIT_PATH,
-    "side_basis_init_path": DEFAULT_SIDE_BASIS_INIT_PATH,
     "mode": "x",
     "region": "full",
     "use_difference": True,
@@ -97,6 +98,30 @@ V31_FIXED_CONFIG = {
 }
 
 
+def resolve_default_action_basis_init_path(mode: str) -> str:
+    if mode == "x":
+        return DEFAULT_X_ACTION_BASIS_INIT_PATH
+    if mode == "y":
+        return DEFAULT_Y_ACTION_BASIS_INIT_PATH
+    raise ValueError(f"Unsupported mode: {mode!r}")
+
+
+def resolve_default_side_basis_init_path(mode: str) -> str:
+    if mode == "x":
+        return DEFAULT_X_SIDE_BASIS_INIT_PATH
+    if mode == "y":
+        return DEFAULT_Y_SIDE_BASIS_INIT_PATH
+    raise ValueError(f"Unsupported mode: {mode!r}")
+
+
+def resolve_default_output_dir(mode: str) -> str:
+    if mode == "x":
+        return DEFAULT_X_OUTPUT_DIR
+    if mode == "y":
+        return DEFAULT_Y_OUTPUT_DIR
+    raise ValueError(f"Unsupported mode: {mode!r}")
+
+
 def parse_levels(levels) -> tuple[int, ...]:
     if isinstance(levels, str):
         return tuple(int(v) for v in levels.split(",") if str(v).strip())
@@ -132,40 +157,38 @@ def build_loss_weights(config: dict) -> dict[str, float]:
     }
 
 
-def train(
-    data_roots="data/win20-step20/IMR,data/win20-step20/TT",
-    epochs=50,
-    batch_size=64,
-    lr=3e-4,
-    weight_decay=1e-4,
-    seed=42,
-    val_ratio=0.2,
-    action_basis_init_path=DEFAULT_ACTION_BASIS_INIT_PATH,
-    side_basis_init_path=DEFAULT_SIDE_BASIS_INIT_PATH,
-    validate_batch_memory=True,
-    num_workers=0,
-    output_dir=DEFAULT_OUTPUT_DIR,
-    private_residual_weight=0.05,
-    private_residual_max_l1=0.5,
+def write_json(path: Path, payload: dict | list) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def append_metrics_history(
+    path: Path,
+    *,
+    epoch: int,
+    train_loss_metrics: dict,
+    train_probe_metrics: dict,
+    val_loss_metrics: dict,
+    val_probe_metrics: dict,
+) -> None:
+    row = {
+        "epoch": int(epoch),
+        "train_loss_metrics": train_loss_metrics,
+        "train_probe_metrics": train_probe_metrics,
+        "val_loss_metrics": val_loss_metrics,
+        "val_probe_metrics": val_probe_metrics,
+    }
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def _train_single_fold(
+    *,
+    config: dict,
+    output_dir: Path,
+    num_folds: int,
+    fold_index: int | None,
 ):
-    config = build_v31_config(
-        {
-            "data_roots": data_roots,
-            "epochs": epochs,
-            "batch_size": batch_size,
-            "lr": lr,
-            "weight_decay": weight_decay,
-            "seed": seed,
-            "val_ratio": val_ratio,
-            "action_basis_init_path": action_basis_init_path,
-            "side_basis_init_path": side_basis_init_path,
-            "validate_batch_memory": validate_batch_memory,
-            "num_workers": num_workers,
-            "output_dir": output_dir,
-            "private_residual_weight": private_residual_weight,
-            "private_residual_max_l1": private_residual_max_l1,
-        }
-    )
     torch.manual_seed(config["seed"])
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -180,6 +203,8 @@ def train(
         seed=config["seed"],
         group_size=config["group_size"],
         apply_deleted_filter=config["apply_deleted_filter"],
+        num_folds=num_folds,
+        fold_index=fold_index,
     )
     train_loader, val_loader = build_dataloaders(
         train_dataset,
@@ -238,13 +263,16 @@ def train(
     )
     loss_weights = build_loss_weights(config)
 
-    output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_history_path = output_dir / "metrics_history.jsonl"
+    if metrics_history_path.exists():
+        metrics_history_path.unlink()
 
     if config["validate_batch_memory"]:
         run_batch_memory_validation(model, train_loader, device, optimizer, loss_weights)
 
     best_val = float("inf")
+    best_epoch = None
     for epoch in range(1, config["epochs"] + 1):
         train_loss_metrics, train_probe_metrics = run_epoch(
             model,
@@ -271,9 +299,18 @@ def train(
             f"val_loss={val_loss_metrics} "
             f"val_probe={val_probe_metrics}"
         )
+        append_metrics_history(
+            metrics_history_path,
+            epoch=epoch,
+            train_loss_metrics=train_loss_metrics,
+            train_probe_metrics=train_probe_metrics,
+            val_loss_metrics=val_loss_metrics,
+            val_probe_metrics=val_probe_metrics,
+        )
 
         if val_loss_metrics["loss"] < best_val:
             best_val = val_loss_metrics["loss"]
+            best_epoch = epoch
             save_best_checkpoint(
                 model=model,
                 epoch=epoch,
@@ -284,6 +321,164 @@ def train(
                 config=config,
                 output_path=output_dir / "best.pt",
             )
+
+    return {
+        "output_dir": str(output_dir),
+        "checkpoint_path": str(output_dir / "best.pt"),
+        "metrics_history_path": str(metrics_history_path),
+        "best_val_loss": float(best_val),
+        "best_epoch": int(best_epoch) if best_epoch is not None else None,
+    }
+
+
+def train(
+    data_roots="data/win20-step20/IMR,data/win20-step20/TT",
+    mode="x",
+    epochs=50,
+    batch_size=64,
+    lr=3e-4,
+    weight_decay=1e-4,
+    seed=42,
+    val_ratio=0.2,
+    action_basis_init_path=None,
+    side_basis_init_path=None,
+    validate_batch_memory=True,
+    num_workers=0,
+    output_dir=None,
+    private_residual_weight=0.05,
+    private_residual_max_l1=0.5,
+    num_folds=1,
+    fold_index=None,
+    run_all_folds=False,
+):
+    resolved_mode = str(mode)
+    resolved_action_basis_init_path = (
+        action_basis_init_path
+        if action_basis_init_path is not None
+        else resolve_default_action_basis_init_path(resolved_mode)
+    )
+    resolved_side_basis_init_path = (
+        side_basis_init_path
+        if side_basis_init_path is not None
+        else resolve_default_side_basis_init_path(resolved_mode)
+    )
+    resolved_output_dir = (
+        output_dir if output_dir is not None else resolve_default_output_dir(resolved_mode)
+    )
+    config = build_v31_config(
+        {
+            "data_roots": data_roots,
+            "mode": resolved_mode,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "lr": lr,
+            "weight_decay": weight_decay,
+            "seed": seed,
+            "val_ratio": val_ratio,
+            "action_basis_init_path": resolved_action_basis_init_path,
+            "side_basis_init_path": resolved_side_basis_init_path,
+            "validate_batch_memory": validate_batch_memory,
+            "num_workers": num_workers,
+            "output_dir": resolved_output_dir,
+            "private_residual_weight": private_residual_weight,
+            "private_residual_max_l1": private_residual_max_l1,
+            "num_folds": int(num_folds),
+            "fold_index": None if fold_index is None else int(fold_index),
+        }
+    )
+    resolved_num_folds = int(num_folds)
+    if resolved_num_folds < 1:
+        raise ValueError(f"num_folds must be >= 1, got {resolved_num_folds}")
+
+    specs = build_specs(config["data_roots"])
+    if run_all_folds and resolved_num_folds == 1:
+        raise ValueError("run_all_folds requires num_folds > 1")
+
+    if run_all_folds:
+        output_root = Path(config["output_dir"])
+        output_root.mkdir(parents=True, exist_ok=True)
+        fold_manifest = build_fold_manifest(
+            specs,
+            num_folds=resolved_num_folds,
+            seed=config["seed"],
+        )
+        fold_summaries = []
+        for current_fold_index in range(resolved_num_folds):
+            fold_output_dir = output_root / f"fold_{current_fold_index}"
+            fold_config = {
+                **config,
+                "num_folds": resolved_num_folds,
+                "fold_index": int(current_fold_index),
+                "output_dir": str(fold_output_dir),
+            }
+            current_fold_entry = fold_manifest["folds"][current_fold_index]
+            subject_split_payload = {
+                "fold_index": int(current_fold_index),
+                "num_folds": resolved_num_folds,
+                "datasets": current_fold_entry["datasets"],
+            }
+            write_json(fold_output_dir / "subject_split.json", subject_split_payload)
+            write_json(fold_output_dir / "train_config.json", fold_config)
+            fold_summary = _train_single_fold(
+                config=fold_config,
+                output_dir=fold_output_dir,
+                num_folds=resolved_num_folds,
+                fold_index=current_fold_index,
+            )
+            fold_summary["fold_index"] = int(current_fold_index)
+            fold_summaries.append(fold_summary)
+            current_fold_entry["output_dir"] = str(fold_output_dir)
+            current_fold_entry["checkpoint_path"] = str(fold_output_dir / "best.pt")
+
+        write_json(output_root / "fold_manifest.json", fold_manifest)
+        summary = {
+            "output_root": str(output_root),
+            "num_folds": resolved_num_folds,
+            "folds": fold_summaries,
+            "fold_manifest_path": str(output_root / "fold_manifest.json"),
+        }
+        write_json(output_root / "kfold_summary.json", summary)
+        return summary
+
+    if resolved_num_folds > 1:
+        resolved_fold_index = int(0 if fold_index is None else fold_index)
+        output_dir = Path(config["output_dir"]) / f"fold_{resolved_fold_index}"
+        config = {
+            **config,
+            "num_folds": resolved_num_folds,
+            "fold_index": resolved_fold_index,
+            "output_dir": str(output_dir),
+        }
+        fold_manifest = build_fold_manifest(
+            specs,
+            num_folds=resolved_num_folds,
+            seed=config["seed"],
+        )
+        current_fold_entry = fold_manifest["folds"][resolved_fold_index]
+        write_json(
+            output_dir / "subject_split.json",
+            {
+                "fold_index": resolved_fold_index,
+                "num_folds": resolved_num_folds,
+                "datasets": current_fold_entry["datasets"],
+            },
+        )
+        write_json(output_dir / "train_config.json", config)
+        return _train_single_fold(
+            config=config,
+            output_dir=output_dir,
+            num_folds=resolved_num_folds,
+            fold_index=resolved_fold_index,
+        )
+
+    output_dir = Path(config["output_dir"])
+    write_json(output_dir / "train_config.json", config)
+    return _train_single_fold(
+        config=config,
+        output_dir=output_dir,
+        num_folds=1,
+        fold_index=None,
+    )
 
 
 if __name__ == "__main__":

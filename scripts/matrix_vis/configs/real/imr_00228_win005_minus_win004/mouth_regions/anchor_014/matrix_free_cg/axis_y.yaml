@@ -37,7 +37,7 @@ solver:
   lambda_vel: 1.0
   enforce_order: false
   max_displacement: null
-  qp_backend: matrix_free_cg
+  qp_backend: torch
   max_observations: null
 
 export:

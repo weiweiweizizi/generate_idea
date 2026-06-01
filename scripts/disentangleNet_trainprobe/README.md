@@ -34,12 +34,19 @@
 
 ```bash
 bash scripts/disentangleNet_trainprobe/run_train_x_mouth_v31_joint_qr_levels26_side3_sparse_side_probe.sh
+
+bash scripts/disentangleNet_trainprobe/run_train_y_mouth_v31_joint_qr_levels26_side3_sparse_side_probe.sh
 ```
 
 或直接：
 
 ```bash
 python scripts/disentangleNet_trainprobe/train.py \
+  --mode=x \
+  --data_roots=data/win20-step20/IMR,data/win20-step20/TT
+
+python scripts/disentangleNet_trainprobe/train.py \
+  --mode=y \
   --data_roots=data/win20-step20/IMR,data/win20-step20/TT
 ```
 
@@ -56,3 +63,11 @@ python scripts/disentangleNet_trainprobe/train.py \
 
 - `side_acc`
 - `group_side_acc`
+
+## basis 约束
+
+为了保持训练和导出一致，`DistNet` 内所有 basis bank 都会在初始化和每次参数更新后做一次线性投影：
+
+- 每个 basis 矩阵单独缩放到 `abs-max = 0.05`
+- 缩放因子始终为正，因此不会改变正负号
+- 结构化输出和 checkpoint 参数都会同时满足这个约束

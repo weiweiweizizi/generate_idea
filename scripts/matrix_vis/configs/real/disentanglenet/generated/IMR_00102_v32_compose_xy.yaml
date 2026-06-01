@@ -1,0 +1,22 @@
+experiment:
+  name: IMR_00102_v32_compose_xy
+  output_dir: outputs/matrix_vis/patient_compose/IMR_00102_v32_xy_aligned/composed_xy
+
+mesh:
+  source: /home/weizilin/code_reproduction/canonical_face/canonical_face_model.obj
+  format: mediapipe_canonical_obj
+  dimension: 3d
+  point_ids: auto
+  normalization_scope: face_regions
+
+inputs:
+  x_solution: /home/weizilin/generate_idea/outputs/matrix_vis/patient_compose/IMR_00102_v32_xy_aligned/aligned_x_solution.npz
+  y_solution: /home/weizilin/generate_idea/outputs/matrix_vis/patient_compose/IMR_00102_v32_xy_aligned/aligned_y_solution.npz
+
+compose:
+  subset_policy: intersection
+
+export:
+  save_animation_preview: true
+  save_npz: true
+  save_json_summary: true

@@ -8,15 +8,18 @@ from PIL import Image
 
 from scripts.matrix_vis.core.composition import compose_xy_coordinates
 from scripts.matrix_vis.core.landmark_layout import resolve_subset_layout
-from scripts.matrix_vis.io.load_mesh import _load_canonical_obj_vertices
+from scripts.matrix_vis.core.projection import project_mesh_to_axis
+from scripts.matrix_vis.core.types import MeshConfig, ProjectionConfig
+from scripts.matrix_vis.io.load_patient_reference import load_patient_landmark_points
+from scripts.matrix_vis.io.load_mesh import _load_canonical_obj_vertices, load_mesh
 from scripts.matrix_vis.io.save_results import ensure_output_dir, save_json
 
 
 FACE_WIDTH_POINTS = (127, 356)
 FACE_HEIGHT_POINTS = (10, 152)
 DEFAULT_REGION_NAMES = ("around_mouth", "mouth")
-DEFAULT_ANCHOR_POINT_ID = 14
-DEFAULT_ANCHOR_POINT_IDS = (DEFAULT_ANCHOR_POINT_ID,)
+DEFAULT_ANCHOR_POINT_ID = 205
+DEFAULT_ANCHOR_POINT_IDS = (205, 425, 200)
 DEFAULT_MESH_SOURCE = "/home/weizilin/code_reproduction/canonical_face/canonical_face_model.obj"
 DEFAULT_LANDMARK_CONFIG = "scripts/matrix_vis/configs/landmarks/mediapipe_face_regions_full.yaml"
 
@@ -50,11 +53,67 @@ def _load_solution(path: Path) -> dict[str, np.ndarray]:
     return {key: data[key] for key in data.files}
 
 
+def _build_static_y_payload(
+    *,
+    mesh_source: Path,
+    landmarks_config: Path,
+    anchor_point_ids: tuple[int, ...],
+    subset_layout_region_names: tuple[str, ...] | None,
+    num_time_steps: int,
+    time_grid: np.ndarray | None = None,
+) -> dict[str, np.ndarray]:
+    """从 mesh 投影生成静止 y 轴 solution 负载。
+
+    当 static_y=True 时替代从文件加载 y_solution：
+    y 轨迹在所有时间步上保持初始位置不变。
+    """
+    mesh = load_mesh(
+        MeshConfig(
+            source=mesh_source.resolve(),
+            format="mediapipe_canonical_obj",
+            dimension="3d",
+            point_ids="auto",
+            normalization_scope="face_regions",
+        )
+    )
+    subset_ids = resolve_subset_layout(
+        subset_layout="face_regions_grouped",
+        subset_layout_source=landmarks_config.resolve(),
+        subset_layout_extractor_name="mediapipe",
+        subset_layout_region_names=(
+            list(subset_layout_region_names) if subset_layout_region_names is not None else None
+        ),
+    )
+    proj = project_mesh_to_axis(
+        mesh,
+        ProjectionConfig(
+            axis="y",
+            source_axis_index=1,
+            subset_point_ids=subset_ids,
+            anchor_point_ids=anchor_point_ids,
+        ),
+    )
+    trajectory = np.tile(proj.subset_positions[:, None], (1, num_time_steps))
+    time_grid = (
+        np.asarray(time_grid, dtype=np.float32)
+        if time_grid is not None
+        else np.linspace(0.0, 1.0, num_time_steps, dtype=np.float32)
+    )
+    return {
+        "point_ids": np.asarray(proj.subset_point_ids, dtype=np.int64),
+        "time_grid": time_grid,
+        "initial_positions": np.asarray(proj.subset_positions, dtype=np.float32),
+        "trajectory": trajectory.astype(np.float32),
+        "anchor_point_ids": np.asarray(proj.anchor_point_ids, dtype=np.int64),
+        "anchor_point_id": np.asarray(proj.anchor_point_id, dtype=np.int64),
+    }
+
+
 def _align_subset_to_anchor(
     *,
     coordinates: np.ndarray,
     subset_ids: np.ndarray,
-    normalized_mesh: np.ndarray,
+    reference_points: np.ndarray,
     anchor_point_ids: tuple[int, ...],
 ) -> np.ndarray:
     if not anchor_point_ids:
@@ -63,9 +122,13 @@ def _align_subset_to_anchor(
     missing_anchor_ids = [anchor_point_id for anchor_point_id in anchor_point_ids if anchor_point_id not in subset_id_list]
     if missing_anchor_ids:
         raise ValueError(f"Anchor points {missing_anchor_ids} are not present in the composed subset")
+    if np.max(np.asarray(anchor_point_ids, dtype=np.int64)) >= reference_points.shape[0]:
+        raise ValueError(
+            f"Anchor point ids exceed reference point count: max id {max(anchor_point_ids)}, point count {reference_points.shape[0]}"
+        )
     aligned = coordinates.astype(np.float32, copy=True)
     anchor_local_indices = [subset_id_list.index(anchor_point_id) for anchor_point_id in anchor_point_ids]
-    anchor_target = normalized_mesh[np.asarray(anchor_point_ids, dtype=np.int64), :2].astype(np.float32, copy=False).mean(axis=0)
+    anchor_target = reference_points[np.asarray(anchor_point_ids, dtype=np.int64), :2].astype(np.float32, copy=False).mean(axis=0)
     for frame_idx in range(aligned.shape[0]):
         anchor_current = aligned[frame_idx, anchor_local_indices].mean(axis=0)
         shift = anchor_target - anchor_current
@@ -146,7 +209,7 @@ def _save_gif(frame_paths: list[Path], output_path: Path, *, duration_ms: int = 
 def run_preview_real_mouth_regions(
     *,
     x_solution: str,
-    y_solution: str,
+    y_solution: str | None = None,
     output_dir: str,
     mesh_source: str = DEFAULT_MESH_SOURCE,
     landmarks_config: str = DEFAULT_LANDMARK_CONFIG,
@@ -154,17 +217,44 @@ def run_preview_real_mouth_regions(
     anchor_point_ids: list[int] | tuple[int, ...] | None = None,
     subset_layout_region_names: list[str] | tuple[str, ...] | None = DEFAULT_REGION_NAMES,
     title: str = "normalized facemesh + mouth regions preview",
+    static_y: bool = False,
+    align_to_anchor: bool = True,
+    background_points_source: str | None = None,
 ) -> dict:
     x_solution_path = Path(x_solution).expanduser().resolve()
-    y_solution_path = Path(y_solution).expanduser().resolve()
     destination = ensure_output_dir(Path(output_dir).expanduser().resolve())
 
-    x_payload = _load_solution(x_solution_path)
-    y_payload = _load_solution(y_solution_path)
     resolved_anchor_point_ids = tuple(int(point_id) for point_id in (anchor_point_ids or (anchor_point_id,)))
+
+    x_payload = _load_solution(x_solution_path)
+    if static_y or y_solution is None:
+        x_time_grid = x_payload["time_grid"]
+        num_time_steps = int(x_time_grid.shape[0])
+        y_payload = _build_static_y_payload(
+            mesh_source=Path(mesh_source).expanduser().resolve(),
+            landmarks_config=Path(landmarks_config).expanduser().resolve(),
+            anchor_point_ids=resolved_anchor_point_ids,
+            subset_layout_region_names=(
+                tuple(subset_layout_region_names) if subset_layout_region_names is not None else None
+            ),
+            num_time_steps=num_time_steps,
+            time_grid=x_time_grid,
+        )
+        y_solution_path = None
+    else:
+        y_solution_path = Path(y_solution).expanduser().resolve()
+        y_payload = _load_solution(y_solution_path)
 
     standard_mesh = _load_canonical_obj_vertices(Path(mesh_source).expanduser().resolve())
     normalized_mesh = _normalize_standard_facemesh(standard_mesh)
+    if background_points_source is None:
+        background_points = normalized_mesh[:, :2].astype(np.float32, copy=False)
+        background_mode = "standard_template"
+    else:
+        background_points = load_patient_landmark_points(background_points_source).astype(np.float32, copy=False)
+        if background_points.shape[1] > 2:
+            background_points = background_points[:, :2]
+        background_mode = "patient_initial_landmarks"
     subset_ids = resolve_subset_layout(
         subset_layout="face_regions_grouped",
         subset_layout_source=Path(landmarks_config).expanduser().resolve(),
@@ -178,23 +268,24 @@ def run_preview_real_mouth_regions(
         y_solution=y_payload,
         preferred_point_ids=np.asarray(subset_ids, dtype=np.int64),
     )
-    subset_coordinates = _align_subset_to_anchor(
-        coordinates=subset_coordinates,
-        subset_ids=common_ids,
-        normalized_mesh=normalized_mesh,
-        anchor_point_ids=resolved_anchor_point_ids,
-    )
-    anchor_points = normalized_mesh[np.asarray(resolved_anchor_point_ids, dtype=np.int64), :2]
+    if align_to_anchor:
+        subset_coordinates = _align_subset_to_anchor(
+            coordinates=subset_coordinates,
+            subset_ids=common_ids,
+            reference_points=background_points,
+            anchor_point_ids=resolved_anchor_point_ids,
+        )
+    anchor_points = background_points[np.asarray(resolved_anchor_point_ids, dtype=np.int64), :2]
 
     frame_paths = _save_frames(
         output_dir=destination / "frames",
-        static_points=normalized_mesh[:, :2],
+        static_points=background_points,
         subset_coordinates=subset_coordinates,
         anchor_points=anchor_points,
     )
     _save_snapshot(
         output_path=destination / "snapshot_last_frame.png",
-        static_points=normalized_mesh[:, :2],
+        static_points=background_points,
         subset_points=subset_coordinates[-1],
         anchor_points=anchor_points,
         title=title,
@@ -211,13 +302,17 @@ def run_preview_real_mouth_regions(
 
     summary = {
         "x_solution": str(x_solution_path),
-        "y_solution": str(y_solution_path),
+        "y_solution": str(y_solution_path) if y_solution_path is not None else None,
         "output_dir": str(destination),
         "num_frames": int(subset_coordinates.shape[0]),
         "num_subset_points": int(common_ids.shape[0]),
         "anchor_point_ids": list(resolved_anchor_point_ids),
         "anchor_point_id": int(resolved_anchor_point_ids[0]),
         "subset_layout_region_names": list(subset_layout_region_names) if subset_layout_region_names is not None else None,
+        "y_mode": "static" if static_y else "file",
+        "align_to_anchor": bool(align_to_anchor),
+        "background_mode": background_mode,
+        "background_points_source": str(Path(background_points_source).expanduser().resolve()) if background_points_source is not None else None,
     }
     save_json(destination / "preview_summary.json", summary)
     print(json.dumps(summary, indent=2, ensure_ascii=False))

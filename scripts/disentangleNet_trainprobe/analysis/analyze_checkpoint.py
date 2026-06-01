@@ -1,0 +1,994 @@
+#!/usr/bin/env python
+"""
+检查单个 disentangleNet checkpoint 的 group 级别行为。
+
+此脚本功能：
+- 加载已训练 checkpoint 及其评测 split。
+- 导出 free/side basis banks 及紧凑热图可视化。
+- 收集 group 级 latent/表征地 tensors。
+- 拟合轻量级线性 probe 用于 side 标签和 dataset 标签。
+- 汇总重建、usage、latent 对齐和 probe 行为。
+
+典型用法：
+1. 默认 validation split：
+   `python scripts/disentangleNet_trainprobe/analysis/analyze_checkpoint.py \\
+      outputs/disentangleNet_trainprobe/v32_tri_region_masked_win20_e50/best.pt`
+2. 评估所有可用分组数据：
+   `python scripts/disentangleNet_trainprobe/analysis/analyze_checkpoint.py \\
+      outputs/disentangleNet_trainprobe/v32_tri_region_masked_win20_e50/best.pt --split all`
+3. 写入自定义目录：
+   `python scripts/disentangleNet_trainprobe/analysis/analyze_checkpoint.py \\
+      outputs/disentangleNet_trainprobe/v32_tri_region_masked_win20_e50/best.pt \\
+      --output_dir outputs/disentangleNet_trainprobe/v32_tri_region_masked_win20_e50/custom_analysis`
+
+主要输出：
+- `<output_dir>/summary.json`
+- `<output_dir>/basis_bank.npy`
+- `<output_dir>/basis_bank_heatmap.png`
+- `<output_dir>/side_basis_bank.npy`
+- `<output_dir>/side_basis_bank_heatmap.png`
+- `<output_dir>/group_level_representations.npz`
+"""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+from pathlib import Path
+import sys
+import warnings
+
+import fire
+import numpy as np
+import torch
+from PIL import Image, ImageDraw
+from torch.utils.data import ConcatDataset, DataLoader
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
+from scripts.disentangleNet_trainprobe.data import (
+    DatasetSpec,
+    FacialMotionSequenceDataset,
+    subject_split,
+)
+from scripts.disentangleNet_trainprobe.analysis.common import (
+    load_model_from_checkpoint as load_trainprobe_model_from_checkpoint,
+)
+
+try:
+    RESAMPLE_NEAREST = Image.Resampling.NEAREST
+except AttributeError:
+    RESAMPLE_NEAREST = Image.NEAREST
+
+SKLEARN_LOGISTIC_REGRESSION = None
+SKLEARN_IMPORT_ERROR = None
+SKLEARN_IMPORT_ATTEMPTED = False
+
+# 脚本功能概述：
+# 1. 加载模型和数据，提取特征，拟合线性探针，并保存分析结果和可视化图像。
+# 2. 提取 basis（包括 2+6+3 共 11 个 basis），同时画成 heatmap
+# 4. 打探针：
+#   - side probe: 用 side_rep 预测 side_label，free_rep 预测 side_label
+#   - dataset probe: 用 side_rep 预测 dataset_label，free_rep 预测 dataset_label，
+# 5. 输出：analysis/summary.json，basis_bank.npy，basis_bank_heatmap.png，
+#    side_basis_bank.npy，side_basis_bank_heatmap.png（如果有的话）
+
+
+def resolve_primary_label_view(config: dict) -> str:
+    """根据 checkpoint 配置确定默认标签语义"""
+    target_label_mode = str(config.get("target_label_mode", "side"))
+    if target_label_mode in {"label5class", "both"}:
+        return "label5class"
+    return "side"
+
+
+def parse_levels(levels) -> tuple[int, ...]:
+    """解析 levels 配置字符串或列表"""
+    if isinstance(levels, str):
+        return tuple(int(v) for v in levels.split(",") if str(v).strip())
+    if isinstance(levels, (tuple, list)):
+        return tuple(int(v) for v in levels)
+    raise TypeError(f"Unsupported levels value: {levels!r}")
+
+
+def build_specs(data_roots: str) -> list[DatasetSpec]:
+    """从数据根路径字符串构建 DatasetSpec 列表"""
+    roots = [Path(root).expanduser() for root in data_roots.split(",") if root.strip()]
+    return [
+        DatasetSpec(root=root, dataset_label=idx, dataset_name=root.name)
+        for idx, root in enumerate(roots)
+    ]
+
+
+def build_eval_dataset(
+    specs: list[DatasetSpec],
+    *,
+    mode: str,
+    region: str,
+    use_difference: bool,
+    signed_normalize: str,
+    val_ratio: float,
+    seed: int,
+    group_size: int,
+    apply_deleted_filter: bool,
+    split: str,
+):
+    """构建评测数据集（train / val / all）"""
+    datasets = []
+
+    for spec in specs:
+        train_subjects, val_subjects = subject_split(spec, val_ratio=val_ratio, seed=seed)
+        subjects = train_subjects if split == "train" else val_subjects
+
+        # global scale 仅在 signed_normalize == "global" 时计算（跨所有训练样本）
+        global_scale = None
+        if signed_normalize == "global":
+            global_scale = FacialMotionSequenceDataset.compute_global_scale(
+                spec,
+                train_subjects,
+                mode=mode,
+                region=region,
+                use_difference=use_difference,
+                seed=seed,
+                apply_deleted_filter=apply_deleted_filter,
+            )
+
+        datasets.append(
+            FacialMotionSequenceDataset(
+                spec,
+                subjects,
+                mode=mode,
+                region=region,
+                use_difference=use_difference,
+                signed_normalize=signed_normalize,
+                global_scale=global_scale,
+                group_size=group_size,
+                apply_deleted_filter=apply_deleted_filter,
+            )
+        )
+
+    return ConcatDataset(datasets)
+
+
+def basis_to_rgb_image(basis: np.ndarray, vmax: float) -> Image.Image:
+    """将单个 basis 矩阵渲染为 RdBu 风格的 RGB 图像（正值为红，负值为蓝，近零为白）"""
+    clipped = np.clip(basis / vmax, -1.0, 1.0)
+    positive = np.clip(clipped, 0.0, 1.0)
+    negative = np.clip(-clipped, 0.0, 1.0)
+
+    rgb = np.zeros((*basis.shape, 3), dtype=np.uint8)
+    rgb[..., 0] = (255 * (1.0 - negative)).astype(np.uint8)
+    rgb[..., 1] = (255 * (1.0 - np.maximum(positive, negative))).astype(np.uint8)
+    rgb[..., 2] = (255 * (1.0 - positive)).astype(np.uint8)
+    return Image.fromarray(rgb, mode="RGB")
+
+
+def plot_basis_grid(basis: np.ndarray, levels: tuple[int, ...], output_path: Path) -> None:
+    """将所有 basis 保存为紧凑热图网格（不依赖 matplotlib）"""
+    total = basis.shape[0]
+    cols = min(4, total)
+    rows = int(np.ceil(total / cols))
+    cell_size = 220
+    pad = 16
+    title_h = 28
+    canvas = Image.new(
+        "RGB",
+        (cols * (cell_size + pad) + pad, rows * (cell_size + title_h + pad) + pad),
+        color=(255, 255, 255),
+    )
+    draw = ImageDraw.Draw(canvas)
+
+    vmax = float(np.max(np.abs(basis)))
+    vmax = max(vmax, 1e-6)
+
+    labels = []
+    for level_idx, level_size in enumerate(levels):
+        for local_idx in range(level_size):
+            labels.append(f"L{level_idx + 1}-{local_idx}")
+
+    for idx in range(total):
+        row = idx // cols
+        col = idx % cols
+        x0 = pad + col * (cell_size + pad)
+        y0 = pad + row * (cell_size + title_h + pad)
+
+        basis_img = basis_to_rgb_image(basis[idx], vmax=vmax).resize(
+            (cell_size, cell_size), RESAMPLE_NEAREST
+        )
+        canvas.paste(basis_img, (x0, y0 + title_h))
+        draw.text((x0, y0), labels[idx], fill=(0, 0, 0))
+
+    canvas.save(output_path)
+
+
+def masked_mean_per_sequence(values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    """用布尔 valid-frame mask 对分组序列做均值池化"""
+    mask = mask.to(device=values.device, dtype=values.dtype)
+    expanded_mask = mask
+    while expanded_mask.ndim < values.ndim:
+        expanded_mask = expanded_mask.unsqueeze(-1)
+
+    denom = mask.sum(dim=1).clamp_min(1.0)
+    while denom.ndim < values.ndim - 1:
+        denom = denom.unsqueeze(-1)
+
+    return (values * expanded_mask).sum(dim=1) / denom
+
+
+def get_logistic_regression_cls():
+    """尝试一次性导入 sklearn LogisticRegression 并缓存结果"""
+    global SKLEARN_LOGISTIC_REGRESSION, SKLEARN_IMPORT_ERROR, SKLEARN_IMPORT_ATTEMPTED
+
+    if SKLEARN_IMPORT_ATTEMPTED:
+        return SKLEARN_LOGISTIC_REGRESSION, SKLEARN_IMPORT_ERROR
+
+    SKLEARN_IMPORT_ATTEMPTED = True
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            with contextlib.redirect_stderr(io.StringIO()):
+                from sklearn.linear_model import LogisticRegression
+
+        SKLEARN_LOGISTIC_REGRESSION = LogisticRegression
+    except Exception as exc:
+        SKLEARN_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
+
+    return SKLEARN_LOGISTIC_REGRESSION, SKLEARN_IMPORT_ERROR
+
+
+def fit_torch_linear_probe(
+    train_x: np.ndarray,
+    train_y: np.ndarray,
+    test_x: np.ndarray,
+    test_y: np.ndarray,
+    *,
+    seed: int,
+) -> float:
+    """sklearn 不可用时的 PyTorch 线性探针后备方案"""
+    torch.manual_seed(seed)
+
+    x_train = torch.from_numpy(train_x).float()
+    y_train = torch.from_numpy(train_y).long()
+    x_test = torch.from_numpy(test_x).float()
+    y_test = torch.from_numpy(test_y).long()
+
+    classifier = torch.nn.Linear(x_train.shape[1], int(train_y.max()) + 1)
+    optimizer = torch.optim.Adam(classifier.parameters(), lr=0.05, weight_decay=1e-4)
+
+    for _ in range(200):
+        optimizer.zero_grad(set_to_none=True)
+        logits = classifier(x_train)
+        loss = torch.nn.functional.cross_entropy(logits, y_train)
+        loss.backward()
+        optimizer.step()
+
+    with torch.no_grad():
+        predictions = classifier(x_test).argmax(dim=1)
+    return float((predictions == y_test).float().mean().item())
+
+
+def build_stratified_splits(
+    labels: np.ndarray,
+    *,
+    seed: int,
+    test_ratio: float,
+    num_repeats: int,
+) -> tuple[list[tuple[np.ndarray, np.ndarray]], str | None]:
+    """为小样本探针评估创建重复分层 holdout splits"""
+    classes, encoded = np.unique(labels, return_inverse=True)
+    if classes.size < 2:
+        return [], "need at least 2 classes"
+
+    split_pairs: list[tuple[np.ndarray, np.ndarray]] = []
+    for repeat_idx in range(num_repeats):
+        rng = np.random.default_rng(seed + repeat_idx)
+        train_indices = []
+        test_indices = []
+
+        for class_idx in range(classes.size):
+            class_members = np.flatnonzero(encoded == class_idx)
+            if class_members.size < 2:
+                return [], f"class {int(classes[class_idx])} has fewer than 2 samples"
+            shuffled = class_members.copy()
+            rng.shuffle(shuffled)
+            class_test = max(1, int(round(class_members.size * test_ratio)))
+            class_test = min(class_test, class_members.size - 1)
+            test_indices.extend(shuffled[:class_test].tolist())
+            train_indices.extend(shuffled[class_test:].tolist())
+
+        if not train_indices or not test_indices:
+            return [], "failed to create non-empty train/test split"
+
+        split_pairs.append(
+            (
+                np.asarray(train_indices, dtype=np.int64),
+                np.asarray(test_indices, dtype=np.int64),
+            )
+        )
+
+    return split_pairs, None
+
+
+def fit_linear_probe(
+    features: np.ndarray,
+    labels: np.ndarray,
+    *,
+    seed: int,
+    test_ratio: float = 0.2,
+    num_repeats: int = 20,
+) -> dict:
+    """在 held-out groups 上拟合轻量级线性探针"""
+    features = np.asarray(features, dtype=np.float32)
+    labels = np.asarray(labels, dtype=np.int64)
+
+    result = {
+        "accuracy": None,
+        "backend": None,
+        "num_samples": int(labels.shape[0]),
+        "num_features": int(features.shape[1]) if features.ndim == 2 else 0,
+        "num_classes": int(np.unique(labels).size) if labels.size else 0,
+        "train_size": 0,
+        "test_size": 0,
+        "accuracy_std": None,
+        "accuracies": [],
+        "num_repeats": int(num_repeats),
+        "error": None,
+    }
+
+    if features.ndim != 2:
+        result["error"] = f"expected 2D features, got shape {tuple(features.shape)}"
+        return result
+    if features.shape[0] != labels.shape[0]:
+        result["error"] = "feature/label sample count mismatch"
+        return result
+    if features.shape[0] < 2:
+        result["error"] = "need at least 2 samples"
+        return result
+    if features.shape[1] == 0:
+        result["error"] = "probe features are empty"
+        return result
+
+    classes, encoded = np.unique(labels, return_inverse=True)
+    split_pairs, split_error = build_stratified_splits(
+        encoded,
+        seed=seed,
+        test_ratio=test_ratio,
+        num_repeats=num_repeats,
+    )
+    if split_error is not None:
+        result["error"] = split_error
+        return result
+
+    logistic_regression_cls, import_error = get_logistic_regression_cls()
+    accuracies = []
+    backend = "torch_linear_probe_fallback"
+
+    for repeat_idx, (train_indices, test_indices) in enumerate(split_pairs):
+        train_x = features[train_indices]
+        test_x = features[test_indices]
+        train_y = encoded[train_indices]
+        test_y = encoded[test_indices]
+
+        # 标准化
+        mean = train_x.mean(axis=0, keepdims=True)
+        std = train_x.std(axis=0, keepdims=True)
+        std = np.where(std < 1e-6, 1.0, std)
+        train_x = (train_x - mean) / std
+        test_x = (test_x - mean) / std
+
+        result["train_size"] = int(train_x.shape[0])
+        result["test_size"] = int(test_x.shape[0])
+
+        if logistic_regression_cls is not None:
+            try:
+                classifier = logistic_regression_cls(
+                    max_iter=1000,
+                    random_state=seed + repeat_idx,
+                )
+                classifier.fit(train_x, train_y)
+                accuracy = float((classifier.predict(test_x) == test_y).mean())
+                backend = "sklearn_logistic_regression"
+            except Exception as exc:
+                import_error = f"{type(exc).__name__}: {exc}"
+                accuracy = fit_torch_linear_probe(
+                    train_x,
+                    train_y,
+                    test_x,
+                    test_y,
+                    seed=seed + repeat_idx,
+                )
+                backend = "torch_linear_probe_fallback"
+        else:
+            accuracy = fit_torch_linear_probe(
+                train_x,
+                train_y,
+                test_x,
+                test_y,
+                seed=seed + repeat_idx,
+            )
+
+        accuracies.append(float(accuracy))
+
+    result["accuracy"] = float(np.mean(accuracies))
+    result["accuracy_std"] = float(np.std(accuracies))
+    result["accuracies"] = accuracies
+    result["backend"] = backend
+    result["error"] = import_error
+    return result
+
+
+def compute_linear_r2(source: np.ndarray, target: np.ndarray) -> float | None:
+    """衡量一个表征能否线性重构另一个表征"""
+    if source.ndim != 2 or target.ndim != 2:
+        return None
+    if source.shape[0] != target.shape[0] or source.shape[0] < 2:
+        return None
+    if source.shape[1] == 0 or target.shape[1] == 0:
+        return None
+
+    design = np.concatenate(
+        [source.astype(np.float64), np.ones((source.shape[0], 1), dtype=np.float64)],
+        axis=1,
+    )
+    weights, *_ = np.linalg.lstsq(design, target.astype(np.float64), rcond=None)
+    target_hat = design @ weights
+    ss_res = float(np.square(target - target_hat).sum())
+    ss_tot = float(np.square(target - target.mean(axis=0, keepdims=True)).sum())
+    if ss_tot <= 1e-12:
+        return None
+    return float(1.0 - ss_res / ss_tot)
+
+
+def pool_group_tensor(
+    outputs: dict,
+    *,
+    pooled_key: str,
+    sequence_key: str,
+    valid_mask: torch.Tensor,
+    require_pooled: bool,
+    empty_feature_dim: int | None = None,
+    force_sequence: bool = False,
+) -> torch.Tensor:
+    """
+    优先使用 canonical group-pooled outputs；
+    对旧 checkpoint 有 fallback 逻辑。
+    """
+    sequence_tensor = outputs.get(sequence_key)
+
+    if force_sequence:
+        if sequence_tensor is None:
+            raise RuntimeError(f"{sequence_key} is required to recompute canonical rep")
+        return masked_mean_per_sequence(sequence_tensor, valid_mask)
+
+    pooled = outputs.get(pooled_key)
+    if pooled is not None:
+        return pooled
+
+    if require_pooled:
+        raise RuntimeError(f"{pooled_key} is required for early-branch checkpoints")
+
+    if sequence_tensor is None:
+        group_count = int(valid_mask.shape[0])
+        feature_dim = int(empty_feature_dim or 0)
+        return valid_mask.new_zeros((group_count, feature_dim), dtype=torch.float32)
+
+    return masked_mean_per_sequence(sequence_tensor, valid_mask)
+
+
+def collect_group_representations(
+    model: DistNet,
+    loader: DataLoader,
+    device: str,
+    max_batches: int | None,
+    *,
+    require_canonical_group_reps: bool,
+) -> dict:
+    """在一次 forward pass 中收集 round-1 分析产物和 code usage 统计"""
+    level_counts = [torch.zeros(level, dtype=torch.long) for level in model.levels]
+    total_valid_frames = 0
+    side_usage_sum = None
+    free_usage_sum = None
+    side_recon_l1_sum = 0.0
+    free_recon_l1_sum = 0.0
+    side_reps = []
+    free_reps = []
+    side_latents_raw = []
+    free_latents_raw = []
+    side_latents = []
+    free_latents = []
+    private_reps = []
+    side_labels = []
+    label5_labels = []
+    dataset_labels = []
+    group_ids = []
+    seen_batches = 0
+
+    model.eval()
+    with torch.no_grad():
+        for batch in loader:
+            x = batch["images"].to(device)
+            valid_mask = batch["valid_mask"].to(device)
+            outputs = model(x, return_group_pooled=True)
+            decoded_indices = outputs["decoded_indices"]
+
+            # 统计各 level 的 decoded basis 使用频次
+            for level_idx, frame_indices in enumerate(decoded_indices):
+                flat_indices = frame_indices[valid_mask].reshape(-1).cpu()
+                if flat_indices.numel() == 0:
+                    continue
+                bincount = torch.bincount(flat_indices, minlength=model.levels[level_idx])
+                level_counts[level_idx] += bincount
+
+            valid_frames = int(valid_mask.sum().item())
+            total_valid_frames += valid_frames
+
+            # 重建误差统计
+            side_recon_l1 = outputs["shared_side_reconstruction"].abs().mean(dim=(2, 3, 4))
+            free_recon_l1 = outputs["shared_free_reconstruction"].abs().mean(dim=(2, 3, 4))
+            side_recon_l1_sum += float(side_recon_l1[valid_mask].sum().item())
+            free_recon_l1_sum += float(free_recon_l1[valid_mask].sum().item())
+
+            # 路径 usage 统计
+            side_path_usage = outputs["side_path_usage"]
+            free_path_usage = outputs["free_path_usage"]
+            if side_path_usage.ndim == 3:
+                masked_side_usage = (
+                    side_path_usage * valid_mask.unsqueeze(-1).to(side_path_usage.dtype)
+                ).sum(dim=(0, 1))
+                if side_usage_sum is None:
+                    side_usage_sum = torch.zeros_like(masked_side_usage)
+                side_usage_sum += masked_side_usage.cpu()
+            if free_path_usage.ndim == 3:
+                masked_free_usage = (
+                    free_path_usage * valid_mask.unsqueeze(-1).to(free_path_usage.dtype)
+                ).sum(dim=(0, 1))
+                if free_usage_sum is None:
+                    free_usage_sum = torch.zeros_like(masked_free_usage)
+                free_usage_sum += masked_free_usage.cpu()
+
+            # 收集 group 级表征
+            group_valid_mask = valid_mask.any(dim=1)
+            if group_valid_mask.any():
+                group_side_rep = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_side_rep",
+                    sequence_key="side_path_representation",
+                    valid_mask=valid_mask,
+                    require_pooled=require_canonical_group_reps,
+                    force_sequence=True,
+                )
+                group_free_rep = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_free_rep",
+                    sequence_key="free_path_representation",
+                    valid_mask=valid_mask,
+                    require_pooled=require_canonical_group_reps,
+                )
+                group_private_rep = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_private_rep",
+                    sequence_key="private_z",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                )
+                group_side_latent_raw = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_side_latent_raw",
+                    sequence_key="side_latent_raw",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                    empty_feature_dim=0,
+                )
+                group_free_latent_raw = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_free_latent_raw",
+                    sequence_key="free_latent_raw",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                    empty_feature_dim=0,
+                )
+                group_side_latent = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_side_latent",
+                    sequence_key="side_latent",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                )
+                group_free_latent = pool_group_tensor(
+                    outputs,
+                    pooled_key="group_pooled_free_latent",
+                    sequence_key="free_latent",
+                    valid_mask=valid_mask,
+                    require_pooled=False,
+                )
+
+                selected = group_valid_mask.cpu().numpy().astype(bool)
+                side_reps.append(group_side_rep[group_valid_mask].cpu().numpy().astype(np.float32))
+                free_reps.append(group_free_rep[group_valid_mask].cpu().numpy().astype(np.float32))
+                side_latents_raw.append(
+                    group_side_latent_raw[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                free_latents_raw.append(
+                    group_free_latent_raw[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                side_latents.append(
+                    group_side_latent[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                free_latents.append(
+                    group_free_latent[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                private_reps.append(
+                    group_private_rep[group_valid_mask].cpu().numpy().astype(np.float32)
+                )
+                side_labels.append(
+                    batch["side_label"][group_valid_mask.cpu()].cpu().numpy().astype(np.int64)
+                )
+                label5_labels.append(
+                    batch["label_5class"][group_valid_mask.cpu()].cpu().numpy().astype(np.int64)
+                )
+                dataset_labels.append(
+                    batch["dataset_label"][group_valid_mask.cpu()].cpu().numpy().astype(np.int64)
+                )
+                group_ids.extend(
+                    [group_id for group_id, keep in zip(batch["group_id"], selected) if keep]
+                )
+
+            seen_batches += 1
+            if max_batches is not None and seen_batches >= max_batches:
+                break
+
+    # 汇总 usage
+    usage_summary = {"total_valid_frames": total_valid_frames, "levels": []}
+    for level_idx, counts in enumerate(level_counts):
+        counts_list = counts.tolist()
+        total = max(int(sum(counts_list)), 1)
+        usage_summary["levels"].append(
+            {
+                "level_index": level_idx,
+                "size": model.levels[level_idx],
+                "counts": counts_list,
+                "fractions": [count / total for count in counts_list],
+            }
+        )
+
+    def concat_feature_list(feature_list: list[np.ndarray]) -> np.ndarray:
+        if not feature_list:
+            return np.zeros((0, 0), dtype=np.float32)
+        return np.concatenate(feature_list, axis=0)
+
+    def concat_label_list(label_list: list[np.ndarray]) -> np.ndarray:
+        if not label_list:
+            return np.zeros((0,), dtype=np.int64)
+        return np.concatenate(label_list, axis=0)
+
+    side_usage_mean = (
+        (side_usage_sum / max(total_valid_frames, 1)).numpy().astype(np.float32)
+        if side_usage_sum is not None
+        else np.zeros((0,), dtype=np.float32)
+    )
+    free_usage_mean = (
+        (free_usage_sum / max(total_valid_frames, 1)).numpy().astype(np.float32)
+        if free_usage_sum is not None
+        else np.zeros((0,), dtype=np.float32)
+    )
+
+    return {
+        "code_usage": usage_summary,
+        "mean_side_path_usage": float(side_usage_mean.mean()) if side_usage_mean.size else 0.0,
+        "mean_free_path_usage": float(free_usage_mean.mean()) if free_usage_mean.size else 0.0,
+        "mean_side_recon_l1": float(side_recon_l1_sum / max(total_valid_frames, 1)),
+        "mean_free_recon_l1": float(free_recon_l1_sum / max(total_valid_frames, 1)),
+        "mean_side_path_usage_per_basis": side_usage_mean.tolist(),
+        "mean_free_path_usage_per_basis": free_usage_mean.tolist(),
+        "group_representations": {
+            "group_pooled_side_rep": concat_feature_list(side_reps),
+            "group_pooled_free_rep": concat_feature_list(free_reps),
+            "group_pooled_side_latent_raw": concat_feature_list(side_latents_raw),
+            "group_pooled_free_latent_raw": concat_feature_list(free_latents_raw),
+            "group_pooled_side_latent": concat_feature_list(side_latents),
+            "group_pooled_free_latent": concat_feature_list(free_latents),
+            "group_pooled_private_rep": concat_feature_list(private_reps),
+            "side_label": concat_label_list(side_labels),
+            "label_5class": concat_label_list(label5_labels),
+            "dataset_label": concat_label_list(dataset_labels),
+            "group_id": np.asarray(group_ids, dtype=object),
+        },
+    }
+
+
+def build_probe_summary(
+    group_representations: dict,
+    seed: int,
+    *,
+    primary_label_view: str,
+) -> tuple[dict, dict, dict, dict]:
+    """从 pooled group 表征拟合事后 side 和 dataset probes"""
+    side_rep = group_representations["group_pooled_side_rep"]
+    free_rep = group_representations["group_pooled_free_rep"]
+    private_rep = group_representations["group_pooled_private_rep"]
+    side_labels = group_representations["side_label"]
+    label5_labels = group_representations["label_5class"]
+    dataset_labels = group_representations["dataset_label"]
+
+    side_from_side = fit_linear_probe(side_rep, side_labels, seed=seed)
+    side_from_free = fit_linear_probe(free_rep, side_labels, seed=seed)
+    label5_from_side = fit_linear_probe(side_rep, label5_labels, seed=seed)
+    label5_from_free = fit_linear_probe(free_rep, label5_labels, seed=seed)
+    dataset_from_side = fit_linear_probe(side_rep, dataset_labels, seed=seed)
+    dataset_from_free = fit_linear_probe(free_rep, dataset_labels, seed=seed)
+    dataset_from_private = fit_linear_probe(private_rep, dataset_labels, seed=seed)
+
+    side_probe = {
+        "side_from_side_rep_acc": side_from_side["accuracy"],
+        "side_from_side_rep_acc_std": side_from_side["accuracy_std"],
+        "side_from_free_rep_acc": side_from_free["accuracy"],
+        "side_from_free_rep_acc_std": side_from_free["accuracy_std"],
+        "side_from_side_rep_backend": side_from_side["backend"],
+        "side_from_free_rep_backend": side_from_free["backend"],
+        "side_from_side_rep_error": side_from_side["error"],
+        "side_from_free_rep_error": side_from_free["error"],
+        "side_from_side_rep_accuracies": side_from_side["accuracies"],
+        "side_from_free_rep_accuracies": side_from_free["accuracies"],
+    }
+    label5_probe = {
+        "label5_from_side_rep_acc": label5_from_side["accuracy"],
+        "label5_from_side_rep_acc_std": label5_from_side["accuracy_std"],
+        "label5_from_free_rep_acc": label5_from_free["accuracy"],
+        "label5_from_free_rep_acc_std": label5_from_free["accuracy_std"],
+        "label5_from_side_rep_backend": label5_from_side["backend"],
+        "label5_from_free_rep_backend": label5_from_free["backend"],
+        "label5_from_side_rep_error": label5_from_side["error"],
+        "label5_from_free_rep_error": label5_from_free["error"],
+        "label5_from_side_rep_accuracies": label5_from_side["accuracies"],
+        "label5_from_free_rep_accuracies": label5_from_free["accuracies"],
+    }
+    dataset_probe = {
+        "dataset_from_side_rep_acc": dataset_from_side["accuracy"],
+        "dataset_from_side_rep_acc_std": dataset_from_side["accuracy_std"],
+        "dataset_from_free_rep_acc": dataset_from_free["accuracy"],
+        "dataset_from_free_rep_acc_std": dataset_from_free["accuracy_std"],
+        "dataset_from_private_rep_acc": dataset_from_private["accuracy"],
+        "dataset_from_private_rep_acc_std": dataset_from_private["accuracy_std"],
+        "dataset_from_side_rep_backend": dataset_from_side["backend"],
+        "dataset_from_free_rep_backend": dataset_from_free["backend"],
+        "dataset_from_private_rep_backend": dataset_from_private["backend"],
+        "dataset_from_side_rep_error": dataset_from_side["error"],
+        "dataset_from_free_rep_error": dataset_from_free["error"],
+        "dataset_from_private_rep_error": dataset_from_private["error"],
+        "dataset_from_side_rep_accuracies": dataset_from_side["accuracies"],
+        "dataset_from_free_rep_accuracies": dataset_from_free["accuracies"],
+        "dataset_from_private_rep_accuracies": dataset_from_private["accuracies"],
+    }
+    primary_label_probe = {
+        "primary_label_view": primary_label_view,
+        **(label5_probe if primary_label_view == "label5class" else side_probe),
+    }
+    return side_probe, label5_probe, dataset_probe, primary_label_probe
+
+
+def analyze(
+    checkpoint_path: str,
+    data_roots: str | None = None,
+    split: str = "val",
+    batch_size: int = 64,
+    max_batches: int | None = None,
+    num_workers: int = 0,
+    output_dir: str | None = None,
+):
+    """
+    主入口函数。
+
+    参数：
+    - `checkpoint_path`：待检查的已训练 checkpoint
+    - `data_roots`：可选的数据集根路径，默认使用 checkpoint 配置
+    - `split`：`train` 或 `val`
+    - `batch_size`、`max_batches`、`num_workers`：DataLoader 控制参数
+    - `output_dir`：输出目录，默认为 `<checkpoint_dir>/analysis`
+    """
+    checkpoint_path = Path(checkpoint_path)
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(checkpoint_path)
+
+    ckpt = torch.load(checkpoint_path, map_location="cpu")
+    config = ckpt.get("config", {})
+
+    data_roots = data_roots or config.get("data_roots")
+    if not data_roots:
+        raise ValueError("data_roots must be provided or present in checkpoint config")
+
+    mode = config.get("mode", "x")
+    region = config.get("region", "mouth")
+    use_difference = config.get("use_difference", True)
+    signed_normalize = config.get("signed_normalize", "per_sample")
+    val_ratio = float(config.get("val_ratio", 0.2))
+    seed = int(config.get("seed", 42))
+    group_size = int(config.get("group_size", 4))
+    apply_deleted_filter = bool(config.get("apply_deleted_filter", True))
+    basis_size = int(config.get("basis_size", 119))
+    hidden_dim = int(config.get("hidden_dim", 32))
+    pool_size = int(config.get("pool_size", 1))
+    shared_dim = config.get("shared_dim")
+    if shared_dim is not None:
+        shared_dim = int(shared_dim)
+    private_dim = int(config.get("private_dim", 32))
+    private_decoder_hidden_dim = config.get("private_decoder_hidden_dim")
+    if private_decoder_hidden_dim is not None:
+        private_decoder_hidden_dim = int(private_decoder_hidden_dim)
+    levels = parse_levels(config.get("levels", "2,3,6"))
+    use_dataset_aux = bool(config.get("use_dataset_aux", False))
+    side_semantic_enabled = bool(config.get("side_semantic_enabled", False))
+    side_basis_count = int(config.get("side_basis_count", 0))
+    side_pooling = str(config.get("side_pooling", "masked_mean"))
+    side_subspace_dim = config.get("side_subspace_dim")
+    if side_subspace_dim is not None:
+        side_subspace_dim = int(side_subspace_dim)
+    side_free_frame_qr = bool(config.get("side_free_frame_qr", False))
+    early_branch_factorization = bool(config.get("early_branch_factorization", False))
+    free_pool_size = int(config.get("free_pool_size", 2))
+    side_pool_size = int(config.get("side_pool_size", 2))
+    private_pool_size = int(config.get("private_pool_size", 1))
+    free_z_dim = config.get("free_z_dim")
+    if free_z_dim is not None:
+        free_z_dim = int(free_z_dim)
+    side_z_dim = config.get("side_z_dim")
+    if side_z_dim is not None:
+        side_z_dim = int(side_z_dim)
+    private_adapter_enabled = bool(config.get("private_adapter_enabled", False))
+    discrete_side_loss_enabled = bool(config.get("discrete_side_loss_enabled", True))
+    num_side_classes = int(config.get("num_side_classes", 3))
+    target_label_mode = str(config.get("target_label_mode", "side"))
+    primary_label_view = resolve_primary_label_view(config)
+
+    output_dir = Path(output_dir or checkpoint_path.parent / "analysis")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    specs = build_specs(data_roots)
+    dataset = build_eval_dataset(
+        specs,
+        mode=mode,
+        region=region,
+        use_difference=use_difference,
+        signed_normalize=signed_normalize,
+        val_ratio=val_ratio,
+        seed=seed,
+        group_size=group_size,
+        apply_deleted_filter=apply_deleted_filter,
+        split=split,
+    )
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+    )
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model, _ = load_trainprobe_model_from_checkpoint(
+        checkpoint_path,
+        num_dataset_classes=len(specs),
+    )
+    model = model.to(device)
+    load_result = None
+
+    # 导出 structured basis banks
+    basis = model.get_structured_basis().detach().cpu().numpy()
+    basis_path = output_dir / "basis_bank.npy"
+    np.save(basis_path, basis)
+
+    basis_plot_path = output_dir / "basis_bank_heatmap.png"
+    plot_basis_grid(basis, levels, basis_plot_path)
+
+    side_basis = model.get_side_basis().detach().cpu().numpy()
+    side_basis_path = output_dir / "side_basis_bank.npy"
+    np.save(side_basis_path, side_basis)
+    side_basis_plot_path = None
+    if side_basis.shape[0] > 0:
+        side_basis_plot_path = output_dir / "side_basis_bank_heatmap.png"
+        plot_basis_grid(side_basis, (side_basis.shape[0],), side_basis_plot_path)
+
+    # 收集 group 级表征
+    analysis_outputs = collect_group_representations(
+        model,
+        loader,
+        device,
+        max_batches=max_batches,
+        require_canonical_group_reps=early_branch_factorization,
+    )
+    group_representations = analysis_outputs.pop("group_representations")
+    group_artifact_path = output_dir / "group_level_representations.npz"
+    np.savez(
+        group_artifact_path,
+        group_pooled_side_rep=group_representations["group_pooled_side_rep"],
+        group_pooled_free_rep=group_representations["group_pooled_free_rep"],
+        group_pooled_side_latent_raw=group_representations["group_pooled_side_latent_raw"],
+        group_pooled_free_latent_raw=group_representations["group_pooled_free_latent_raw"],
+        group_pooled_side_latent=group_representations["group_pooled_side_latent"],
+        group_pooled_free_latent=group_representations["group_pooled_free_latent"],
+        group_pooled_private_rep=group_representations["group_pooled_private_rep"],
+        side_label=group_representations["side_label"],
+        label_5class=group_representations["label_5class"],
+        dataset_label=group_representations["dataset_label"],
+        group_id=group_representations["group_id"],
+    )
+    side_probe, label5_probe, dataset_probe, primary_label_probe = build_probe_summary(
+        group_representations,
+        seed=seed,
+        primary_label_view=primary_label_view,
+    )
+
+    summary = {
+        "checkpoint_path": str(checkpoint_path),
+        "analysis_split": split,
+        "target_label_mode": target_label_mode,
+        "primary_label_view": primary_label_view,
+        "basis_shape": list(basis.shape),
+        "levels": list(levels),
+        "side_basis_shape": list(side_basis.shape),
+        "train_metrics": ckpt.get("train_metrics"),
+        "val_metrics": ckpt.get("val_metrics"),
+        "model_load": {
+            "strict": False,
+            "missing_keys": [],
+            "unexpected_keys": [],
+        },
+        "code_usage": analysis_outputs["code_usage"],
+        "mean_side_path_usage": analysis_outputs["mean_side_path_usage"],
+        "mean_free_path_usage": analysis_outputs["mean_free_path_usage"],
+        "mean_side_recon_l1": analysis_outputs["mean_side_recon_l1"],
+        "mean_free_recon_l1": analysis_outputs["mean_free_recon_l1"],
+        "latent_alignment": {
+            "side_latent_dim": int(group_representations["group_pooled_side_latent"].shape[1])
+            if group_representations["group_pooled_side_latent"].ndim == 2
+            else 0,
+            "free_latent_dim": int(group_representations["group_pooled_free_latent"].shape[1])
+            if group_representations["group_pooled_free_latent"].ndim == 2
+            else 0,
+            "raw_linear_r2_free_to_side": compute_linear_r2(
+                group_representations["group_pooled_free_latent_raw"],
+                group_representations["group_pooled_side_latent_raw"],
+            ),
+            "raw_linear_r2_side_to_free": compute_linear_r2(
+                group_representations["group_pooled_side_latent_raw"],
+                group_representations["group_pooled_free_latent_raw"],
+            ),
+            "ortho_linear_r2_free_to_side": compute_linear_r2(
+                group_representations["group_pooled_free_latent"],
+                group_representations["group_pooled_side_latent"],
+            ),
+            "ortho_linear_r2_side_to_free": compute_linear_r2(
+                group_representations["group_pooled_side_latent"],
+                group_representations["group_pooled_free_latent"],
+            ),
+        },
+        "mean_side_path_usage_per_basis": analysis_outputs["mean_side_path_usage_per_basis"],
+        "mean_free_path_usage_per_basis": analysis_outputs["mean_free_path_usage_per_basis"],
+        "side_probe": side_probe,
+        "label5_probe": label5_probe,
+        "primary_label_probe": primary_label_probe,
+        "dataset_probe": dataset_probe,
+        "artifacts": {
+            "basis_bank": str(basis_path),
+            "basis_bank_heatmap": str(basis_plot_path),
+            "side_basis_bank": str(side_basis_path),
+            "side_basis_bank_heatmap": str(side_basis_plot_path)
+            if side_basis_plot_path is not None
+            else None,
+            "group_level_representations": str(group_artifact_path),
+        },
+    }
+
+    summary_path = output_dir / "summary.json"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False))
+
+    print(f"Saved basis bank: {basis_path}")
+    print(f"Saved basis heatmap: {basis_plot_path}")
+    if side_basis_plot_path is not None:
+        print(f"Saved side basis heatmap: {side_basis_plot_path}")
+    print(f"Saved group representations: {group_artifact_path}")
+    print(f"Saved summary: {summary_path}")
+
+
+if __name__ == "__main__":
+    fire.Fire(analyze)

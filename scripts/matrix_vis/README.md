@@ -109,7 +109,7 @@
 主要特征：
 
 - 单阶段逐帧轨迹变量
-- OSQP 求解
+- `torch` 后端求解（优先 CUDA，不可用时回退 CPU）
 - 外层最多 4 轮迭代线性化
 - 多个 anchor 点同时固定
 - 二阶时间平滑
@@ -137,8 +137,10 @@
 
 - 二阶差分平滑项
 - 速度相对自身均值的偏离项
+- 可选的窗口内线性时间形状先验 `lambda_trajectory_tether`
 
 后一项的目的不是压小整体运动，而是减少速度起伏。
+`lambda_trajectory_tether` 则在两遍求解时给窗口轨迹一个线性参考，防止“单帧跳变后整窗冻结”的退化解。
 
 ## 为什么 `x` 通常比 `y` 难
 
@@ -163,6 +165,54 @@
   - 单轴重建
 - `python scripts/matrix_vis/cli/compose_motion.py compose --config <path>`
   - 合成 `x/y` 结果
+
+## 当前推荐的 disentangleNet phase 重建入口
+
+如果要对 `phaseA / phaseB / phaseC` 做统一导出、患者重建和 basis 重建，当前推荐直接用：
+
+```bash
+python scripts/matrix_vis/scripts/run_disentanglenet_phase_comparison.py run_all \
+  --run_root outputs/disentangleNet_frame/reflex_pair_side_imr_tt \
+  --patient_id TT_851519 \
+  --lambda_laplacian 1.0 \
+  --lambda_area_sign 1.0 \
+  --area_barrier_margin 0.05
+```
+
+这条脚本会固定做：
+
+1. 对每个 phase 导出一个患者 bundle
+2. 只重建 `x`
+3. 患者级 preview 使用患者自身初始 landmark 的静止 `y`
+4. 第一个窗口的 `x` 初值和首窗 `D0` 都来自患者目录下的 `win_000_x.npy`
+5. 后续窗口沿用上一窗口末帧，并按 `D_{k+1} = D_k + \Delta D_k` 递推
+6. 对每个 phase 导出并重建对应的 basis
+7. 统一把结果放在各自 phase 目录下的 `patient/` 与 `basis/` 中
+
+默认固定项与 `disentangleNet/README.md` 的第七节一致：
+
+- 患者级 `anchor_point_ids` 固定为 `205, 425, 200`
+- 患者级 preview 默认关闭 `align_to_anchor`
+- 患者级背景灰点来自患者 `lmks_crop.label` 第一行归一化结果
+- basis 路径继续沿用旧版本模板语义
+- 旧的 `standardFace` 患者结果不再默认执行，只有显式开启时才会生成
+
+当前默认还会显式打开：
+
+- graph Laplacian 正则
+- area sign barrier
+
+说明：
+
+- `phaseA`
+  - 患者重建只包含 shared 分支
+  - basis 只会导出 shared basis
+- `phaseB`
+  - 患者重建包含 shared + side
+  - basis 会导出 shared + side basis
+- `phaseC`
+  - 患者重建包含 shared + side + private residual
+  - basis 仍只导出 shared + side basis，不单独导 private
 
 ## Toy 工作流
 
@@ -262,6 +312,15 @@ scripts/matrix_vis/
    - 输入来自一个目标患者的逐窗口系数组合矩阵
    - 当前仅验证 `TT/844697`
    - `y` 在第一版里保持静止
+
+当前桥接结果的输出约定是：
+
+- 单轴重建仍写到 `outputs/matrix_vis/real/disentanglenet/...`
+- preview 统一写到对应的 `outputs/disentangleNet_*/*/matrix_vis_exports/.../preview_anchor205_425_200/`
+  或患者级的 `preview_x_static_y/`
+- basis 级 `no_motion_y` preview 的语义是：
+  - `y` 在所有时间帧都固定为模板初始位置
+  - 这份静态 `y` 解由模板直接生成，不复用动态 `fixed_y` 轨迹
 
 当前桥接仍然不支持：
 

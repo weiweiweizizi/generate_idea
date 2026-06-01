@@ -13,6 +13,41 @@ def enforce_matrix_constraints(mats: torch.Tensor) -> torch.Tensor:
     return mats - torch.diag_embed(diag)
 
 
+def scale_basis_abs_max(
+    basis: torch.Tensor,
+    *,
+    target_abs_max: float = 0.05,
+    eps: float = 1e-8,
+) -> torch.Tensor:
+    """Linearly rescale each basis matrix to a fixed absolute maximum."""
+
+    if target_abs_max <= 0:
+        raise ValueError(f"target_abs_max must be positive, got {target_abs_max}")
+    if basis.ndim < 2:
+        raise ValueError(f"Expected basis tensor with rank >= 2, got {basis.ndim}")
+
+    max_abs = basis.abs().amax(dim=(-2, -1), keepdim=True)
+    scale = torch.where(
+        max_abs > eps,
+        torch.full_like(max_abs, float(target_abs_max)) / max_abs,
+        torch.ones_like(max_abs),
+    )
+    return basis * scale
+
+
+@torch.no_grad()
+def project_basis_abs_max_(
+    basis: torch.Tensor,
+    *,
+    target_abs_max: float = 0.05,
+    eps: float = 1e-8,
+) -> torch.Tensor:
+    """In-place version of :func:`scale_basis_abs_max`."""
+
+    basis.copy_(scale_basis_abs_max(basis, target_abs_max=target_abs_max, eps=eps))
+    return basis
+
+
 def load_action_basis_init(
     action_basis_bank: torch.nn.Parameter,
     *,
@@ -70,6 +105,7 @@ def get_structured_basis(
     total_basis_num: int,
     basis_size: int,
     basis_orthogonalization: str,
+    target_abs_max: float = 0.05,
 ) -> torch.Tensor:
     """
     Return the current shared action basis bank in model-ready form.
@@ -85,11 +121,13 @@ def get_structured_basis(
 
     if basis_orthogonalization == "normalize":
         basis_flat = F.normalize(basis_flat, dim=1, eps=1e-8)
-        return basis_flat.reshape(total_basis_num, basis_size, basis_size)
+        basis = basis_flat.reshape(total_basis_num, basis_size, basis_size)
+        return scale_basis_abs_max(basis, target_abs_max=target_abs_max)
 
     if basis_orthogonalization == "global_qr":
         basis_flat = qr_orthogonalize_rows(basis_flat)
-        return basis_flat.reshape(total_basis_num, basis_size, basis_size)
+        basis = basis_flat.reshape(total_basis_num, basis_size, basis_size)
+        return scale_basis_abs_max(basis, target_abs_max=target_abs_max)
 
     if basis_orthogonalization == "level_qr":
         orth_basis = []
@@ -99,7 +137,8 @@ def get_structured_basis(
             orth_basis.append(qr_orthogonalize_rows(level_flat))
             start += level
         basis_flat = torch.cat(orth_basis, dim=0)
-        return basis_flat.reshape(total_basis_num, basis_size, basis_size)
+        basis = basis_flat.reshape(total_basis_num, basis_size, basis_size)
+        return scale_basis_abs_max(basis, target_abs_max=target_abs_max)
 
     raise ValueError(f"Unsupported basis_orthogonalization: {basis_orthogonalization}")
 
@@ -113,6 +152,7 @@ def get_joint_structured_basis(
     side_basis_count: int,
     basis_size: int,
     basis_orthogonalization: str,
+    target_abs_max: float = 0.05,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Return jointly-orthogonalized shared / side basis banks when configured.
@@ -131,9 +171,11 @@ def get_joint_structured_basis(
             total_basis_num=total_basis_num,
             basis_size=basis_size,
             basis_orthogonalization=basis_orthogonalization,
+            target_abs_max=target_abs_max,
         )
         side_flat = F.normalize(side_basis.reshape(side_basis_count, -1), dim=1, eps=1e-8)
-        return shared_structured, side_flat.reshape(side_basis_count, basis_size, basis_size)
+        side_structured = side_flat.reshape(side_basis_count, basis_size, basis_size)
+        return shared_structured, scale_basis_abs_max(side_structured, target_abs_max=target_abs_max)
 
     joint_flat = torch.cat(
         [
@@ -146,8 +188,14 @@ def get_joint_structured_basis(
     shared_flat = joint_flat[:total_basis_num]
     side_flat = joint_flat[total_basis_num:]
     return (
-        shared_flat.reshape(total_basis_num, basis_size, basis_size),
-        side_flat.reshape(side_basis_count, basis_size, basis_size),
+        scale_basis_abs_max(
+            shared_flat.reshape(total_basis_num, basis_size, basis_size),
+            target_abs_max=target_abs_max,
+        ),
+        scale_basis_abs_max(
+            side_flat.reshape(side_basis_count, basis_size, basis_size),
+            target_abs_max=target_abs_max,
+        ),
     )
 
 

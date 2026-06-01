@@ -1,0 +1,41 @@
+experiment:
+  name: disentanglenet_basis_v8A_basis_06_axis_x_anchor_14
+  output_dir: outputs/matrix_vis/real/disentanglenet/basis_v8A/anchor_14/basis_06/axis_x
+mesh:
+  source: /home/weizilin/code_reproduction/canonical_face/canonical_face_model.obj
+  format: mediapipe_canonical_obj
+  dimension: 3d
+  point_ids: auto
+  normalization_scope: face_regions
+projection:
+  axis: x
+  source_axis_index: 0
+  subset_layout:
+    name: face_regions_grouped
+    source: scripts/matrix_vis/configs/landmarks/mediapipe_face_regions_full.yaml
+    extractor_name: mediapipe
+    region_names:
+    - around_mouth
+    - mouth
+  anchor_point_ids:
+  - 14
+basis:
+  source: /home/weizilin/generate_idea/outputs/disentangleNet/v8A_free_path_coeff_300ep/matrix_vis_exports/basis_v8A/basis_bank_x.npy
+  basis_index: 6
+  matrix_shape: square
+  value_semantics: mean_distance_delta
+solver:
+  num_time_steps: 20
+  lambda_data: 1.0
+  lambda_acc: 10.0
+  lambda_vel: 1.0
+  enforce_order: false
+  max_displacement: null
+  qp_backend: torch
+  max_observations: null
+export:
+  save_projected_mesh: true
+  save_qp_diagnostics: true
+  save_axis_plot: true
+  save_npz: true
+  save_json_summary: true

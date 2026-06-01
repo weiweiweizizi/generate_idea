@@ -18,7 +18,7 @@ SUPPORTED_AXES = ("x", "y")
 SUPPORTED_MESH_FORMATS = ("numpy", "mediapipe_canonical_obj")
 SUPPORTED_MESH_DIMENSIONS = ("2d", "3d")
 SUPPORTED_MATRIX_SHAPES = ("square",)
-SUPPORTED_QP_BACKENDS = ("osqp", "matrix_free_cg")
+SUPPORTED_QP_BACKENDS = ("torch",)
 SUPPORTED_VALUE_SEMANTICS = ("mean_distance_delta",)
 SUPPORTED_NORMALIZATION_SCOPES = ("mouth_only", "eye_only", "face_regions")
 SUPPORTED_SUBSET_LAYOUTS = ("face_regions_grouped", "mouth")
@@ -80,6 +80,11 @@ class QPConfig:
     max_displacement: float | None
     qp_backend: str
     max_observations: int | None = None
+    lambda_laplacian: float = 0.0
+    lambda_area_sign: float = 0.0
+    area_barrier_margin: float = 0.05
+    lambda_trajectory_tether: float = 0.0
+    geometry_topology_source: Path | None = None
 
 
 @dataclass(frozen=True)

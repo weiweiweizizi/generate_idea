@@ -1,0 +1,169 @@
+{
+  "manifest_path": "/home/weizilin/generate_idea/outputs/disentangleNet_lowrank/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/matrix_vis_exports/basis/basis_manifest.json",
+  "generated_dir": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200",
+  "run_name": "shared_side_then_privateadv005_x_win20_e100_r3_5_gpu",
+  "mode": "x",
+  "reconstruction_axis": "x",
+  "static_axis": "y",
+  "anchor_point_ids": [
+    205,
+    425,
+    200
+  ],
+  "anchor_point_id": 205,
+  "anchor_tag": "anchor_205_425_200",
+  "num_basis": 8,
+  "num_side_basis": 2,
+  "num_total_jobs": 10,
+  "x_template_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/imr_00228_win005_minus_win004/mouth_regions/anchor_014/matrix_free_cg/axis_x.yaml",
+  "fixed_y_template_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/imr_00228_win005_minus_win004/mouth_regions/anchor_014/matrix_free_cg/axis_y.yaml",
+  "fixed_y_template_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/imr_00228_win005_minus_win004/mouth_regions/anchor_014/matrix_free_cg/axis_y/solution.npz",
+  "fixed_other_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y_axis_y.yaml",
+  "fixed_other_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y_axis_y/solution.npz",
+  "axis_configs": [
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_00_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_01_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_02_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_03_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_04_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_05_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_06_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_07_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/side_basis_00_axis_x.yaml",
+    "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/side_basis_01_axis_x.yaml"
+  ],
+  "preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_01_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_02_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_03_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_04_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_05_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_06_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_07_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_01_preview_anchor205_425_200"
+  ],
+  "fixed_other_preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_01_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_02_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_03_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_04_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_05_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_06_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_07_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_01_preview_anchor205_425_200"
+  ],
+  "no_motion_other_preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_01_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_02_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_03_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_04_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_05_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_06_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_07_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/side_basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/side_basis_01_preview_anchor205_425_200"
+  ],
+  "axis_jobs": [
+    {
+      "basis_label": "basis",
+      "basis_index": 0,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_00_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_00_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_00_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 1,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_01_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_01_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_01_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 2,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_02_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_02_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_02_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 3,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_03_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_03_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_03_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 4,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_04_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_04_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_04_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 5,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_05_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_05_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_05_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 6,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_06_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_06_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_06_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "basis",
+      "basis_index": 7,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/basis_07_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_07_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_07_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "side_basis",
+      "basis_index": 0,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/side_basis_00_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_00_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/side_basis_00_preview_anchor205_425_200"
+    },
+    {
+      "basis_label": "side_basis",
+      "basis_index": 1,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/side_basis_01_axis_x.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_01_preview_anchor205_425_200",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/side_basis_01_preview_anchor205_425_200"
+    }
+  ],
+  "fixed_y_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y_axis_y.yaml",
+  "fixed_y_solution": "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y_axis_y/solution.npz",
+  "fixed_y_preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_01_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_02_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_03_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_04_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_05_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_06_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/basis_07_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/fixed_y/side_basis_01_preview_anchor205_425_200"
+  ],
+  "no_motion_y_preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_01_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_02_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_03_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_04_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_05_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_06_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/basis_07_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/side_basis_00_preview_anchor205_425_200",
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/shared_side_then_privateadv005_x_win20_e100_r3_5_gpu/anchor_205_425_200/no_motion_y/side_basis_01_preview_anchor205_425_200"
+  ]
+}

@@ -309,7 +309,7 @@ solver:
   lambda_vel: 1.0
   enforce_order: false
   max_displacement: null
-  qp_backend: osqp
+  qp_backend: torch
 
 export:
   save_projected_mesh: true
@@ -437,7 +437,7 @@ Use `matrix_layout` when:
 - `max_displacement: float | null`
   - optional hard bound around initial positions
 - `qp_backend: str`
-  - one of `osqp`, `matrix_free_cg`
+  - `torch`
 - `max_observations: int | null`
   - optional truncation of largest-magnitude pairwise observations
 

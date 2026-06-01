@@ -1,0 +1,43 @@
+experiment:
+  name: disentanglenet_reflex_x_win20_r3_5_phaseC_side_basis_00_axis_x_anchor_205_425_200
+  output_dir: outputs/matrix_vis/real/disentanglenet/reflex_x_win20_r3_5_phaseC/anchor_205_425_200/side_basis_00/axis_x
+mesh:
+  source: /home/weizilin/code_reproduction/canonical_face/canonical_face_model.obj
+  format: mediapipe_canonical_obj
+  dimension: 3d
+  point_ids: auto
+  normalization_scope: face_regions
+projection:
+  axis: x
+  source_axis_index: 0
+  subset_layout:
+    name: face_regions_grouped
+    source: scripts/matrix_vis/configs/landmarks/mediapipe_face_regions_full.yaml
+    extractor_name: mediapipe
+    region_names:
+    - around_mouth
+    - mouth
+  anchor_point_ids:
+  - 205
+  - 425
+  - 200
+basis:
+  source: /home/weizilin/generate_idea/outputs/disentangleNet_lowrank/reflex_x_win20_r3_5_phaseC/matrix_vis_exports/basis/side_basis_bank_x.npy
+  basis_index: 0
+  matrix_shape: square
+  value_semantics: mean_distance_delta
+solver:
+  num_time_steps: 20
+  lambda_data: 1.0
+  lambda_acc: 10.0
+  lambda_vel: 1.0
+  enforce_order: false
+  max_displacement: null
+  qp_backend: torch
+  max_observations: null
+export:
+  save_projected_mesh: true
+  save_qp_diagnostics: true
+  save_axis_plot: true
+  save_npz: true
+  save_json_summary: true

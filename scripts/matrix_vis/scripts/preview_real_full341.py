@@ -19,6 +19,9 @@ python scripts/matrix_vis/scripts/preview_real_full341.py \
   --y-solution outputs/matrix_vis/.../axis_y/solution.npz \
   --output-dir outputs/matrix_vis/real_preview/.../preview
 ```
+
+注：这条 full341 预览仍是 legacy 例子，保留在 `outputs/matrix_vis/real_preview/...`。
+当前统一收口到 `outputs/disentangleNet_*` 的是 basis / patient 的 preview 流水线。
 """
 
 from __future__ import annotations

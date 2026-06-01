@@ -134,11 +134,12 @@ def plot_heatmap_with_boundaries(patient_group_indices, values_matrix, group_nam
     cbar.set_label(metric_type)
 
     # 绘制水平分隔线（不同组之间）
-    current_group = patient_group_indices[0]
-    for i, gidx in enumerate(patient_group_indices[1:], 1):
-        if gidx != current_group:
-            ax.axhline(y=i - 0.5, color='black', linewidth=2, linestyle='--')
-            current_group = gidx
+    if patient_group_indices:
+        current_group = patient_group_indices[0]
+        for i, gidx in enumerate(patient_group_indices[1:], 1):
+            if gidx != current_group:
+                ax.axhline(y=i - 0.5, color='black', linewidth=2, linestyle='--')
+                current_group = gidx
 
     # 标题
     title = f"{mode_name} - {metric_type}"
@@ -158,7 +159,7 @@ def main():
     print("=" * 60)
 
     # 加载分组结果
-    grouped_results_path = DATA_ROOT / "svd_multi_patient_grouped_results" / "all_grouped_results.json"
+    grouped_results_path = GROUPED_RESULTS_DIR / "all_grouped_results.json"
     with open(grouped_results_path, 'r') as f:
         all_grouped_results = json.load(f)
 
@@ -170,8 +171,7 @@ def main():
     output_dir = OUTPUT_ROOT / "grassmann_grouped_results"
     output_dir.mkdir(exist_ok=True)
 
-    # 三种分组模式
-    grouping_modes = ['by_side', 'by_severity', 'by_source']
+    grouping_modes = list(all_grouped_results.keys())
 
     all_results = {}
 

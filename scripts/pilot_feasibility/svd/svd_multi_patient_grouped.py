@@ -1,7 +1,7 @@
 """
 SVD 多患者分组联合分解
 - 按 by_side, by_severity, by_source 分组
-- 提取每组 PC1 主模态
+- 提取每组 PC1~PC3 主模态
 - 保存 npy 和 png
 """
 
@@ -26,6 +26,17 @@ REGION_NAMES = [
     "forehead", "eyebrow", "eyehole", "eye_contour",
     "eye_iris", "nose", "around_mouth", "mouth", "cheek", "jaw"
 ]
+
+
+def list_available_svd_datasets():
+    """返回已生成 <DATASET>-SVD 结果的数据集名。"""
+    datasets = []
+    for path in sorted(DATA_ROOT.iterdir()):
+        if not path.is_dir() or not path.name.endswith("-SVD"):
+            continue
+        if (path / "metadata.csv").exists():
+            datasets.append(path.name[:-4])
+    return datasets
 
 
 def load_patient_windows(dataset_path, subj_id):
@@ -65,13 +76,13 @@ def _region_centers(boundaries):
     return centers
 
 
-def visualize_pc1_heatmap(Vt_pc1, mode_name, save_path):
-    """可视化 PC1 基的热图"""
+def visualize_pc_heatmap(Vt_pc, pc_index, mode_name, save_path):
+    """可视化指定 PC 基的热图"""
     fig, ax = plt.subplots(figsize=(6, 5))
-    basis = Vt_pc1.reshape(341, 341)
+    basis = Vt_pc.reshape(341, 341)
     vmax = np.abs(basis).max()
     im = ax.imshow(basis, cmap="RdBu_r", aspect="auto", vmin=-vmax, vmax=vmax)
-    ax.set_title(f"PC1 - {mode_name}", fontsize=11)
+    ax.set_title(f"PC{pc_index} - {mode_name}", fontsize=11)
     ax.set_xlabel("landmark j")
     ax.set_ylabel("landmark i")
     plt.colorbar(im, ax=ax, shrink=0.8)
@@ -142,21 +153,27 @@ def analyze_basis_energy(Vt, singular_values, n_show=5):
 
 
 def load_metadata():
-    """加载 IMR 和 TT 的 metadata"""
-    imr_meta = pd.read_csv(DATA_ROOT / "IMR-SVD" / "metadata.csv")
-    tt_meta = pd.read_csv(DATA_ROOT / "TT-SVD" / "metadata.csv")
-
-    imr_meta['dataset'] = 'IMR'
-    tt_meta['dataset'] = 'TT'
-
-    return pd.concat([imr_meta, tt_meta], ignore_index=True)
+    """加载所有已生成 SVD 结果的数据集 metadata。"""
+    frames = []
+    for dataset in list_available_svd_datasets():
+        meta = pd.read_csv(DATA_ROOT / f"{dataset}-SVD" / "metadata.csv")
+        meta["dataset"] = dataset
+        frames.append(meta)
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
 
 
 def get_side_group(row):
     """根据 score 和 side 判断侧别分组"""
+    if row.get("dataset") == "XW":
+        return None
+
     score = row['score']
     side = row['side']
 
+    if score < 0:
+        return None
     if score == 0:
         return 'bilateral_normal'
     elif score != 0 and side == 0:
@@ -168,7 +185,12 @@ def get_side_group(row):
 
 def get_severity_group(row):
     """根据 score 判断严重程度分组"""
+    if row.get("dataset") == "XW":
+        return None
+
     score = row['score']
+    if score < 0:
+        return None
     if score == 0:
         return 'normal'
     elif score == 1:
@@ -197,13 +219,20 @@ def group_patients_by_mode(metadata, mode):
         if group is None:
             continue
 
-        # 文件夹使用前导零格式 (e.g., 00102)
-        subj_padded = str(row['subj']).zfill(5)
+        subj_raw = str(row["subj"])
+        subj_padded = subj_raw.zfill(5)
+        dataset_dir = DATA_ROOT / row["dataset"]
+        if (dataset_dir / subj_raw).exists():
+            subj_name = subj_raw
+        elif (dataset_dir / subj_padded).exists():
+            subj_name = subj_padded
+        else:
+            subj_name = subj_raw
 
         if group not in groups:
             groups[group] = []
         groups[group].append({
-            'subj': subj_padded,
+            'subj': subj_name,
             'dataset': row['dataset'],
             'score': row['score'],
             'side': row['side']
@@ -275,16 +304,20 @@ def run_grouped_svd(patients, group_name, mode_name, save_dir):
     energy_y = analyze_basis_energy(Vt_y, sigma_y)
     semantic_y = analyze_semantic_regions(Vt_y)
 
-    # 保存 PC1 npy
-    np.save(save_dir / "PC1_x.npy", Vt_x[0].reshape(341, 341))
-    np.save(save_dir / "PC1_y.npy", Vt_y[0].reshape(341, 341))
+    # 保存 PC1~PC3 npy 和 heatmap
+    for i in range(3):
+        np.save(save_dir / f"PC{i+1}_x.npy", Vt_x[i].reshape(341, 341))
+        np.save(save_dir / f"PC{i+1}_y.npy", Vt_y[i].reshape(341, 341))
 
-    # 保存 PC1 heatmap
-    visualize_pc1_heatmap(Vt_x[0], f"{group_name}_X", save_dir / "PC1_heatmap_X.png")
-    visualize_pc1_heatmap(Vt_y[0], f"{group_name}_Y", save_dir / "PC1_heatmap_Y.png")
+        visualize_pc_heatmap(Vt_x[i], i + 1, f"{group_name}_X",
+                             save_dir / f"PC{i+1}_heatmap_X.png")
+        visualize_pc_heatmap(Vt_y[i], i + 1, f"{group_name}_Y",
+                             save_dir / f"PC{i+1}_heatmap_Y.png")
 
-    print(f"    X PC1: σ={sigma_x[0]:.3f}, energy={energy_x[0]['energy_ratio']:.1f}%, dominant={semantic_x[0]['dominant_region']}")
-    print(f"    Y PC1: σ={sigma_y[0]:.3f}, energy={energy_y[0]['energy_ratio']:.1f}%, dominant={semantic_y[0]['dominant_region']}")
+    for i in range(3):
+        print(f"    X PC{i+1}: σ={sigma_x[i]:.3f}, energy={energy_x[i]['energy_ratio']:.1f}%, dominant={semantic_x[i]['dominant_region']}")
+    for i in range(3):
+        print(f"    Y PC{i+1}: σ={sigma_y[i]:.3f}, energy={energy_y[i]['energy_ratio']:.1f}%, dominant={semantic_y[i]['dominant_region']}")
 
     return {
         'n_patients': len(patient_info),
@@ -364,11 +397,14 @@ def main():
     for mode, mode_results in all_results.items():
         print(f"\n[{mode}]")
         for group_name, result in mode_results.items():
-            x_dom = result['X_mode']['semantic_regions'][0]['dominant_region']
-            y_dom = result['Y_mode']['semantic_regions'][0]['dominant_region']
-            x_energy = result['X_mode']['energy'][0]['energy_ratio']
-            y_energy = result['Y_mode']['energy'][0]['energy_ratio']
-            print(f"  {group_name}: {result['n_patients']}p, X PC1={x_dom}({x_energy:.1f}%), Y PC1={y_dom}({y_energy:.1f}%)")
+            info = f"  {group_name}: {result['n_patients']}p"
+            for i in range(3):
+                x_dom = result['X_mode']['semantic_regions'][i]['dominant_region']
+                x_en = result['X_mode']['energy'][i]['energy_ratio']
+                y_dom = result['Y_mode']['semantic_regions'][i]['dominant_region']
+                y_en = result['Y_mode']['energy'][i]['energy_ratio']
+                info += f" | PC{i+1} X={x_dom}({x_en:.1f}%) Y={y_dom}({y_en:.1f}%)"
+            print(info)
 
     print(f"\n结果已保存到: {output_dir}")
 

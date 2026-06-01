@@ -1,0 +1,35 @@
+{
+  "manifest_path": "/home/weizilin/generate_idea/outputs/disentangleNet_trainprobe/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/matrix_vis_exports/basis/basis_manifest.json",
+  "generated_dir": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_33_263_10_175",
+  "mode": "y",
+  "reconstruction_axis": "y",
+  "static_axis": "x",
+  "anchor_point_ids": [
+    33,
+    263,
+    10,
+    175
+  ],
+  "anchor_point_id": 33,
+  "fixed_other_solution": null,
+  "num_total_jobs": 1,
+  "num_axis_runs": 1,
+  "num_fixed_other_preview_runs": 0,
+  "num_no_motion_other_preview_runs": 1,
+  "axis_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_33_263_10_175/basis_00/axis_y"
+  ],
+  "fixed_other_preview_output_dirs": [],
+  "no_motion_other_preview_output_dirs": [
+    "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_33_263_10_175/no_motion_x/basis_00_preview_anchor33_263_10_175"
+  ],
+  "axis_jobs": [
+    {
+      "basis_label": "basis",
+      "basis_index": 0,
+      "axis_config": "/home/weizilin/generate_idea/scripts/matrix_vis/configs/real/disentanglenet/generated/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_33_263_10_175/basis_00_axis_y.yaml",
+      "fixed_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_33_263_10_175/fixed_x/basis_00_preview_anchor33_263_10_175",
+      "no_motion_other_preview_output_dir": "/home/weizilin/generate_idea/outputs/matrix_vis/real_preview/disentanglenet/v32_tri_region_masked_y_win20_e30_bs16_openmmlab/anchor_33_263_10_175/no_motion_x/basis_00_preview_anchor33_263_10_175"
+    }
+  ]
+}

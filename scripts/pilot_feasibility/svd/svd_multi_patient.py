@@ -27,6 +27,17 @@ REGION_NAMES = [
 ]
 
 
+def list_available_datasets():
+    """返回 data/win20-step20 下可用的原始数据集目录名。"""
+    datasets = []
+    for path in sorted(DATA_ROOT.iterdir()):
+        if not path.is_dir() or path.name.endswith("-SVD"):
+            continue
+        if (path / "config.json").exists():
+            datasets.append(path.name)
+    return datasets
+
+
 def load_patient_windows(dataset_path, subj_id):
     """加载单个患者所有窗口的x和y矩阵"""
     subj_path = dataset_path / subj_id
@@ -259,23 +270,21 @@ def main():
     print("SVD 多患者联合分解")
     print("=" * 60)
 
-    # 分别收集IMR和TT患者
-    imr_patients = []
-    tt_patients = []
+    datasets = list_available_datasets()
+    print(f"Datasets found: {datasets}")
 
-    for dataset in ["IMR", "TT"]:
+    patients_by_dataset = {dataset: [] for dataset in datasets}
+
+    for dataset in datasets:
         dataset_path = DATA_ROOT / dataset
         if not dataset_path.exists():
             continue
         for subj_dir in sorted(dataset_path.iterdir()):
             if subj_dir.is_dir():
-                if dataset == "IMR":
-                    imr_patients.append((dataset, subj_dir.name))
-                else:
-                    tt_patients.append((dataset, subj_dir.name))
+                patients_by_dataset[dataset].append((dataset, subj_dir.name))
 
-    print(f"IMR patients found: {len(imr_patients)}")
-    print(f"TT patients found: {len(tt_patients)}")
+    for dataset, dataset_patients in patients_by_dataset.items():
+        print(f"{dataset} patients found: {len(dataset_patients)}")
 
     # 输出目录
     output_dir = OUTPUT_ROOT / "svd_multi_patient_results"
@@ -284,8 +293,8 @@ def main():
     # 用于存储所有结果
     all_results = {}
 
-    # ========== 分别处理IMR和TT ==========
-    for dataset_name, dataset_patients in [("IMR", imr_patients), ("TT", tt_patients)]:
+    # ========== 分别处理各数据集 ==========
+    for dataset_name, dataset_patients in patients_by_dataset.items():
         if len(dataset_patients) == 0:
             print(f"\nNo {dataset_name} patients found, skipping")
             continue

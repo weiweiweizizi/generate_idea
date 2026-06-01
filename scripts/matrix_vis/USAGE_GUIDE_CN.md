@@ -334,7 +334,7 @@ solver:
   lambda_vel: 1.0
   enforce_order: false
   max_displacement: null
-  qp_backend: osqp
+  qp_backend: torch
 
 export:
   save_projected_mesh: true
@@ -462,7 +462,7 @@ basis:
 - `max_displacement: float | null`
   - 相对初始位置的可选硬边界
 - `qp_backend: str`
-  - 当前支持 `osqp`、`matrix_free_cg`
+  - 当前支持 `torch`
 - `max_observations: int | null`
   - 可选，只保留绝对值最大的若干 pairwise observations
 

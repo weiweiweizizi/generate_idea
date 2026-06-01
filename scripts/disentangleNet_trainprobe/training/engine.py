@@ -81,6 +81,8 @@ def run_epoch(model, loader, device, optimizer, loss_weights, train: bool):
         if train:
             loss.backward()
             optimizer.step()
+            if hasattr(model, "project_basis_constraints_"):
+                model.project_basis_constraints_()
 
         for key, value in loss_metrics.items():
             total_loss_metrics[key] = total_loss_metrics.get(key, 0.0) + value

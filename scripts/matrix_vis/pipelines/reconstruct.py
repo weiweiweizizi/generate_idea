@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+from scripts.matrix_vis.core.mesh import extract_subset_indices
 from scripts.matrix_vis.core.observations import basis_to_observation_table
 from scripts.matrix_vis.core.projection import project_mesh_to_axis
 from scripts.matrix_vis.io.config import load_config
@@ -111,6 +112,9 @@ def run_axis_reconstruction(
 
     mesh = load_mesh(cfg.mesh)
     projection = project_mesh_to_axis(mesh, cfg.projection)
+    orthogonal_axis_index = 1 if cfg.projection.axis == "x" else 0
+    subset_indices = extract_subset_indices(mesh, projection.subset_point_ids)
+    orthogonal_static_positions = mesh.points[subset_indices, orthogonal_axis_index].astype(np.float32, copy=False)
     basis_observation = load_basis_observation(
         cfg.basis,
         subset_point_ids=projection.subset_point_ids,
@@ -124,6 +128,8 @@ def run_axis_reconstruction(
     bundle = build_axis_qp(
         subset_point_ids=projection.subset_point_ids,
         initial_positions=projection.subset_positions,
+        orthogonal_static_positions=orthogonal_static_positions,
+        dynamic_axis=cfg.projection.axis,
         anchor_point_ids=projection.anchor_point_ids,
         observations=observation_table,
         solver_config=cfg.solver,

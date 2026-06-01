@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import pandas as pd
 import torch
 from torch.utils.data import ConcatDataset
 
 from scripts.disentangleNet.analysis.analyze_checkpoint import plot_basis_grid
-from scripts.disentangleNet_trainprobe.data import DatasetSpec, FacialMotionSequenceDataset, subject_split
+from scripts.disentangleNet_trainprobe.data import (
+    DatasetSpec,
+    FacialMotionSequenceDataset,
+    subject_kfold_split,
+    subject_split,
+)
 from scripts.disentangleNet_trainprobe.data.io import infer_subject_width
 from scripts.disentangleNet_trainprobe.model.distnet import DistNet
 
@@ -40,13 +46,29 @@ def resolve_subjects_for_split(
     split: str,
     val_ratio: float,
     seed: int,
+    num_folds: int = 1,
+    fold_index: int | None = None,
+    subjects_by_dataset: dict[str, list[str]] | None = None,
 ) -> list[str]:
+    if subjects_by_dataset is not None:
+        return sorted(subjects_by_dataset.get(spec.dataset_name, []))
+
     if split == "all":
         meta = pd.read_csv(spec.root / "metadata.csv")
         subject_width = infer_subject_width(spec)
         return sorted(meta["subj"].astype(str).str.zfill(subject_width).unique().tolist())
 
-    train_subjects, val_subjects = subject_split(spec, val_ratio=val_ratio, seed=seed)
+    if num_folds > 1:
+        if fold_index is None:
+            raise ValueError("fold_index must be provided when num_folds > 1")
+        train_subjects, val_subjects = subject_kfold_split(
+            spec,
+            num_folds=num_folds,
+            fold_index=fold_index,
+            seed=seed,
+        )
+    else:
+        train_subjects, val_subjects = subject_split(spec, val_ratio=val_ratio, seed=seed)
     if split == "train":
         return train_subjects
     if split == "val":
@@ -66,15 +88,31 @@ def build_analysis_dataset(
     group_size: int,
     apply_deleted_filter: bool,
     split: str,
+    num_folds: int = 1,
+    fold_index: int | None = None,
+    subjects_by_dataset: dict[str, list[str]] | None = None,
 ):
     datasets = []
     for spec in specs:
-        train_subjects, _ = subject_split(spec, val_ratio=val_ratio, seed=seed)
+        if num_folds > 1:
+            if fold_index is None:
+                raise ValueError("fold_index must be provided when num_folds > 1")
+            train_subjects, _ = subject_kfold_split(
+                spec,
+                num_folds=num_folds,
+                fold_index=fold_index,
+                seed=seed,
+            )
+        else:
+            train_subjects, _ = subject_split(spec, val_ratio=val_ratio, seed=seed)
         subjects = resolve_subjects_for_split(
             spec,
             split=split,
             val_ratio=val_ratio,
             seed=seed,
+            num_folds=num_folds,
+            fold_index=fold_index,
+            subjects_by_dataset=subjects_by_dataset,
         )
 
         global_scale = None
@@ -134,6 +172,11 @@ def load_metadata_manifest(specs: list[DatasetSpec]) -> pd.DataFrame:
     manifest = pd.concat(manifests, ignore_index=True)
     manifest["window_idx"] = manifest["window_idx"].astype(int)
     return manifest
+
+
+def load_fold_manifest(path: str | Path) -> dict:
+    manifest_path = Path(path).expanduser().resolve()
+    return json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
 def load_model_from_checkpoint(
