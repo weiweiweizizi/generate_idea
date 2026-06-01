@@ -1,39 +1,37 @@
-# LQ FSQ Follow-Up Notes
+# LQ FSQ 后续跟进笔记
 
-Last updated: 2026-04-19
+最后更新：2026-04-19
 
-## Baseline
+## 基线
 
-- canonical dataset roots: `data/win20-step20/IMR,data/win20-step20/TT`
-- current target baseline run: `outputs/lq_x_mouth_v10_fsq_probe_win20`
-- quantizer: `FSQ`
-- mode: `x`
-- region: `mouth`
+- 标准数据集根目录：`data/win20-step20/IMR,data/win20-step20/TT`
+- 当前目标基线运行：`outputs/lq_x_mouth_v10_fsq_probe_win20`
+- 量化器：`FSQ`
+- 模式：`x`
+- 区域：`mouth`
 
-## Historical Context
+## 历史背景
 
-- earlier `v1` to `v10` runs were produced under the old
-  `data/win10-step10/IMR,data/win10-step10/TT` setting
-- those runs remain useful for structural comparison history
-- they should not be treated as the final baseline for the new `win20-step20`
-  dataset setting
+- 早期的 `v1` 到 `v10` 运行产生于旧的 `data/win10-step10/IMR,data/win10-step10/TT` 设置
+- 这些运行仍可用于结构对比历史参考
+- 它们不应被视为新的 `win20-step20` 数据集设置下的最终基线
 
-## Probe Log
+## 探测日志
 
-### Baseline Rerun: `v10 FSQ` on `win20-step20`
+### 基线重跑：`win20-step20` 上的 `v10 FSQ`
 
-- status: completed
-- command:
+- 状态：已完成
+- 命令：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v10_fsq_probe.sh
 ```
 
-- expected outputs:
+- 预期输出：
   - `outputs/lq_x_mouth_v10_fsq_probe_win20/best.pt`
   - `outputs/lq_x_mouth_v10_fsq_probe_win20/analysis/summary.json`
 
-- outcome:
+- 结果：
   - `val_loss = 0.3619`
   - `val_recon = 0.3600`
   - `val_shared_recon = 0.3620`
@@ -41,29 +39,27 @@ bash scripts/lq/run_train_x_mouth_v10_fsq_probe.sh
   - L1 `[20, 60]`
   - L2 `[20, 23, 37]`
   - L3 `[18, 2, 3, 3, 25, 29]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- conclusion:
-  - FSQ still gives non-collapsed code usage under `win20-step20`
-  - compared with the older `win10-step10` round, reconstruction is weaker and
-    the validation evidence is based on a much smaller number of valid frames
-  - this run should still be treated as the active baseline for future probes
-    because it matches the new canonical dataset setting
+- 结论：
+  - FSQ 在 `win20-step20` 下仍给出非坍缩的 code usage
+  - 与旧 `win10-step10` 轮次相比，重建更弱，且验证证据基于更少的有效帧
+  - 由于与新的标准数据集设置匹配，此运行应作为未来探测的活跃基线
 
-### Structure Probe: `v11 private_dim=8` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v11 private_dim=8`
 
-- status: completed
-- command:
+- 状态：已完成
+- 命令：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v11_private_dim8_probe.sh
 ```
 
-- expected outputs:
+- 预期输出：
   - `outputs/lq_x_mouth_v11_private_dim8_probe_win20/best.pt`
   - `outputs/lq_x_mouth_v11_private_dim8_probe_win20/analysis/summary.json`
 
-- outcome:
+- 结果：
   - `val_loss = 0.3627`
   - `val_recon = 0.3610`
   - `val_shared_recon = 0.3625`
@@ -71,36 +67,34 @@ bash scripts/lq/run_train_x_mouth_v11_private_dim8_probe.sh
   - L1 `[20, 60]`
   - L2 `[0, 80, 0]`
   - L3 `[19, 1, 4, 2, 54, 0]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v10`:
-  - worse `val_loss`
-  - worse `val_recon`
-  - worse `val_shared_recon`
-  - lower `scaled_residual`
-  - noticeably worse code usage, especially L2 collapse from `[20, 23, 37]`
-    to `[0, 80, 0]`
+- 与 `v10` 对比：
+  - 更差的 `val_loss`
+  - 更差的 `val_recon`
+  - 更差的 `val_shared_recon`
+  - 更低的 `scaled_residual`
+  - 明显更差的 code usage，尤其是 L2 从 `[20, 23, 37]` 坍缩到 `[0, 80, 0]`
 
-- conclusion:
-  - shrinking `private_dim` from `32` to `8` is not a good first tightening
-    strategy under the current `win20 + FSQ` setup
-  - it reduces residual magnitude, but harms both reconstruction and code usage
-  - this probe should be treated as rejected, not promoted
+- 结论：
+  - 在当前 `win20 + FSQ` 设置下，将 `private_dim` 从 `32` 缩小到 `8` 不是好的首要收紧策略
+  - 它降低了残差幅度，但损害了重建和 code usage
+  - 此探测应被判定为拒绝，不予推广
 
-### Structure Probe: `v12 private_decoder_hidden_dim=16` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v12 private_decoder_hidden_dim=16`
 
-- status: completed
-- command:
+- 状态：已完成
+- 命令：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v12_private_decoder16_probe.sh
 ```
 
-- expected outputs:
+- 预期输出：
   - `outputs/lq_x_mouth_v12_private_decoder16_probe_win20/best.pt`
   - `outputs/lq_x_mouth_v12_private_decoder16_probe_win20/analysis/summary.json`
 
-- outcome:
+- 结果：
   - `val_loss = 0.3636`
   - `val_recon = 0.3615`
   - `val_shared_recon = 0.3620`
@@ -108,43 +102,39 @@ bash scripts/lq/run_train_x_mouth_v12_private_decoder16_probe.sh
   - L1 `[20, 60]`
   - L2 `[20, 22, 38]`
   - L3 `[17, 3, 2, 3, 17, 38]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v10`:
-  - worse `val_loss`
-  - worse `val_recon`
-  - nearly unchanged `val_shared_recon`
-  - worse `scaled_residual`
-  - code usage stays reasonably spread, but not clearly better than baseline
+- 与 `v10` 对比：
+  - 更差的 `val_loss`
+  - 更差的 `val_recon`
+  - `val_shared_recon` 几乎不变
+  - 更差的 `scaled_residual`
+  - code usage 保持较分散，但不比基线明显更好
 
-- conclusion:
-  - narrowing private decoder width from the baseline effective `64` down to
-    `16` does not improve the current `win20 + FSQ` setup
-  - compared with `v11`, this direction is less destructive because it does not
-    collapse L2, but it still fails to beat `v10`
-  - this probe should also be treated as rejected
+- 结论：
+  - 将 private decoder 宽度从基线有效值 `64` 收窄到 `16` 未能改善当前 `win20 + FSQ` 设置
+  - 与 `v11` 相比，此方向破坏性较小（未导致 L2 坍缩），但仍未能超越 `v10`
+  - 此探测也应被判定为拒绝
 
-### Auxiliary Probe: `v13 side_cont_weight=0.15` on `win20-step20`
+### 辅助探测：`win20-step20` 上的 `v13 side_cont_weight=0.15`
 
-- status: completed
-- command:
+- 状态：已完成
+- 命令：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v13_side_cont_probe.sh
 ```
 
-- expected outputs:
+- 预期输出：
   - `outputs/lq_x_mouth_v13_side_cont_probe_win20/best.pt`
   - `outputs/lq_x_mouth_v13_side_cont_probe_win20/analysis/summary.json`
 
-- important note:
-  - `side_disc_weight=0.0`, so discrete side supervision is not optimized
-  - however, once `side_labels` are passed in, the model still computes and
-    reports `side_disc` metrics for inspection
-  - because `side_cont` is included in total loss for this probe, total
-    `val_loss` is not directly comparable to the baseline objective anymore
+- 重要说明：
+  - `side_disc_weight=0.0`，因此离散 side 监督未优化
+  - 但传入 `side_labels` 后，模型仍计算并报告 `side_disc` 指标供检查
+  - 由于此探测的 total loss 中包含了 `side_cont`，total `val_loss` 不再与基线目标直接可比
 
-- outcome:
+- 结果：
   - `val_recon = 0.3623`
   - `val_shared_recon = 0.3631`
   - `val_scaled_residual = 0.0018`
@@ -152,91 +142,80 @@ bash scripts/lq/run_train_x_mouth_v13_side_cont_probe.sh
   - L1 `[8, 72]`
   - L2 `[46, 34, 0]`
   - L3 `[31, 28, 9, 11, 1, 0]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v10`:
-  - worse reconstruction
-  - worse shared reconstruction
-  - lower scaled residual magnitude
-  - code usage remains spread, but shifts substantially and does not yield a
-    clearer shared-motion improvement
+- 与 `v10` 对比：
+  - 重建更差
+  - shared 重建更差
+  - 缩放残差幅度更低
+  - code usage 保持分散，但显著偏移，未能产生更清晰的 shared-motion 改善
 
-- conclusion:
-  - reintroducing continuous side supervision at `0.15` does not improve the
-    current `win20 + FSQ` baseline
-  - it changes code allocation and lowers residual magnitude, but shared-motion
-    behavior is not better and reconstruction becomes slightly worse
-  - this probe should be treated as rejected for now
+- 结论：
+  - 在当前 `win20 + FSQ` 基线上重新引入 `0.15` 的连续 side 监督未能改善 shared-motion 重建
+  - 它改变了 code 分配并降低了残差幅度，但 shared-motion 行为并未更好，重建略差
+  - 此探测目前应被判定为拒绝
 
-### Structure Probe: `v14 basis_orthogonalization=level_qr` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v14 basis_orthogonalization=level_qr`
 
-- status: completed
-- command:
+- 状态：已完成
+- 命令：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v14_level_qr_probe.sh
 ```
 
-- expected outputs:
+- 预期输出：
   - `outputs/lq_x_mouth_v14_level_qr_probe_win20/best.pt`
   - `outputs/lq_x_mouth_v14_level_qr_probe_win20/analysis/summary.json`
 
-- important note:
-  - this probe enforces strict orthonormality only within each level
-  - the reported `orth` metric is still the global soft penalty across all 11
-    bases, so it remains nonzero because cross-level similarity is still
-    allowed and penalized
+- 重要说明：
+  - 此探测仅在每个 level 内部强制严格正交性
+  - 报告的 `orth` 指标仍是全 11 个 basis 的全局软惩罚，因此不为零，因为跨 level 相似性仍被允许并被惩罚
 
-- outcome:
+- 结果：
   - `val_recon = 0.3574`
   - `val_shared_recon = 0.3604`
   - `val_scaled_residual = 0.0049`
   - L1 `[20, 60]`
   - L2 `[21, 59, 0]`
   - L3 `[19, 2, 2, 2, 5, 50]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v10`:
-  - better reconstruction
-  - better shared reconstruction
-  - worse residual magnitude
-  - noticeably more concentrated code usage, especially at L2 and L3
+- 与 `v10` 对比：
+  - 更好的重建
+  - 更好的 shared 重建
+  - 更差的残差幅度
+  - 明显更集中的 code usage，尤其在 L2 和 L3
 
-- conclusion:
-  - level-wise QR is the first follow-up probe that improves shared-path
-    reconstruction on top of the `win20 + FSQ` baseline
-  - however, it does so while making code usage more concentrated
-  - this should be treated as a mixed result, not a clean new baseline
-  - the most likely next step is to keep QR optional and test coefficient-scale
-    control on top of it, rather than promoting QR alone
+- 结论：
+  - level-wise QR 是在 `win20 + FSQ` 基线上第一个改善 shared-path 重建的后续探测
+  - 然而，它在 code usage 变得更集中时做到了这一点
+  - 这应被视为混合结果，而非干净的新的基线
+  - 最可能的下一步是保持 QR 可选，并在其上测试系数尺度控制，而非单独推广 QR
 
-### Structure Probe: `v15 basis_orthogonalization=global_qr` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v15 basis_orthogonalization=global_qr`
 
-- status: completed
-- motivation:
-  - `level_qr` only prevents basis similarity inside each level partition
-  - if we want all 11 bases to be mutually distinct, the QR step must be
-    applied once over the full basis bank
+- 状态：已完成
+- 动机：
+  - `level_qr` 仅防止每个 level 内的 basis 相似性
+  - 若希望所有 11 个 basis 相互不同，QR 步骤必须对整个 basis bank 应用一次
 
-- implementation:
-  - `scripts/lq/model/network.py` now supports
-    `basis_orthogonalization=global_qr`
-  - `global_qr` runs QR on the flattened full basis bank and then reshapes back
-    to `(sum(levels), H, W)`
-  - this means cross-level basis similarity is no longer permitted by the
-    structured projection itself
+- 实现：
+  - `scripts/lq/model/network.py` 现在支持 `basis_orthogonalization=global_qr`
+  - `global_qr` 对展平的完整 basis bank 运行 QR，然后 reshape 回 `(sum(levels), H, W)`
+  - 这意味着跨 level 的 basis 相似性不再被结构化投影本身允许
 
-- probe entry:
+- 探测入口：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v15_global_qr_probe.sh
 ```
 
-- expected outputs:
+- 预期输出：
   - `outputs/lq_x_mouth_v15_global_qr_probe_win20/best.pt`
   - `outputs/lq_x_mouth_v15_global_qr_probe_win20/analysis/summary.json`
 
-- outcome:
+- 结果：
   - `val_loss = 0.3588`
   - `val_recon = 0.3572`
   - `val_shared_recon = 0.3597`
@@ -244,76 +223,68 @@ bash scripts/lq/run_train_x_mouth_v15_global_qr_probe.sh
   - L1 `[18, 62]`
   - L2 `[19, 5, 56]`
   - L3 `[58, 22, 0, 0, 0, 0]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v10`:
-  - better total reconstruction
-  - better shared reconstruction
-  - somewhat larger residual magnitude
-  - much more concentrated code usage, especially at L3
+- 与 `v10` 对比：
+  - 更好的总重建
+  - 更好的 shared 重建
+  - 略大的残差幅度
+  - 高层 code usage 明显更集中，尤其在 L3
 
-- comparison against `v14`:
-  - slightly better total reconstruction
-  - slightly better shared reconstruction
-  - slightly lower residual magnitude
-  - code usage is even more collapsed across higher levels
+- 与 `v14` 对比：
+  - 略好的总重建
+  - 略好的 shared 重建
+  - 略低的残差幅度
+  - code usage 在更高层级更集中
 
-- conclusion:
-  - full-bank QR successfully enforces the stronger structural prior that no
-    two bases should be similar, even across levels
-  - however, the current decoder/coeff pathway responds by using fewer discrete
-    codes, not by spreading usage over the now-more-distinct basis bank
-  - this should be treated as a structural confirmation, not a new baseline
+- 结论：
+  - 完整 bank QR 成功执行了更强力的结构先验：任何两个 basis（跨 level 也不例外）不应相似
+  - 然而，当前 decoder/系数路径的响应是使用更少的离散码，而非将 usage 分散到更distinct的 basis bank 上
+  - 这应被视为结构确认，而非新基线
 
-## Decision
+## 决策
 
-- active baseline: `outputs/lq_x_mouth_v10_fsq_probe_win20`
-- rejected probe: `outputs/lq_x_mouth_v11_private_dim8_probe_win20`
-- rejected probe: `outputs/lq_x_mouth_v12_private_decoder16_probe_win20`
-- rejected probe: `outputs/lq_x_mouth_v13_side_cont_probe_win20`
-- mixed probe: `outputs/lq_x_mouth_v14_level_qr_probe_win20`
-- mixed probe: `outputs/lq_x_mouth_v15_global_qr_probe_win20`
-- next recommended step:
-  1. if optimizing the current `x + mouth` setup, stop tightening basis
-     orthogonality and instead work on the shared coefficient / decoder side so
-     the model can actually use more of the discrete bank
-  2. otherwise, validate the FSQ trend on `mode=y`
-  3. in parallel, revisit dataset/sample-efficiency strategy, since the
-     validation set still has only `80` valid frames
+- 活跃基线：`outputs/lq_x_mouth_v10_fsq_probe_win20`
+- 拒绝的探测：`outputs/lq_x_mouth_v11_private_dim8_probe_win20`
+- 拒绝的探测：`outputs/lq_x_mouth_v12_private_decoder16_probe_win20`
+- 拒绝的探测：`outputs/lq_x_mouth_v13_side_cont_probe_win20`
+- 混合探测：`outputs/lq_x_mouth_v14_level_qr_probe_win20`
+- 混合探测：`outputs/lq_x_mouth_v15_global_qr_probe_win20`
+- 建议下一步：
+  1. 若在优化当前 `x + mouth` 设置，停止收紧 basis 正交性，转而在 shared 系数 / decoder 方面努力，使模型实际能够使用更多离散 bank
+  2. 否则，在 `mode=y` 上验证 FSQ 趋势
+  3. 并行地，重新审视数据集/样本效率策略，因为验证集仍有只有 `80` 个有效帧
 
-### Structure Change: post-QR basis sparsity loss added
+### 结构变化：添加 post-QR basis 稀疏损失
 
-- status: completed as a 30-epoch probe
-- motivation:
-  - after `global_qr`, all bases are globally orthogonal, but they are still
-    spatially dense
-  - add an explicit sparsity prior on the structured basis bank itself
+- 状态：作为 30 轮探测完成
+- 动机：
+  - 在 `global_qr` 之后，所有 basis 全局正交，但它们仍是空间密集的
+  - 在结构化 basis bank 本身上添加显式稀疏先验
 
-- implementation:
-  - `scripts/lq/model/network.py` now exposes `basis_l1`
-  - `basis_l1` is computed on the structured basis returned by
-    `get_structured_basis()`, so the order is:
-    1. enforce matrix structure
-    2. apply QR projection when configured
-    3. apply L1 sparsity loss on the resulting basis bank
-  - the QR helper was also simplified to an EDTalk-style differentiable QR
-    projection without the extra sign-correction step
+- 实现：
+  - `scripts/lq/model/network.py` 现在暴露 `basis_l1`
+  - `basis_l1` 在 `get_structured_basis()` 返回的结构化 basis 上计算，因此顺序为：
+    1. 强制矩阵结构
+    2. 在配置时应用 QR 投影
+    3. 在结果 basis bank 上应用 L1 稀疏损失
+  - QR 辅助函数也简化为 EDTalk 风格的可微分 QR 投影（无额外符号校正步骤）
 
-- training hook:
-  - `scripts/lq/train.py` now supports `basis_l1_weight`
-  - probe entry:
+- 训练钩子：
+  - `scripts/lq/train.py` 现在支持 `basis_l1_weight`
+  - 探测入口：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v16_global_qr_basis_l1_probe.sh
 ```
 
-- smoke-check:
+- 冒烟检查：
   - `basis_l1 = 0.00639`
   - `orth ~= 0`
-  - forward + backward passed on `batch_size=64`, `group_size=4`
+  - `batch_size=64`、`group_size=4` 上前向+反向通过
 
-- 30-epoch outcome:
-  - run: `outputs/lq_x_mouth_v16_global_qr_basis_l1_probe_win20_e30`
+- 30 轮结果：
+  - 运行：`outputs/lq_x_mouth_v16_global_qr_basis_l1_probe_win20_e30`
   - `val_loss = 0.3478`
   - `val_recon = 0.3310`
   - `val_shared_recon = 0.3580`
@@ -322,45 +293,39 @@ bash scripts/lq/run_train_x_mouth_v16_global_qr_basis_l1_probe.sh
   - L1 `[56, 24]`
   - L2 `[18, 7, 55]`
   - L3 `[0, 0, 0, 0, 7, 73]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v15`:
-  - much better total reconstruction
-  - slightly better shared reconstruction
-  - dramatically larger private residual contribution
-  - higher-level code usage becomes even more concentrated
+- 与 `v15` 对比：
+  - 好得多的总重建
+  - 略好的 shared 重建
+  - 明显更大的 private 残差贡献
+  - 更高层的 code usage 更加集中
 
-- conclusion:
-  - post-QR basis sparsity is effective numerically: basis L1 falls from the
-    smoke-check `0.00639` to validation `0.00266`
-  - however, the model pays for that sparsity by pushing much more load into
-    the private residual branch
-  - this is not a clean interpretability win, even though headline
-    reconstruction improves
+- 结论：
+  - post-QR basis 稀疏性在数值上有效：basis L1 从冒烟检查 `0.00639` 降到验证 `0.00266`
+  - 然而，模型通过将更多负载推到 private 残差分支来为稀疏性付出代价
+  - 尽管 headline 重建改善，这不是干净的可解释性收获
 
-### Structure Probe: `v17 residual_fsq + global_qr + basis_l1` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v17 residual_fsq + global_qr + basis_l1`
 
-- status: completed
-- motivation:
-  - replace the single FSQ block with a residual quantization stack
-  - align stage 1 / 2 / 3 with the existing basis partitions `(2, 3, 6)`
-  - keep `global_qr` and basis sparsity enabled
+- 状态：已完成
+- 动机：
+  - 用残差量化栈替换单个 FSQ block
+  - 将 stage 1/2/3 与现有 basis 分区 `(2, 3, 6)` 对齐
+  - 保持 `global_qr` 和 basis 稀疏性启用
 
-- implementation:
-  - official `FSQ` blocks are stacked in residual form inside
-    `scripts/lq/model/network.py`
-  - stage 1 uses `levels=[2]`, stage 2 uses `levels=[3]`, stage 3 uses
-    `levels=[6]`
-  - each stage quantizes the remaining residual and feeds the matching basis
-    branch
+- 实现：
+  - 官方的 `FSQ` blocks 以残差形式堆叠在 `scripts/lq/model/network.py` 内
+  - stage 1 使用 `levels=[2]`，stage 2 使用 `levels=[3]`，stage 3 使用 `levels=[6]`
+  - 每个 stage 量化剩余残差并馈送到匹配的 basis 分支
 
-- probe entry:
+- 探测入口：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v17_residual_fsq_basis_l1_probe.sh
 ```
 
-- outcome:
+- 结果：
   - `val_loss = 0.3291`
   - `val_recon = 0.3109`
   - `val_shared_recon = 0.3423`
@@ -369,44 +334,40 @@ bash scripts/lq/run_train_x_mouth_v17_residual_fsq_basis_l1_probe.sh
   - L1 `[22, 58]`
   - L2 `[50, 8, 22]`
   - L3 `[55, 2, 1, 3, 13, 6]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v16`:
-  - much better total reconstruction
-  - much worse shared reconstruction
-  - slightly larger private residual contribution
-  - noticeably healthier higher-level code usage, especially at L3
+- 与 `v16` 对比：
+  - 好得多的总重建
+  - 差得多的 shared 重建
+  - 略大的 private 残差贡献
+  - 明显更健康的高层 code usage，尤其在 L3
 
-- conclusion:
-  - residual FSQ improves discrete code utilization relative to the collapsed
-    `v16` sparse-basis run
-  - however, it still does not solve the main structural issue: the model keeps
-    improving total reconstruction by leaning on the private residual branch,
-    while shared reconstruction gets worse
-  - treat this as a useful structural probe, not as the new interpretability
-    baseline
+- 结论：
+  - residual FSQ 相对于坍缩的 `v16` 稀疏 basis 运行改善了离散码利用率
+  - 然而，它仍未解决主要结构问题：模型通过依赖 private 残差分支来不断改善总重建，而 shared 重建变差
+  - 将此视为有用的结构探测，而非新的可解释性基线
 
-### Structure Probe: `v18 residual_fsq + sparse_shared_mixing + shared_recon_loss` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v18 residual_fsq + sparse_shared_mixing + shared_recon_loss`
 
-- status: completed
-- motivation:
-  - keep residual FSQ
-  - increase shared-path expressivity with anchor-guided sparse mixing
-  - add direct optimization pressure on `shared_recon`
+- 状态：已完成
+- 动机：
+  - 保持 residual FSQ
+  - 用 anchor 引导的稀疏混合增加 shared-path 表达性
+  - 添加对 `shared_recon` 的直接优化压力
 
-- implementation:
+- 实现：
   - `shared_basis_soft_mixing=True`
   - `shared_basis_anchor_bias=2.0`
   - `shared_basis_topk=2`
   - `shared_recon_weight=1.0`
 
-- probe entry:
+- 探测入口：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v18_residual_fsq_sparse_shared_probe.sh
 ```
 
-- outcome:
+- 结果：
   - `val_recon = 0.3150`
   - `val_shared_recon = 0.3469`
   - `val_scaled_residual = 0.0394`
@@ -414,45 +375,39 @@ bash scripts/lq/run_train_x_mouth_v18_residual_fsq_sparse_shared_probe.sh
   - L1 `[22, 58]`
   - L2 `[57, 1, 22]`
   - L3 `[57, 1, 0, 2, 8, 12]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- important note:
-  - `val_loss` is not directly comparable to older probes because this run adds
-    `shared_recon_weight=1.0` into the total objective
+- 重要说明：
+  - 由于此运行向 total 目标添加了 `shared_recon_weight=1.0`，`val_loss` 与旧探测不完全可比
 
-- comparison against `v17`:
-  - slightly worse total reconstruction
-  - clearly better shared reconstruction
-  - private residual magnitude remains high, roughly unchanged
-  - code usage stays multi-code at L3, but is somewhat less spread than `v17`
+- 与 `v17` 对比：
+  - 略差的总重建
+  - 明显更好的 shared 重建
+  - private 残差幅度仍然高，大致不变
+  - code usage 在 L3 保持多码，但比 `v17` 略集中
 
-- conclusion:
-  - this validates the structural direction: increasing shared-path capacity
-    and directly supervising `shared_recon` does pull the model away from the
-    worst shared-path collapse
-  - however, it is not yet enough to reduce reliance on the private residual
-    branch
-  - the next step should keep this shared-path design and explicitly tighten
-    the private branch again, now that the shared branch has more capacity
+- 结论：
+  - 这验证了结构方向：增加 shared-path 容量并直接监督 `shared_recon` 确实将模型从最严重的 shared-path 坍缩中拉回
+  - 然而，它还不足以减少对 private 残差分支的依赖
+  - 下一步应保持此 shared-path 设计，并在此刻明确收紧 private 分支，因为 shared 分支已有更多容量
 
-### Structure Probe: `v19 v18 + tighter private residual cap` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v19 v18 + 更严格的 private 残差上限`
 
-- status: completed
-- motivation:
-  - keep the improved shared-path design from `v18`
-  - tighten the private residual branch and test whether the model can retain
-    better shared reconstruction with smaller private correction
+- 状态：已完成
+- 动机：
+  - 保持 `v18` 改进的 shared-path 设计
+  - 收紧 private 残差分支，测试模型是否能在更小的 private 修正下保持更好的 shared 重建
 
-- implementation:
-  - same as `v18`, except `private_residual_max_l1=0.5`
+- 实现：
+  - 与 `v18` 相同，除了 `private_residual_max_l1=0.5`
 
-- probe entry:
+- 探测入口：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v19_residual_fsq_sparse_shared_tighter_private_probe.sh
 ```
 
-- outcome:
+- 结果：
   - `val_recon = 0.3275`
   - `val_shared_recon = 0.3446`
   - `val_scaled_residual = 0.0214`
@@ -460,49 +415,44 @@ bash scripts/lq/run_train_x_mouth_v19_residual_fsq_sparse_shared_tighter_private
   - L1 `[22, 58]`
   - L2 `[58, 0, 22]`
   - L3 `[57, 1, 1, 1, 10, 10]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- important note:
-  - `val_loss` is still not directly comparable to older probes because this
-    run keeps `shared_recon_weight=1.0`
+- 重要说明：
+  - 由于此运行保持 `shared_recon_weight=1.0`，`val_loss` 仍与旧探测不完全可比
 
-- comparison against `v18`:
-  - worse total reconstruction
-  - slightly worse shared reconstruction
-  - much lower private residual contribution
-  - similar code usage pattern with slightly stronger concentration at L2
+- 与 `v18` 对比：
+  - 更差的总重建
+  - 略差的 shared 重建
+  - 低得多的 private 残差贡献
+  - 类似的 code usage 模式，L2 集中度略强
 
-- comparison against `v17`:
-  - worse total reconstruction
-  - clearly better shared reconstruction
-  - much lower private residual contribution
+- 与 `v17` 对比：
+  - 更差的总重建
+  - 明显更好的 shared 重建
+  - 低得多的 private 残差贡献
 
-- conclusion:
-  - this is the first probe in the current stage that meaningfully improves the
-    interpretability tradeoff
-  - the shared path remains much stronger than `v17`, while the private branch
-    is no longer dominating at the same magnitude as `v17` / `v18`
-  - the next step should search locally around this regime, rather than going
-    back to unconstrained private residuals
+- 结论：
+  - 这是当前阶段第一个有意义地改善可解释性权衡的探测
+  - shared path 保持比 `v17` 强得多，而 private 分支不再以与 `v17`/`v18` 相同的幅度占主导
+  - 下一步应在该 regime 附近做局部搜索，而非回到无约束 private 残差
 
-### Structure Probe: `v20 v19 + tighter cap=0.4` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v20 v19 + 上限=0.4`
 
-- status: completed
-- motivation:
-  - test whether the `v19` regime still improves if the private residual cap is
-    tightened a bit further
-  - keep the shared-path design fixed so the comparison isolates cap strength
+- 状态：已完成
+- 动机：
+  - 测试若 private 残差上限进一步收紧，`v19` regime 是否仍有改善
+  - 保持 shared-path 设计不变，以便比较隔离上限强度
 
-- implementation:
-  - same as `v19`, except `private_residual_max_l1=0.4`
+- 实现：
+  - 与 `v19` 相同，除了 `private_residual_max_l1=0.4`
 
-- probe entry:
+- 探测入口：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v20_residual_fsq_sparse_shared_privatecap04_probe.sh
 ```
 
-- outcome:
+- 结果：
   - `val_recon = 0.3310`
   - `val_shared_recon = 0.3448`
   - `val_scaled_residual = 0.0171`
@@ -510,37 +460,35 @@ bash scripts/lq/run_train_x_mouth_v20_residual_fsq_sparse_shared_privatecap04_pr
   - L1 `[22, 58]`
   - L2 `[57, 1, 22]`
   - L3 `[57, 1, 0, 2, 17, 3]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v19`:
-  - worse total reconstruction
-  - slightly worse shared reconstruction
-  - lower private residual contribution
-  - higher-level usage shifts more strongly toward one late-stage code
+- 与 `v19` 对比：
+  - 更差的总重建
+  - 略差的 shared 重建
+  - 更低的 private 残差贡献
+  - 高层 usage 更多地集中到一个后期码
 
-- conclusion:
-  - `cap=0.4` is a viable stricter-private variant, but not a clean upgrade
-  - it improves the private-suppression metric, yet gives up a bit of shared
-    quality and higher-level code spread
+- 结论：
+  - `cap=0.4` 是更严格的 private 变体的可行方案，但不是干净升级
+  - 它改善了 private-suppression 指标，但牺牲了一点 shared 质量和更高层 code 分散度
 
-### Structure Probe: `v21 v19 + looser cap=0.6` on `win20-step20`
+### 结构探测：`win20-step20` 上的 `v21 v19 + 上限=0.6`
 
-- status: completed
-- motivation:
-  - test the opposite side of the local tradeoff window around `v19`
-  - check whether a slightly looser private cap can improve shared behavior
-    rather than only plain reconstruction
+- 状态：已完成
+- 动机：
+  - 测试 `v19` 局部权衡窗口的另一侧
+  - 检查略宽松的 private 上限是否反而能改善 shared 行为，而不仅仅是普通重建
 
-- implementation:
-  - same as `v19`, except `private_residual_max_l1=0.6`
+- 实现：
+  - 与 `v19` 相同，除了 `private_residual_max_l1=0.6`
 
-- probe entry:
+- 探测入口：
 
 ```bash
 bash scripts/lq/run_train_x_mouth_v21_residual_fsq_sparse_shared_privatecap06_probe.sh
 ```
 
-- outcome:
+- 结果：
   - `val_recon = 0.3245`
   - `val_shared_recon = 0.3446`
   - `val_scaled_residual = 0.0251`
@@ -548,23 +496,20 @@ bash scripts/lq/run_train_x_mouth_v21_residual_fsq_sparse_shared_privatecap06_pr
   - L1 `[22, 58]`
   - L2 `[57, 1, 22]`
   - L3 `[57, 1, 0, 2, 11, 9]`
-  - total valid frames in validation analysis: `80`
+  - 验证分析中的有效帧总数：`80`
 
-- comparison against `v19`:
-  - better total reconstruction
-  - essentially unchanged shared reconstruction
-  - clearly larger private residual contribution
-  - L3 spread is acceptable, but the gain is bought mostly through the private
-    branch rather than a stronger shared path
+- 与 `v19` 对比：
+  - 更好的总重建
+  - 基本上 shared 重建不变
+  - 明显更大的 private 残差贡献
+  - L3 分散度可接受，但收益主要通过 private 分支而非更强的 shared path 获得
 
-- conclusion:
-  - `cap=0.6` is too loose for the current interpretability objective
-  - it should not replace `v19` as the current baseline
+- 结论：
+  - `cap=0.6` 对当前可解释性目标来说太宽松
+  - 它不应取代 `v19` 作为当前基线
 
-### Local Sweep Conclusion: `private_residual_max_l1 in {0.4, 0.5, 0.6}`
+### 局部 sweep 结论：`private_residual_max_l1 in {0.4, 0.5, 0.6}`
 
-- `v19 (cap=0.5)` remains the safest interpretability baseline
-- `v20 (cap=0.4)` is the stricter-private alternative when lower
-  `scaled_residual` is the first priority
-- `v21 (cap=0.6)` confirms that relaxing the cap mostly restores private
-  correction, not shared explanatory power
+- `v19 (cap=0.5)` 仍是最安全的可解释性基线
+- `v20 (cap=0.4)` 是当优先降低 `scaled_residual` 时的更严格 private 替代方案
+- `v21 (cap=0.6)` 确认放宽上限主要恢复 private 修正，而非 shared 解释能力

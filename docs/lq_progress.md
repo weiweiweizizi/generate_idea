@@ -1,134 +1,120 @@
-# LQ Prototype Progress
+# LQ 原型进展笔记
 
-Last updated: 2026-04-20 (round-1 side semantic bank smoke)
+最后更新：2026-04-20（第一轮 side semantic bank 冒烟测试）
 
-## Scope
+## 范围
 
-This document records the recent implementation and experiment progress for
-`scripts/lq`, focused on the current single-direction setup:
+本文档记录 `scripts/lq` 最近的实现和实验进展，聚焦当前单方向设置：
 
-- mode: `x`
-- region: `mouth`
-- data: `data/win20-step20/IMR,data/win20-step20/TT`
-- input: `B x T x 1 x H x W`
-- current working target: shared discrete motion basis learning with per-frame
-  reconstruction loss
+- 模式：`x`
+- 区域：`mouth`
+- 数据：`data/win20-step20/IMR,data/win20-step20/TT`
+- 输入：`B x T x 1 x H x W`
+- 当前工作目标：共享离散运动 basis 学习 + 逐帧重建损失
 
-It is meant as the working-note companion to
-[`RESEARCH_PROGRESS.md`](/home/weizilin/generate_idea/RESEARCH_PROGRESS.md).
+它是 [`RESEARCH_PROGRESS.md`](/home/weizilin/generate_idea/RESEARCH_PROGRESS.md) 的配套工作笔记。
 
-Round-1 refactor note:
+第一轮重构说明：
 
-- the internals of `scripts/lq` are now split into `training/`, `data/`, and
-  `model/` subpackages
-- public entrypoints remain unchanged:
+- `scripts/lq` 内部现已拆分为 `training/`、`data/` 和 `model/` 子包
+- 公共入口点保持不变：
   - `python scripts/lq/train.py ...`
   - `python scripts/lq/analyze_checkpoint.py ...`
-- current dataset sample fields, checkpoint fields, and run-script semantics are
-  intentionally preserved
+- 当前数据集样本字段、checkpoint 字段和运行脚本语义有意保持不变
 
-Important note:
+重要说明：
 
-- the `v1` to `v10` metrics recorded below were produced during the earlier
-  `win10-step10` round
-- the canonical dataset roots have now been switched to `win20-step20`
-- the FSQ baseline has now been rerun under the new dataset setting and should
-  be treated as the authoritative comparison point for future work
+- 以下记录的 `v1` 到 `v10` 指标产生于早期 `win10-step10` 轮次
+- 标准数据集根目录现已切换到 `win20-step20`
+- FSQ 基线已在新的数据集设置下重跑，应作为未来工作的权威比较点
 
-Current canonical baseline:
+当前标准基线：
 
-- run: `outputs/lq_x_mouth_v10_fsq_probe_win20`
+- 运行：`outputs/lq_x_mouth_v10_fsq_probe_win20`
 - `val_loss = 0.3619`
 - `val_recon = 0.3600`
 - `val_shared_recon = 0.3620`
 - `val_scaled_residual = 0.0034`
-- code usage:
+- code usage：
   - L1 `[20, 60]`
   - L2 `[20, 23, 37]`
   - L3 `[18, 2, 3, 3, 25, 29]`
 
-Important caution:
+重要注意事项：
 
-- the `win20-step20` validation split currently contains only `80` valid frames
-- the new baseline still shows broad FSQ code usage, but this evidence is based
-  on a much smaller validation set than the old `win10-step10` round
+- `win20-step20` 验证划分当前仅包含 `80` 个有效帧
+- 新基线仍显示广泛的 FSQ code usage，但该证据基于比旧 `win10-step10` 轮次小得多的验证集
 
-First FSQ-era structure probe on `win20`:
+`win20` 上第一个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v11_private_dim8_probe_win20`
-- change: `private_dim 32 -> 8`
-- result:
+- 运行：`outputs/lq_x_mouth_v11_private_dim8_probe_win20`
+- 变化：`private_dim 32 -> 8`
+- 结果：
   - `val_loss = 0.3627`
   - `val_recon = 0.3610`
   - `val_shared_recon = 0.3625`
   - `val_scaled_residual = 0.0026`
-  - L2 collapsed to `[0, 80, 0]`
-- decision:
-  - reject this direction as the next baseline
-  - shrinking private latent width directly is too destructive under the
-    current `win20 + FSQ` setting
+  - L2 坍缩到 `[0, 80, 0]`
+- 决策：
+  - 拒绝此方向作为下一基线
+  - 在当前 `win20 + FSQ` 设置下，直接缩小 private 潜在宽度破坏性太大
 
-Second FSQ-era structure probe on `win20`:
+`win20` 上第二个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v12_private_decoder16_probe_win20`
-- change: private decoder hidden width reduced from the baseline effective `64`
-  to `16`
-- result:
+- 运行：`outputs/lq_x_mouth_v12_private_decoder16_probe_win20`
+- 变化：private decoder 隐藏宽度从基线有效值 `64` 降到 `16`
+- 结果：
   - `val_loss = 0.3636`
   - `val_recon = 0.3615`
   - `val_shared_recon = 0.3620`
   - `val_scaled_residual = 0.0039`
   - L2 `[20, 22, 38]`
   - L3 `[17, 3, 2, 3, 17, 38]`
-- decision:
-  - reject this direction as well
-  - it avoids the severe L2 collapse seen in `v11`, but still does not improve
-    over the `v10` baseline
+- 决策：
+  - 也拒绝此方向
+  - 它避免了 `v11` 中看到的严重 L2 坍缩，但仍未能超越 `v10` 基线
 
-First FSQ-era auxiliary probe on `win20`:
+`win20` 上第一个 FSQ 时代辅助探测：
 
-- run: `outputs/lq_x_mouth_v13_side_cont_probe_win20`
-- change: enable `side_cont_weight=0.15` while keeping `side_disc_weight=0.0`
-- result:
+- 运行：`outputs/lq_x_mouth_v13_side_cont_probe_win20`
+- 变化：启用 `side_cont_weight=0.15`，同时保持 `side_disc_weight=0.0`
+- 结果：
   - `val_recon = 0.3623`
   - `val_shared_recon = 0.3631`
   - `val_scaled_residual = 0.0018`
   - `val_side_cont = 1.0522`
   - L2 `[46, 34, 0]`
   - L3 `[31, 28, 9, 11, 1, 0]`
-- decision:
-  - reject this direction for now
-  - continuous side supervision does not improve shared-motion reconstruction on
-    the current `win20 + FSQ` baseline
+- 决策：
+  - 目前拒绝此方向
+  - 连续 side 监督在当前 `win20 + FSQ` 基线上未能改善 shared-motion 重建
 
-Third FSQ-era structure probe on `win20`:
+`win20` 上第三个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v14_level_qr_probe_win20`
-- change: replace per-basis normalization with strict level-wise QR
-- result:
+- 运行：`outputs/lq_x_mouth_v14_level_qr_probe_win20`
+- 变化：用严格的 level 内 QR 正交化替换逐 basis 归一化
+- 结果：
   - `val_recon = 0.3574`
   - `val_shared_recon = 0.3604`
   - `val_scaled_residual = 0.0049`
   - L2 `[21, 59, 0]`
   - L3 `[19, 2, 2, 2, 5, 50]`
-- decision:
-  - mixed result, do not promote directly
-  - QR improves reconstruction and shared reconstruction, but code usage becomes
-    more concentrated
+- 决策：
+  - 混合结果，不直接推广
+  - QR 改善了重建和 shared 重建，但 code usage 变得更集中
 
-Current follow-up adjustment:
+当前后续调整：
 
-- `level_qr` only removes similarity inside each level
-- a new `global_qr` mode has been added in `scripts/lq/model/network.py`
-- `global_qr` performs one QR over all 11 bases together, so cross-level basis
-  similarity is no longer allowed
-- probe entry: `scripts/lq/run_train_x_mouth_v15_global_qr_probe.sh`
+- `level_qr` 仅移除每个 level 内的相似性
+- 在 `scripts/lq/model/network.py` 中添加了新的 `global_qr` 模式
+- `global_qr` 对所有 11 个 basis 做一次 QR，因此跨 level 的 basis 相似性不再被允许
+- 探测入口：`scripts/lq/run_train_x_mouth_v15_global_qr_probe.sh`
 
-Fourth FSQ-era structure probe on `win20`:
+`win20` 上第四个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v15_global_qr_probe_win20`
-- change: replace level-wise QR with one global QR over all 11 bases
-- result:
+- 运行：`outputs/lq_x_mouth_v15_global_qr_probe_win20`
+- 变化：用对所有 11 个 basis 的一次全局 QR 替换 level -wise QR
+- 结果：
   - `val_loss = 0.3588`
   - `val_recon = 0.3572`
   - `val_shared_recon = 0.3597`
@@ -136,16 +122,15 @@ Fourth FSQ-era structure probe on `win20`:
   - L1 `[18, 62]`
   - L2 `[19, 5, 56]`
   - L3 `[58, 22, 0, 0, 0, 0]`
-- decision:
-  - treat as a useful structural confirmation, not a new baseline
-  - full-bank QR improves total reconstruction again, but discrete usage becomes
-    even more concentrated than `v14`
+- 决策：
+  - 作为有用的结构确认处理，而非新基线
+  - 完整 bank QR 进一步改善了总重建，但离散 usage 比 `v14` 更集中
 
-Fifth FSQ-era structure probe on `win20`:
+`win20` 上第五个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v16_global_qr_basis_l1_probe_win20_e30`
-- change: keep full-bank QR and add basis L1 sparsity after QR
-- result:
+- 运行：`outputs/lq_x_mouth_v16_global_qr_basis_l1_probe_win20_e30`
+- 变化：保持完整 bank QR 并在 QR 后对结构化 basis bank 添加 basis L1 稀疏惩罚
+- 结果：
   - `val_loss = 0.3478`
   - `val_recon = 0.3310`
   - `val_shared_recon = 0.3580`
@@ -154,17 +139,15 @@ Fifth FSQ-era structure probe on `win20`:
   - L1 `[56, 24]`
   - L2 `[18, 7, 55]`
   - L3 `[0, 0, 0, 0, 7, 73]`
-- decision:
-  - do not promote as the interpretability baseline
-  - sparsity improves total reconstruction, but it does so mainly by allowing
-    the private residual branch to grow much larger
+- 决策：
+  - 不作为可解释性基线推广
+  - 稀疏性先验在数值上有效，但模型通过允许 private 残差分支大得多来补偿
 
-Sixth FSQ-era structure probe on `win20`:
+`win20` 上第六个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v17_residual_fsq_basis_l1_probe_win20_e50`
-- change: replace single FSQ with residual stage-wise FSQ while keeping
-  `global_qr + basis_l1`
-- result:
+- 运行：`outputs/lq_x_mouth_v17_residual_fsq_basis_l1_probe_win20_e50`
+- 变化：在保持 `global_qr + basis_l1` 的同时，用残差 stage 方式 FSQ 替换单个 FSQ
+- 结果：
   - `val_loss = 0.3291`
   - `val_recon = 0.3109`
   - `val_shared_recon = 0.3423`
@@ -173,18 +156,15 @@ Sixth FSQ-era structure probe on `win20`:
   - L1 `[22, 58]`
   - L2 `[50, 8, 22]`
   - L3 `[55, 2, 1, 3, 13, 6]`
-- decision:
-  - do not promote as the interpretability baseline
-  - residual FSQ spreads higher-level code usage better than `v16`, but total
-    improvement still comes with much worse shared reconstruction and a large
-    private residual branch
+- 决策：
+  - 不作为可解释性基线推广
+  - residual FSQ 比 `v16` 更广泛地分散了高层 code usage，但总改善仍伴随着 shared 重建变差和 private 残差分支过大
 
-Seventh FSQ-era structure probe on `win20`:
+`win20` 上第七个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v18_residual_fsq_sparse_shared_probe_win20_e50`
-- change: keep residual FSQ, add anchor-guided sparse shared mixing, and add
-  direct `shared_recon` supervision
-- result:
+- 运行：`outputs/lq_x_mouth_v18_residual_fsq_sparse_shared_probe_win20_e50`
+- 变化：保持 residual FSQ，用 anchor 引导的稀疏共享混合增加 shared-path 容量，并添加对 `shared_recon` 的直接监督
+- 结果：
   - `val_recon = 0.3150`
   - `val_shared_recon = 0.3469`
   - `val_scaled_residual = 0.0394`
@@ -192,17 +172,15 @@ Seventh FSQ-era structure probe on `win20`:
   - L1 `[22, 58]`
   - L2 `[57, 1, 22]`
   - L3 `[57, 1, 0, 2, 8, 12]`
-- decision:
-  - useful positive direction, but not yet the interpretability baseline
-  - compared with `v17`, shared reconstruction improves clearly, but private
-    residual remains too large
+- 决策：
+  - 有前途的正向方向，但还不是可解释性基线
+  - 与 `v17` 相比，shared 重建明显改善，但 private 残差仍然过大
 
-Eighth FSQ-era structure probe on `win20`:
+`win20` 上第八个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v19_residual_fsq_sparse_shared_tighter_private_probe_win20_e50`
-- change: keep `v18` shared design and tighten `private_residual_max_l1` from
-  `1.0` to `0.5`
-- result:
+- 运行：`outputs/lq_x_mouth_v19_residual_fsq_sparse_shared_tighter_private_probe_win20_e50`
+- 变化：保持 `v18` shared 设计并将 `private_residual_max_l1` 从 `1.0` 收紧到 `0.5`
+- 结果：
   - `val_recon = 0.3275`
   - `val_shared_recon = 0.3446`
   - `val_scaled_residual = 0.0214`
@@ -210,79 +188,68 @@ Eighth FSQ-era structure probe on `win20`:
   - L1 `[22, 58]`
   - L2 `[58, 0, 22]`
   - L3 `[57, 1, 1, 1, 10, 10]`
-- decision:
-  - promising interpretability tradeoff
-  - compared with `v18`, private residual drops substantially while shared
-    reconstruction remains much better than `v17`
+- 决策：
+  - 有前途的可解释性权衡
+  - 与 `v18` 相比，private 残差大幅下降，而 shared 重建仍比 `v17` 好得多
 
-Ninth FSQ-era structure probe on `win20`:
+`win20` 上第九个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v20_residual_fsq_sparse_shared_privatecap04_probe_win20_e50`
-- change: keep `v19` structure and tighten `private_residual_max_l1` further
-  from `0.5` to `0.4`
-- result:
+- 运行：`outputs/lq_x_mouth_v20_residual_fsq_sparse_shared_privatecap04_probe_win20_e50`
+- 变化：保持 `v19` 结构并将 `private_residual_max_l1` 从 `0.5` 进一步收紧到 `0.4`
+- 结果：
   - `val_recon = 0.3310`
   - `val_shared_recon = 0.3448`
   - `val_scaled_residual = 0.0171`
-  - `val_basis_l1 = 0.00252`
   - L1 `[22, 58]`
   - L2 `[57, 1, 22]`
   - L3 `[57, 1, 0, 2, 17, 3]`
-- decision:
-  - useful stricter-private variant, but not a clean replacement for `v19`
-  - it pushes `scaled_residual` lower than `v19`, but `shared_recon` becomes
-    slightly worse and L3 usage becomes more concentrated
+- 决策：
+  - 有用的更严格 private 变体，但不是对 `v19` 的干净替换
+  - 它将 `scaled_residual` 压得比 `v19` 低，但 `shared_recon` 略差且 L3 usage 更集中
 
-Tenth FSQ-era structure probe on `win20`:
+`win20` 上第十个 FSQ 时代结构探测：
 
-- run: `outputs/lq_x_mouth_v21_residual_fsq_sparse_shared_privatecap06_probe_win20_e50`
-- change: keep `v19` structure and loosen `private_residual_max_l1` from `0.5`
-  to `0.6`
-- result:
+- 运行：`outputs/lq_x_mouth_v21_residual_fsq_sparse_shared_privatecap06_probe_win20_e50`
+- 变化：保持 `v19` 结构并将 `private_residual_max_l1` 从 `0.5` 放宽到 `0.6`
+- 结果：
   - `val_recon = 0.3245`
   - `val_shared_recon = 0.3446`
   - `val_scaled_residual = 0.0251`
-  - `val_basis_l1 = 0.00251`
   - L1 `[22, 58]`
   - L2 `[57, 1, 22]`
   - L3 `[57, 1, 0, 2, 11, 9]`
-- decision:
-  - reject as the next interpretability baseline
-  - it improves plain reconstruction, but mainly by allowing the private branch
-    to grow again; shared reconstruction is not meaningfully better than
-    `v19/v20`
+- 决策：
+  - 拒绝作为下一可解释性基线
+  - 它改善了普通重建，但主要通过允许 private 分支再次增长；shared 重建并未比 `v19/v20` 有意义地更好
 
-Current local sweep readout around `v19`:
+`v19` 附近当前局部 sweep 读数：
 
-- `cap=0.4` lowers `scaled_residual` best, but concentrates higher-level usage
-  more strongly
-- `cap=0.5` remains the safest interpretability baseline because it keeps a
-  better balance between private suppression and L3 spread
-- `cap=0.6` is too loose for the current objective and mostly restores private
-  correction capacity
+- `cap=0.4` 将 `scaled_residual` 压得最低，但更高层 usage 更集中
+- `cap=0.5` 仍是最安全的选择，因为它在 private 抑制和 L3 分散之间保持了更好平衡
+- `cap=0.6` 对当前目标太宽松，主要恢复了 private 修正能力
 
-First round-1 side semantic bank smoke on `win20`:
+`win20` 上第一轮 side semantic bank 冒烟测试：
 
-- run: `outputs/lq_x_mouth_v22_side_semantic_bank_probe_smoke`
-- preset change:
-  - keep the `v19` backbone intact:
+- 运行：`outputs/lq_x_mouth_v22_side_semantic_bank_probe_smoke`
+- preset 变化：
+  - 保持 `v19` 主干不变：
     - `action_basis_init_path=scripts/lq/init_basis/basis_x.npy`
     - `shared_recon_weight=1.0`
     - `quantizer_type=residual_fsq`
     - `basis_orthogonalization=global_qr`
     - `private_residual_max_l1=0.5`
-  - enable the round-1 side semantic bank only:
+  - 仅启用第一轮 side semantic bank：
     - `side_semantic_enabled=True`
     - `side_basis_count=2`
     - `side_loss_weight=0.3`
-- smoke result:
+- 冒烟测试结果：
   - `val_loss = 1.0672`
   - `val_recon = 0.3636`
   - `val_shared_recon = 0.3636`
   - `val_scaled_residual = 0.00233`
   - `val_side_group = 1.1104`
-- analysis result:
-  - output files written:
+- 分析结果：
+  - 写入的输出文件：
     - `analysis/summary.json`
     - `analysis/side_basis_bank_heatmap.png`
     - `analysis/group_level_representations.npz`
@@ -295,52 +262,49 @@ First round-1 side semantic bank smoke on `win20`:
   - `side_from_free_rep_acc = 0.364`
   - `dataset_from_side_rep_acc = 0.818`
   - `dataset_from_free_rep_acc = 0.818`
-- decision:
-  - accept as a successful round-1 preset and analysis smoke
-  - do not interpret it as semantic separation success yet
-  - `B_side` is not idle, but after one epoch it does not beat the free path on
-    the side probe, and both shared branches still retain obvious dataset signal
+- 决策：
+  - 接受为成功的第一轮 preset 和分析冒烟测试
+  - 尚不能解读为语义分离成功
+  - `B_side` 并非空闲，但经过一个 epoch 后它未能在 side probe 上超越 free path，且两个 shared 分支仍保留明显的 dataset 信号
 
-## Current Implementation Status
+## 当前实现状态
 
-### 1. Dataset / Input Pipeline
+### 1. 数据集/输入流水线
 
-Current status:
+当前状态：
 
-- `scripts/lq/datasets.py` now supports grouped sequence loading for training.
-- The training input is aligned to `batch x win x matrix_size x matrix_size`.
-- Current experiments use `group_size=4`.
-- A batch-memory smoke check has been added before training starts.
+- `scripts/lq/datasets.py` 现在支持用于训练的分组序列加载。
+- 训练输入对齐到 `batch x win x matrix_size x matrix_size`。
+- 当前实验使用 `group_size=4`。
+- 训练开始前已添加 batch 内存冒烟测试。
 
-Validated:
+已验证：
 
-- With `batch_size=64`, `group_size=4`, `mode=x`, `region=mouth`,
-  one input batch has shape `(64, 4, 1, 119, 119)`.
-- The input tensor itself is about `13.83 MiB`.
-- Forward + backward smoke test passed without OOM.
+- 搭配 `batch_size=64`、`group_size=4`、`mode=x`、`region=mouth` 时，一个输入 batch 形状为 `(64, 4, 1, 119, 119)`。
+- 输入张量本身约为 `13.83 MiB`。
+- 前向+反向冒烟测试通过，无 OOM。
 
-Known remaining dataset issues:
+已知剩余数据集问题：
 
-- `deleted_x` / `deleted_y` semantics are not fully integrated yet.
-- Dataset metadata is still minimal for downstream analysis.
-- Sampling is not yet patient-balanced or dataset-balanced.
+- `deleted_x` / `deleted_y` 语义尚未完全集成。
+- 数据集元数据对下游分析仍不足。
+- 采样尚未按患者或数据集平衡。
 
-Related checklist:
+相关检查清单：
 
 - [`docs/lq_dataset_refactor_checklist.md`](/home/weizilin/generate_idea/docs/lq_dataset_refactor_checklist.md)
 
-### 2. Training Pipeline
+### 2. 训练流水线
 
-Implemented:
+已实现：
 
-- `scripts/lq/train.py` now accepts sequence input directly.
-- Loss is computed per frame, then reduced with valid/padding masks.
-- `basis_init` is required by default for the current training stage.
-- Batch-memory validation is run before full training.
-- round-1 refactor has split training internals into `scripts/lq/training/`
-  while preserving the current CLI signature and metric keys
+- `scripts/lq/train.py` 现在直接接受序列输入。
+- 损失按帧计算，然后以 valid/padding mask 归约。
+- 当前训练阶段默认要求 `basis_init`。
+- 完整训练前运行 batch 内存验证。
+- 第一轮重构将训练内部拆分到 `scripts/lq/training/`，同时保留当前 CLI 签名和指标 key
 
-Tracked metrics now include:
+现在跟踪的指标包括：
 
 - `loss`
 - `recon`
@@ -349,325 +313,307 @@ Tracked metrics now include:
 - `orth`
 - `residual`
 - `scaled_residual`
-- optional side / dataset losses
+- 可选的 side / dataset loss
 
-### 3. Model Structure
+### 3. 模型结构
 
-Current model file:
+当前模型文件：
 
 - [`scripts/lq/model/network.py`](/home/weizilin/generate_idea/scripts/lq/model/network.py)
-- `network.py` is now a thin compatibility layer over the split model modules in
-  `scripts/lq/model/`
+- `network.py` 现在是对拆分模型模块 `scripts/lq/model/` 的薄兼容层
 
-Implemented structural changes during this round:
+本轮实现结构变化：
 
-- sequence input flatten / restore logic
-- configurable `pool_size`
-- configurable `shared_dim`
-- capped private residual with `private_residual_max_l1`
-- optional soft basis mixing with anchor bias
-- official quantizer switch:
+- 序列输入展平/恢复逻辑
+- 可配置 `pool_size`
+- 可配置 `shared_dim`
+- 带 `private_residual_max_l1` 的有上限 private 残差
+- 可选带 anchor bias 的软 basis 混合
+- 官方量化器开关：
   - `quantizer_type="latent_quantize"`
   - `quantizer_type="fsq"`
 
-Current working interpretation:
+当前工作解读：
 
-- shared path: discrete motion code + action basis reconstruction
-- private path: residual correction branch
+- shared path：离散运动码 + action basis 重建
+- private path：残差修正分支
 
-### 4. Analysis / Tooling
+### 4. 分析/工具
 
-Implemented:
+已实现：
 
-- `scripts/lq/analyze_checkpoint.py` can now load newer checkpoints with
-  `pool_size`, `shared_dim`, quantizer config, and residual cap config.
-- basis bank heatmap and code-usage summary are generated automatically.
-- Pillow resampling compatibility warning has been removed.
-- round-1 refactor keeps analysis CLI unchanged while switching imports to the
-  split `data/` and `model/` packages
+- `scripts/lq/analyze_checkpoint.py` 现在可以加载带有 `pool_size`、`shared_dim`、量化器配置和残差上限配置的更新 checkpoint。
+- basis bank 热图和 code-usage 汇总自动生成。
+- Pillow 重采样兼容性警告已移除。
+- 第一轮重构保持分析 CLI 不变，同时将导入切换到拆分的 `data/` 和 `model/` 包
 
-## Experiment Timeline
+## 实验时间线
 
-All experiments below are under the same basic setting unless noted:
+除非另有说明，以下所有实验使用相同的基础设置：
 
-- mode: `x`
-- region: `mouth`
-- epochs: `15`
-- batch_size: `64`
-- group_size: `4`
+- 模式：`x`
+- 区域：`mouth`
+- epochs：`15`
+- batch_size：`64`
+- group_size：`4`
 
-### v1. Conservative baseline
+### v1. 保守基线
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v1`
 
-Result:
+结果：
 
 - `val_loss = 0.6309`
-- code usage already collapsed:
+- code usage 立即出现坍缩：
   - L1 `[0, 913]`
   - L2 `[0, 913, 0]`
   - L3 `[0, 0, 0, 0, 788, 125]`
 
-Conclusion:
+结论：
 
-- Baseline trains, but collapse appears immediately.
+- 基线能训练，但坍缩立即出现。
 
-### v2. Official LatentQuantize anti-collapse probe
+### v2. 官方 LatentQuantize 抗坍缩探测
 
-Change:
+变化：
 
-- switch to official `LatentQuantize`
-- use anti-collapse-oriented settings such as stronger weight decay and
-  `optimize_values=False`
+- 切换到官方的 `LatentQuantize`
+- 使用抗坍缩导向设置，如更强的权重衰减和 `optimize_values=False`
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v2_official_lq_anticollapse`
 
-Result:
+结果：
 
 - `val_loss = 0.6308`
-- code usage remains collapsed:
+- code usage 仍然坍缩：
   - L1 `[0, 913]`
   - L2 `[0, 913, 0]`
   - L3 `[0, 0, 0, 0, 803, 110]`
 
-Conclusion:
+结论：
 
-- Official LQ settings alone did not solve collapse.
+- 官方 LQ 设置单独未能解决坍缩。
 
-### v3. No discrete side + stronger LQ
+### v3. 无离散 side + 更强 LQ
 
-Change:
+变化：
 
-- remove discrete side supervision
-- increase LQ pressure
+- 移除离散 side 监督
+- 增加 LQ 压力
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v3_no_disc_side_stronger_lq`
 
-Result:
+结果：
 
 - `val_loss = 0.4414`
-- L3 usage still nearly single-code: `[0, 0, 0, 0, 903, 10]`
+- L3 usage 仍几乎单码：`[0, 0, 0, 0, 903, 10]`
 
-Conclusion:
+结论：
 
-- Better validation loss, but collapse still severe.
+- 更好的验证损失，但坍缩仍然严重。
 
-### v4. Low-residual probe
+### v4. 低残差探测
 
-Change:
+变化：
 
-- reduce private residual contribution weight
+- 降低 private 残差贡献权重
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v4_low_residual`
 
-Result:
+结果：
 
 - `val_loss = 0.4974`
 - L3 `[0, 0, 0, 0, 898, 15]`
 
-Conclusion:
+结论：
 
-- Lower residual weight did not fix collapse.
-- The model could still exploit residual amplitude.
+- 降低残差权重未能修复坍缩。
+- 模型仍能利用残差幅度。
 
-### v5. Low-residual capped probe
+### v5. 低残差有上限探测
 
-Change:
+变化：
 
-- cap private residual mean absolute magnitude with
-  `private_residual_max_l1=1.0`
+- 用 `private_residual_max_l1=1.0` 限制 private 残差均值绝对幅度
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v5_low_residual_capped`
 
-Result:
+结果：
 
 - `val_loss = 0.5112`
 - L3 `[0, 0, 0, 0, 896, 17]`
 
-Conclusion:
+结论：
 
-- Residual bypass was constrained, but collapse still remained.
+- 残差旁路被约束，但坍缩仍然存在。
 
-### v6. No-side probe
+### v6. 无侧别探测
 
-Change:
+变化：
 
-- disable side supervision entirely
+- 完全禁用 side 监督
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v6_no_side_probe`
 
-Result:
+结果：
 
 - `val_loss = 0.3462`
 - `val_recon = 0.3255`
 - `val_shared_recon = 0.3541`
 - `val_scaled_residual = 0.0392`
-- code usage:
+- code usage：
   - L1 `[0, 913]`
   - L2 `[0, 913, 0]`
   - L3 `[0, 0, 0, 0, 891, 22]`
 
-Conclusion:
+结论：
 
-- Side supervision is not the main reason for collapse.
-- This became the main structural comparison baseline.
+- side 监督不是坍缩的主要原因。
+- 这成为主要结构比较基线。
 
-### v7. Shared bottleneck probe
+### v7. 共享瓶颈探测
 
-Change:
+变化：
 
-- shrink `shared_dim` from `32` to `8`
+- 将 `shared_dim` 从 `32` 缩小到 `8`
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v7_shared_bottleneck`
 
-Result:
+结果：
 
 - `val_loss = 0.3446`
-- L3 fully collapsed to one code: `[0, 0, 0, 0, 0, 913]`
+- L3 完全坍缩到一个码：`[0, 0, 0, 0, 0, 913]`
 
-Conclusion:
+结论：
 
-- Narrowing the shared latent alone made collapse worse.
+- 单独收窄 shared 潜在使坍缩更严重。
 
-### v8. Pool-2 probe
+### v8. Pool-2 探测
 
-Change:
+变化：
 
-- replace `AdaptiveAvgPool2d((1, 1))` with `AdaptiveAvgPool2d((2, 2))`
+- 将 `AdaptiveAvgPool2d((1, 1))` 替换为 `AdaptiveAvgPool2d((2, 2))`
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v8_pool2_probe`
 
-Result:
+结果：
 
 - `val_loss = 0.3588`
-- L2 slightly spread: `[17, 896, 0]`
-- L3 still collapsed: `[0, 0, 0, 0, 913, 0]`
+- L2 略分散：`[17, 896, 0]`
+- L3 仍坍缩：`[0, 0, 0, 0, 913, 0]`
 
-Conclusion:
+结论：
 
-- Pooling scale affected early behavior, but did not fundamentally solve
-  collapse.
+- 池化尺度影响早期行为，但未能从根本上解决坍缩。
 
-### v9. Soft-basis probe
+### v9. 软 Basis 探测
 
-Change:
+变化：
 
-- replace hard per-level basis pick with soft mixing over each level, using the
-  discrete selected code as anchor bias
+- 用软混合替换硬逐 level basis 选择，使用离散选中码作为 anchor bias
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v9_soft_basis_probe`
 
-Result:
+结果：
 
 - `val_loss = 0.3458`
 - L3 `[0, 0, 0, 0, 904, 9]`
 
-Conclusion:
+结论：
 
-- Relaxing basis selection alone was not enough.
+- 仅放宽 basis 选择是不够的。
 
-### v10. Official FSQ replacement
+### v10. 官方 FSQ 替换
 
-Change:
+变化：
 
-- replace `LatentQuantize` with official `FSQ`
-- keep the rest of the v6-style structural constraints comparable
+- 用官方 `FSQ` 替换 `LatentQuantize`
+- 保持其余 v6 风格结构约束可比较
 
-Output:
+输出：
 
 - `outputs/lq_x_mouth_v10_fsq_probe`
 
-Result:
+结果：
 
 - `val_loss = 0.3238`
 - `val_recon = 0.3081`
 - `val_shared_recon = 0.3335`
 - `val_scaled_residual = 0.0329`
-- code usage:
+- code usage：
   - L1 `[361, 552]`
   - L2 `[335, 78, 500]`
   - L3 `[300, 33, 22, 36, 38, 484]`
 
-Conclusion:
+结论：
 
-- This is the first experiment that clearly improves code usage instead of only
-  changing reconstruction metrics.
-- FSQ not only runs stably, but materially reduces collapse under the current
-  architecture.
-- In the older `win10-step10` round, `v10` became the new baseline.
-- In the current `win20-step20` round, the rerun still shows broad code usage
-  and remains the active baseline, but its validation set is much smaller.
+- 这是第一个不仅改变重建指标，而且明确改善 code usage 的实验。
+- FSQ 不仅稳定运行，而且在当前架构下显著减少坍缩。
+- 在旧的 `win10-step10` 轮次中，`v10` 成为新基线。
+- 在当前 `win20-step20` 轮次中，重跑仍显示广泛的 code usage 并保持为活跃基线，但其验证集小得多。
 
-## Current Main Findings
+## 当前主要发现
 
-### What did not fix collapse
+### 未能修复坍缩的因素
 
-- side supervision changes
-- stronger official `LatentQuantize` settings
-- lowering private residual weight alone
-- residual cap alone
-- shrinking shared latent dimension
-- increasing pooling size alone
-- soft basis mixing alone
+- side 监督变化
+- 更强的官方 `LatentQuantize` 设置
+- 仅降低 private 残差权重
+- 仅残差上限
+- 缩小 shared 潜在维度
+- 仅增加池化大小
+- 仅软 basis 混合
 
-### What did work
+### 起作用的因素
 
-- switching the shared quantizer to official `FSQ`
+- 将 shared 量化器切换到官方 `FSQ`
 
-At the current stage, the evidence supports this reading:
+在当前阶段，证据支持此解读：
 
-- the earlier collapse was not just a loss-weight problem
-- it was also not explained by one single structural detail such as
-  `1x1` pooling or side supervision
-- the choice of quantizer is a major factor in whether the shared discrete path
-  can use its codebook meaningfully
+- 早期的坍缩不仅仅是 loss 权重问题
+- 它也不是由 `1x1` 池化或 side 监督等单一结构细节所能解释的
+- 量化器的选择是 shared 离散路径是否能有意义地使用其码本的主要因素
 
-## Current Risks And Open Questions
+## 当前风险和开放问题
 
-1. `v10` improved code usage a lot, but the shared path is still weaker than the
-   full reconstruction path.
+1. `v10` 大大改善了 code usage，但 shared path 仍弱于完整重建路径。
    - `val_shared_recon = 0.3335`
    - `val_recon = 0.3081`
 
-2. Improvement still coexists with a nontrivial private residual branch.
-   - The structure is healthier than before, but disentanglement is not yet
-     proven.
+2. 改善仍与非平凡 private 残差分支共存。
+   - 结构比之前更健康，但解耦尚未得到证明。
 
-3. FSQ currently has no explicit LQ penalty term in our metric layout.
-   - In the current implementation, `lq_loss_per_sample` is zero for the FSQ
-     path.
-   - This is acceptable for the current comparison, but should stay explicit in
-     later analysis.
+3. FSQ 当前在我们的指标布局中没有显式 LQ 惩罚项。
+   - 在当前实现中，`lq_loss_per_sample` 在 FSQ 路径上为零。
+   - 这对当前比较是可接受的，但应在后续分析中保持显式。
 
-4. Dataset semantics are still not fully finalized.
-   - especially `deleted_x` / `deleted_y`
+4. 数据集语义尚未完全确定。
+   - 尤其是 `deleted_x` / `deleted_y`
 
-## Recommended Next Step
+## 建议的下一步
 
-Use `v10 FSQ` on `win20-step20` as the active baseline, then continue
-structural analysis on top of it instead of going back to `LatentQuantize`.
+将 `v10 FSQ` 在 `win20-step20` 上作为活跃基线，然后在其上继续结构分析，而非回到 `LatentQuantize`。
 
-The next reasonable questions are:
+下一个合理的问题是：
 
-1. whether the shared path should be strengthened further relative to the
-   private residual path
-2. whether side / dataset auxiliary heads should be reintroduced on top of FSQ
-3. whether the same trend holds for `mode=y` and later `full` region settings
+1. shared path 是否应相对于 private 残差 path 进一步增强
+2. side / dataset 辅助头是否应在 FSQ 之上重新引入
+3. 相同趋势是否对 `mode=y` 和后续 `full` 区域设置成立

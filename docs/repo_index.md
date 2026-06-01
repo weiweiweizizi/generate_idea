@@ -35,6 +35,21 @@
 - `scripts/`
   - 代码主目录，包括早期 feasibility、`lq`、`disentangleNet`、`matrix_vis`、`val_codebook`。
 
+### 1.3 新版 `disentangleNet/`
+
+- [disentangleNet/README.md](/home/weizilin/generate_idea/disentangleNet/README.md)
+  - 新主包入口，说明模块边界、当前模型家族、常用 CLI 和 bridge 总览。
+- [disentangleNet/models/README.md](/home/weizilin/generate_idea/disentangleNet/models/README.md)
+  - 模型层结构说明，重点覆盖 `encoders / basis_pipeline / side_heads / reconstruction / families` 的边界和阅读顺序。
+- [disentangleNet/analysis/README.md](/home/weizilin/generate_idea/disentangleNet/analysis/README.md)
+  - 分析层总览，说明 checkpoint 识别、导出和契约分工。
+- [disentangleNet/analysis/loaders/README.md](/home/weizilin/generate_idea/disentangleNet/analysis/loaders/README.md)
+  - 分析加载器说明，重点是 checkpoint contract 识别。
+- [disentangleNet/analysis/contracts/README.md](/home/weizilin/generate_idea/disentangleNet/analysis/contracts/README.md)
+  - 版本化契约说明，覆盖 checkpoint、basis manifest、patient bundle。
+- [disentangleNet/bridge/README.md](/home/weizilin/generate_idea/disentangleNet/bridge/README.md)
+  - `disentangleNet` 与 `matrix_vis` 的桥接层说明。
+
 ---
 
 ## 2. `scripts/` 索引
@@ -92,12 +107,14 @@
 - `utils/`
   - 例如 action basis 初始化构建器等工具。
 
-### 2.3 `scripts/disentangleNet/`
+### 2.3 `disentangleNet/`
 
-- README: [scripts/disentangleNet/README.md](/home/weizilin/generate_idea/scripts/disentangleNet/README.md)
-  - 冻结后的 `v31` 训练闭包说明，强调训练主线、分析主线和 `matrix_vis` 桥接主线。
-- 相关设计文档: [scripts/disentangleNet/structure.md](/home/weizilin/generate_idea/scripts/disentangleNet/structure.md)
-  - 目录/结构层面的补充说明。
+- README: [disentangleNet/README.md](/home/weizilin/generate_idea/disentangleNet/README.md)
+  - 新主包入口，说明模块边界、模型家族、训练辅助层和 `matrix_vis` 桥接。
+- 相关契约文档: [docs/disentanglenet_matrix_vis_contract.md](/home/weizilin/generate_idea/docs/disentanglenet_matrix_vis_contract.md)
+  - `disentangleNet` 到 `matrix_vis` 的完整桥接说明。
+- 归档实现: [disentangleNet/legacy/disentangleNet/README.md](/home/weizilin/generate_idea/disentangleNet/legacy/disentangleNet/README.md)
+  - 旧 `v31` 主线和历史结构说明，保留作兼容与回溯。
 
 子目录：
 

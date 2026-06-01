@@ -1,92 +1,92 @@
-# LQ Dataset Refactor Checklist
+# LQ 数据集重构检查清单
 
-Last updated: 2026-04-18
+最后更新：2026-04-18
 
-## Context
+## 背景
 
-Current `scripts/lq/datasets.py` is a minimal dataset implementation for the LQ disentanglement prototype. It is already usable for smoke tests, but it does not yet fully encode the actual research data semantics used in `data/win20-step20/TT` and `data/win20-step20/IMR`.
+当前 `scripts/lq/datasets.py` 是 LQ 解耦原型的最小数据集实现。它已经可用于冒烟测试，但尚未完整编码 `data/win20-step20/TT` 和 `data/win20-step20/IMR` 中实际研究数据的语义。
 
-This checklist records the agreed refactor priorities before making larger changes to the training pipeline.
+本检查清单记录了在向训练流程做更大更改前商定的重构优先级。
 
-## Current Gaps
+## 当前缺口
 
-1. Region definitions are duplicated across files and should be unified.
-2. `mode=x|y` currently only switches the loaded file suffix, but does not yet enforce direction-specific sample validity logic.
-3. `deleted_x` / `deleted_y` in `metadata.csv` are not yet used when constructing valid diff samples.
-4. Dataset preprocessing and action-basis initialization do not yet share all structural assumptions in one place.
-5. Sample metadata is still minimal for downstream analysis.
-6. Sampling remains window-flat and is not yet patient-balanced or group-balanced.
+1. 区域定义在多个文件间重复，应统一。
+2. `mode=x|y` 当前仅切换加载的文件后缀，但尚未强制执行方向特定的样本有效性逻辑。
+3. `metadata.csv` 中的 `deleted_x` / `deleted_y` 在构造有效差分样本时尚未使用。
+4. 数据集预处理和 action-basis 初始化尚未在一处共享所有结构假设。
+5. 样本元数据对下游分析仍不足。
+6. 采样仍是窗口扁平的，尚未按患者平衡或 group 平衡。
 
-## Agreed Priorities
+## 商定的优先级
 
-### Phase 1: Do Soon
+### Phase 1：从速执行
 
-1. Unify region definitions
-   - Use one shared definition for `full` and `mouth`.
-   - `mouth` should follow the agreed crop range `188:307`.
-   - Reuse the same region definition in dataset loading, basis initialization, and future visualization scripts.
+1. 统一区域定义
+   - 对 `full` 和 `mouth` 使用一个共享定义。
+   - `mouth` 应遵循约定的裁剪范围 `188:307`。
+   - 在数据集加载、basis 初始化和未来可视化脚本中复用相同的区域定义。
 
-2. Clarify direction-specific dataset semantics
-   - `mode=x` and `mode=y` should eventually become true direction-specific sample builders, not just different filenames.
-   - This matters especially once `deleted_x` / `deleted_y` filtering is added.
+2. 明确方向特定的数据集语义
+   - `mode=x` 和 `mode=y` 最终应成为真正的方向特定样本构造器，而不仅是不同的文件名。
+   - 一旦添加 `deleted_x` / `deleted_y` 过滤，这尤其重要。
 
-3. Add `deleted_x` / `deleted_y` filtering
-   - Source folders: `data/win20-step20/TT` and `data/win20-step20/IMR`
-   - Their `metadata.csv` contains `deleted_x` and `deleted_y`.
-   - Intended rule for later implementation:
-     - `mode=x`: skip samples whose current diff window is marked `deleted_x`
-     - `mode=y`: skip samples whose current diff window is marked `deleted_y`
-   - This item is intentionally deferred for now, but it is the next important semantic fix.
+3. 添加 `deleted_x` / `deleted_y` 过滤
+   - 源文件夹：`data/win20-step20/TT` 和 `data/win20-step20/IMR`
+   - 它们的 `metadata.csv` 包含 `deleted_x` 和 `deleted_y`。
+   - 后续实现打算使用的规则：
+     - `mode=x`：跳过当前差分窗口被标记为 `deleted_x` 的样本
+     - `mode=y`：跳过当前差分窗口被标记为 `deleted_y` 的样本
+   - 此项目故意推迟，但它是下一个重要的语义修复。
 
-4. Align dataset structure priors with basis initialization
-   - Action basis initialization already applies:
-     - symmetry enforcement
-     - zero diagonal
-     - region crop
-   - Dataset preprocessing should later support optional alignment with these assumptions.
+4. 将数据集结构先验与 basis 初始化对齐
+   - Action basis 初始化已应用：
+     - 对称性强制
+     - 零对角
+     - 区域裁剪
+   - 数据集预处理后续应支持与这些假设的可选对齐。
 
-5. Improve per-sample metadata
-   - Keep or add stable fields such as:
+5. 改进每样本元数据
+   - 保留或添加稳定字段，如：
      - `subject`
      - `dataset_name`
      - `window_idx`
      - `mode`
      - `sample_id`
-   - This is needed for later analysis of code activation and reconstruction behavior.
+   - 这对后续分析 code 激活和重建行为是必需的。
 
-6. Clarify label layering
-   - Primary supervision: `side_label`
-   - Auxiliary supervision: `severity_label`, `dataset_label`
-   - Raw metadata: `label_5class`, `score`
+6. 明确标签层次
+   - 主要监督：`side_label`
+   - 辅助监督：`severity_label`、`dataset_label`
+   - 原始元数据：`label_5class`、`score`
 
-### Phase 2: Do Later
+### Phase 2：稍后执行
 
-1. Patient-balanced sampling
-   - Avoid patients with many windows dominating optimization.
+1. 按患者平衡采样
+   - 避免窗口多的患者主导优化。
 
-2. Dataset-balanced or side-balanced sampling
-   - Useful if IMR/TT or side distributions bias training.
+2. 数据集平衡或 side 平衡采样
+   - 若 IMR/TT 或 side 分布使训练偏差，这很有用。
 
-3. Optional raw-pair outputs
-   - Return `current_matrix`, `prev_matrix`, and `delta_matrix` when needed for analysis.
+3. 可选 raw-pair 输出
+   - 在需要时返回 `current_matrix`、`prev_matrix` 和 `delta_matrix`。
 
-4. Future multi-branch extensibility
-   - Keep room for later `xy` or dual-branch input modes.
+4. 未来多分支可扩展性
+   - 为后续 `xy` 或双分支输入模式留出空间。
 
-5. Richer group metadata
-   - Explicit grouped fields for source / side / severity if later losses or analysis require them.
+5. 更丰富的 group 元数据
+   - 若后续 loss 或分析需要，为源 / side / severity 的显式分组字段留出空间。
 
-6. Caching / acceleration
-   - Consider only after dataset semantics are stable.
+6. 缓存/加速
+   - 仅在数据集语义稳定后再考虑。
 
-## Recommended Execution Order
+## 推荐执行顺序
 
-1. Extract shared region constants / utilities.
-2. Improve dataset metadata interface.
-3. Add direction-aware `deleted_x` / `deleted_y` filtering.
-4. Revisit matrix-structure alignment and sampling strategy.
+1. 提取共享区域常量/工具函数。
+2. 改进数据集元数据接口。
+3. 添加方向感知的 `deleted_x` / `deleted_y` 过滤。
+4. 重新审视矩阵结构对齐和采样策略。
 
-## Notes
+## 备注
 
-- For now, `deleted_x` / `deleted_y` handling is intentionally postponed.
-- The immediate focus remains keeping the current pipeline runnable while gradually aligning it with the actual research semantics.
+- 目前 `deleted_x` / `deleted_y` 处理故意推迟。
+- 近期焦点仍是保持当前流程可运行，同时逐步将其与实际研究语义对齐。
