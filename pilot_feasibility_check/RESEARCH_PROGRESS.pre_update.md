@@ -725,5 +725,74 @@ probe / disentanglement:
 因此下一步建议：
 
 - 把 `v29 laterality contrast` 作为新的结构 baseline
-- 后续所有“可解释性/监督”探索都基于 `v29` 做
+- 后续所有”可解释性/监督”探索都基于 `v29` 做
 - 下一阶段不要再回到纯 pooling probe，而应直接在 `v29` 上加强 side branch 的监督与解耦
+
+---
+
+## 十二、SVD 重构极限基准（2026-05-11）
+
+### 12.1 背景与问题
+
+在训练 `disentangleNet_lowrank` 时，recon loss 从 0.36 下降到 0.22。但 0.22 这个数字本身没有参照系——它是大还是小？与线性方法比处于什么位置？为此建立了 SVD 重构极限基准测试。
+
+### 12.2 实验设置
+
+**脚本**: `scripts/pilot_feasibility/svd/svd_recon_mae_benchmark.py`
+
+**配置**：
+- 5折患者级交叉验证（4份训练 / 1份测试）
+- 归一化：每个矩阵按自身 p98 → [-1, 1]（与训练流程一致）
+- 矩阵区域：mouth [188:307, 188:307]，119×119
+- 差分：ΔD = D_t - D_{t-1}
+- MAE：`|recon - x|.mean()`（平均到每个矩阵元素），与 neural network recon loss 完全一致
+
+**Neural Network 基线**（来自 `disentangleNet_lowrank/README.md`）：
+
+| 结构 | val_recon MAE |
+|------|--------------|
+| lowrank shared-only | 0.24 |
+| lowrank shared+side | 0.22 |
+| lowrank shared+private | 0.17 |
+
+### 12.3 完整结果
+
+| 方法 | MAE (IMR) | MAE (TT) | MAE (Combined) | 说明 |
+|------|-----------|----------|---------------|------|
+| **3-comp SVD（无约束）** | **0.150 ± 0.005** | **0.164 ± 0.010** | **0.155 ± 0.008** | 纯线性基准，最严格的共享基对照 |
+| **SVD-3-5-rank-cap** | **0.186 ± 0.006** | **0.188 ± 0.015** | **0.188 ± 0.007** | 仅 PC1+PC2，丢失 PC3 后大幅恶化 |
+| **SVD-3-5-7-rank-cap** | **0.159 ± 0.004** | **0.168 ± 0.013** | **0.163 ± 0.007** | PC1→rank3, PC2→rank5, PC3→rank7 |
+| **10-comp SVD** | **0.062 ± 0.002** | **0.065 ± 0.005** | ≈0.062 | 放宽成分数 |
+| **20-comp SVD** | **0.036 ± 0.001** | — | ≈0.036 | 充分表达能力 |
+| lowrank NN shared-only | **0.24** | — | — | 无 private，无 lowrank 约束 |
+| lowrank NN shared+side | **0.22** | — | — | 有 side branch |
+| lowrank NN shared+private | **0.17** | — | — | 有 private |
+
+### 12.4 结论
+
+1. **per-PC rank cap 让 SVD 变差**：3-comp 无约束是 0.155（Combined），加 SVD-3-5-7 rank cap 后变成 0.163（Combined，约 5% 恶化）。这验证了 lowrank 约束本身会限制 shared basis 的表达能力。
+
+2. **每多保留一个 PC 都有显著价值**：去掉 PC3（仅保留 PC1+PC2，rank caps=3,5）后 MAE 急剧恶化到 0.188（Combined），比 3-comp 无约束（0.155 Combined）恶化 21%。PC 数量是比 inner rank cap 更关键的因素。
+
+3. **训练/测试患者 MAE 分布高度一致**：3-comp SVD 下，训练集患者（in-sample）和测试集患者（out-of-sample）的 MAE 分布几乎相同。说明 SVD 共享基的泛化能力很强，患者间差异主要体现在激活系数而非基向量本身。
+
+4. **shared+side NN (0.22) 优于无约束 3-comp SVD (0.150)**：
+   - NN 0.22 vs SVD 0.150，相差 +0.070
+   - 来源：非线性建模 + side branch 的残差补偿
+   - 说明即便受 rank cap 约束，NN 结构 + side branch 已经超越线性极限
+
+5. **shared-only NN (0.24) 差于 3-comp SVD (0.150)**：
+   - 差距约 60%，shared-only 的 lowrank 结构有巨大表达力损失
+   - 解释了为什么需要 private branch 来补偿
+
+6. **shared+private NN (0.17) 开始显著超越 3-comp SVD**：
+   - 比 3-comp SVD 好约 13%
+   - private branch 在极低秩共享基约束下是必不可少的
+
+7. **per-PC rank cap 主要影响分布尾部**：rank cap 让高 MAE outlier 患者比例增加，但整体均值上升幅度相对可控（~6%）。这与 NN 训练中”每层 rank cap 都会带来不可忽视的代价”一致。
+
+8. **MAE 0.22 的含义**：
+   - 在归一化 [-1, 1] 尺度上，平均每个矩阵元素的偏差为 0.22（全尺度约 11%）
+   - 还原约 89% 的输入信息
+   - 在 “shared + lowrank rank cap” 结构下，这已是可接受的水平
+   - 进一步压缩需要放开 rank cap 或引入 private

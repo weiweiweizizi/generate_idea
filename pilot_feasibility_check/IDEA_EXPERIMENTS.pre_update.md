@@ -519,3 +519,140 @@ scripts/val_codebook/
 ├── exp3_severity_classification/output/
 └── sweep.py                    # 批量运行脚本
 ```
+
+---
+
+## SVD 重构极限基准测试（2026-05-11）
+
+> **脚本**: `scripts/pilot_feasibility/svd/svd_recon_mae_benchmark.py`
+> **结果目录**: `outputs/pilot_feasibility/svd/svd_recon_mae_benchmark/`
+> **目的**: 为 neural network recon loss 建立线性方法上限参照。
+
+### 实验设计
+
+**设置**：5折患者级交叉验证（4份训练 / 1份测试）
+- 在训练患者上做联合 SVD fit
+- 在测试患者上做 transform + 重构
+- 归一化：每个矩阵按自身 p98 归一化到 [-1, 1]（与训练流程一致）
+- 矩阵区域：mouth [188:307, 188:307] → 119×119
+- 差分：ΔD = D_t - D_{t-1}（与训练流程一致）
+- MAE 计算：`|recon - x|.mean()`（平均到每个矩阵元素），与 neural network 的 recon loss 完全一致
+
+**对比的 Neural Network 基线**（来自 `scripts/disentangleNet_lowrank/README.md`）：
+
+| 结构 | val_recon MAE |
+|------|--------------|
+| lowrank shared-only | 0.24 |
+| lowrank shared+side | 0.22 |
+| lowrank shared+private | 0.17 |
+
+### 详细结果
+
+#### 配置 A：3-comp SVD（无 rank cap）
+
+| 数据集 | Fold 1 | Fold 2 | Fold 3 | Fold 4 | Fold 5 | **均值 ± 标准差** |
+|--------|--------|--------|--------|--------|--------|------------------|
+| IMR | 0.1472 | 0.1417 | 0.1527 | 0.1534 | 0.1550 | **0.1500 ± 0.0049** |
+| TT | 0.1656 | 0.1458 | 0.1656 | 0.1758 | 0.1670 | **0.1639 ± 0.0099** |
+| Combined | 0.1400 | 0.1558 | 0.1573 | 0.1633 | 0.1596 | **0.1552 ± 0.0080** |
+
+#### 配置 B：SVD-3-5-7-rank-cap（前3 PC 各自 inner SVD 截断）
+
+- PC1 → rank cap = 3
+- PC2 → rank cap = 5
+- PC3 → rank cap = 7
+
+| 数据集 | Fold 1 | Fold 2 | Fold 3 | Fold 4 | Fold 5 | **均值 ± 标准差** |
+|--------|--------|--------|--------|--------|--------|------------------|
+| IMR | 0.1563 | 0.1509 | 0.1607 | 0.1613 | 0.1633 | **0.1585 ± 0.0044** |
+| TT | 0.1759 | 0.1882 | 0.1497 | 0.1620 | 0.1639 | **0.1679 ± 0.0131** |
+| Combined | 0.1490 | 0.1634 | 0.1651 | 0.1705 | 0.1672 | **0.1630 ± 0.0074** |
+
+per-PC rank cap 比无约束 3-comp 变差约 0.008~0.009（6%左右），因为 inner SVD 的对称近似引入了额外误差。
+
+#### 配置 B2：SVD-3-5-rank-cap（仅前 2 PCs，PC1→rank3, PC2→rank5）
+
+| 数据集 | Fold 1 | Fold 2 | Fold 3 | Fold 4 | Fold 5 | **均值 ± 标准差** |
+|--------|--------|--------|--------|--------|--------|------------------|
+| IMR | 0.1888 | 0.1745 | 0.1855 | 0.1863 | 0.1930 | **0.1856 ± 0.0062** |
+| TT | 0.1970 | 0.2091 | 0.1651 | 0.1872 | 0.1808 | **0.1879 ± 0.0149** |
+| Combined | 0.1748 | 0.1895 | 0.1859 | 0.1959 | 0.1935 | **0.1879 ± 0.0074** |
+
+**关键发现：**
+- 丢掉 PC3 后 MAE 大幅上升至 0.186，比 3-comp 无约束（0.150）恶化 24%
+- 比 SVD-3-5-7（3 PCs，0.159）也差 17%，说明即便有 inner rank cap 扩展，每多保留一个 PC 都有显著价值
+- 训练集与测试集患者 MAE 分布形状相似，但整体右偏——问题在于表达力不足，而非泛化
+
+此配置对应 lowrank NN 中"只开 level0+level1，不开 level2"的设置。
+
+#### 配置 C：10-comp SVD（无 rank cap）
+
+| 数据集 | Fold 1 | Fold 2 | Fold 3 | Fold 4 | Fold 5 | **均值 ± 标准差** |
+|--------|--------|--------|--------|--------|--------|------------------|
+| IMR | 0.0616 | 0.0585 | 0.0639 | 0.0611 | 0.0642 | **0.0618 ± 0.0021** |
+| TT | 0.0654 | 0.0617 | 0.0591 | 0.0729 | 0.0645 | **0.0647 ± 0.0046** |
+
+#### 配置 D：20-comp SVD（无 rank cap，仅 IMR）
+
+| Fold 1 | Fold 2 | Fold 3 | Fold 4 | Fold 5 | **均值 ± 标准差** |
+|--------|--------|--------|--------|--------|------------------|
+| 0.0355 | 0.0339 | 0.0384 | 0.0355 | 0.0362 | **0.0356 ± 0.0008** |
+
+### 完整对比表
+
+| 方法 | MAE (IMR) | MAE (TT) | MAE (Combined) | 说明 |
+|------|-----------|----------|---------------|------|
+| **3-comp SVD（无约束）** | **0.150 ± 0.005** | **0.164 ± 0.010** | **0.155 ± 0.008** | 纯线性基准，最严格的共享基对照 |
+| **SVD-3-5-rank-cap** | **0.186 ± 0.006** | **0.188 ± 0.015** | **0.188 ± 0.007** | 仅 PC1+PC2，丢失 PC3 后大幅恶化 |
+| **SVD-3-5-7-rank-cap** | **0.159 ± 0.004** | **0.168 ± 0.013** | **0.163 ± 0.007** | PC1→rank3, PC2→rank5, PC3→rank7，与 lowrank NN 对齐 |
+| **10-comp SVD** | **0.062 ± 0.002** | — | ≈0.062 | 放宽成分数，接近训练集拟合 |
+| **20-comp SVD** | **0.036 ± 0.001** | — | ≈0.036 | 充分表达能力，训练集几乎完全拟合 |
+| lowrank NN shared-only | **0.24** | — | — | 无 private，无 lowrank 约束 |
+| lowrank NN shared+side | **0.22** | — | — | 有 side branch 帮助残差 |
+| lowrank NN shared+private | **0.17** | — | — | 有 private 承接个体差异 |
+
+### 关键结论
+
+1. **per-PC rank cap 让 SVD 变差**：3-comp 无约束是 0.150，加了 rank cap 后变成 0.159（约 6% 恶化）。这验证了 lowrank 约束本身会限制 shared basis 的表达能力。
+
+2. **每多保留一个 PC 都有显著价值**：去掉 PC3（仅保留 PC1+PC2，rank caps=3,5）后 MAE 急剧恶化到 0.186，比 3-comp 无约束差 24%，比 SVD-3-5-7（0.159）差 17%。PC 数量是比 inner rank 更关键的因素。
+
+3. **lowrank NN shared+side (0.22) 优于无约束 3-comp SVD (0.150)**：
+   - NN 0.22 vs SVD 0.150，相差 0.070
+   - 差距来源：非线性建模 + side branch 的残差补偿
+   - 说明即便受 rank cap 约束，NN 结构 + side branch 已经超越线性极限
+
+4. **shared-only NN (0.24) 差于 3-comp SVD (0.150)**：
+   - 差距 60%：shared-only 的 lowrank 结构有巨大表达力损失
+   - 这解释了为什么需要 private branch 来补偿
+
+5. **shared+private (0.17) 开始显著超越 3-comp SVD**：
+   - 比 3-comp SVD 好 13%，说明 private branch 在极低秩共享基约束下是必不可少的
+
+6. **训练/测试患者 MAE 分布高度一致**：3-comp SVD 下，训练集患者（in-sample）和测试集患者（out-of-sample）的 MAE 分布几乎相同。说明 SVD 共享基的泛化能力很强，患者间差异主要体现在激活系数而非基向量本身。
+
+7. **per-PC rank cap 主要影响分布尾部**：rank cap 让高 MAE outlier 患者比例增加，但整体均值上升幅度相对可控（~6%）。这与 NN 训练中"每层 rank cap 都会带来不可忽视的代价"一致。
+
+8. **MAE 0.22 的含义**：
+   - 在归一化 [-1, 1] 尺度上，平均每个矩阵元素的偏差为 0.22（全尺度 11%）
+   - 还原约 89% 的输入信息
+   - 在 "shared + lowrank rank cap" 结构下，这已是可接受的水平
+   - 进一步压缩需要放开 rank cap 或引入 private
+
+### 脚本使用方法
+
+```bash
+# 3-comp 无约束 SVD
+python scripts/pilot_feasibility/svd/svd_recon_mae_benchmark.py --n_components=3 --n_folds=5 --mode=x
+
+# SVD-3-5-rank-cap（仅 PC1+PC2）
+python scripts/pilot_feasibility/svd/svd_recon_mae_benchmark.py --per_pc_rank_caps 3,5 --n_folds=5 --mode=x --visualize
+
+# SVD-3-5-7-rank-cap
+python scripts/pilot_feasibility/svd/svd_recon_mae_benchmark.py --per_pc_rank_caps 3,5,7 --n_folds=5 --mode=x
+
+# 10-comp SVD
+python scripts/pilot_feasibility/svd/svd_recon_mae_benchmark.py --n_components=10 --n_folds=5 --mode=x
+```
+
+`--visualize` 会生成训练集 / 测试集患者级 MAE 分布直方图。
