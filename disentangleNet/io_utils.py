@@ -12,12 +12,31 @@ import json
 import pathlib
 from typing import Any
 
+import numpy as np
+
+try:
+    import torch
+except ImportError:  # pragma: no cover
+    torch = None
+
+
+def _jsonify(value: Any) -> Any:
+    if torch is not None and isinstance(value, torch.Tensor):
+        return value.detach().cpu().tolist()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, dict):
+        return {str(key): _jsonify(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonify(item) for item in value]
+    return value
+
 
 def save_json(path: str | pathlib.Path, payload: Any) -> None:
     """Write payload as JSON, creating parent directories if needed."""
     p = pathlib.Path(str(path))
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    p.write_text(json.dumps(_jsonify(payload), indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 __all__ = ["save_json"]

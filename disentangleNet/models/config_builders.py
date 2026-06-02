@@ -143,6 +143,7 @@ def build_modular_model_config(
             "shared_basis_anchor_bias": float(config["shared_basis_anchor_bias"]),
             "shared_basis_topk": config.get("shared_basis_topk"),
             "shared_selection_mode": str(config.get("shared_selection_mode", "mlp_coeff")),
+            "basis_abs_max": config.get("basis_abs_max"),
             "lq_commitment_loss_weight": float(config["lq_commitment_loss_weight"]),
             "lq_quantization_loss_weight": float(config["lq_quantization_loss_weight"]),
             "lq_optimize_values": bool(config["lq_optimize_values"]),

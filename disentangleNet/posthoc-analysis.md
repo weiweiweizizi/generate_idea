@@ -75,7 +75,7 @@ python -m disentangleNet.cli.export_patient export \
 ```bash
 python scripts/matrix_vis/scripts/run_disentanglenet_phase_comparison.py run_all \
   --run_root outputs/disentangleNet_frame/reflex_pair_side_imr_tt \
-  --patient_id TT_851519 \
+  --patient_id TTMORECF_851519 \
   --include_initial_reference_window False \
   --lambda_laplacian 1.0 \
   --lambda_area_sign 1.0 \
@@ -87,7 +87,7 @@ python scripts/matrix_vis/scripts/run_disentanglenet_phase_comparison.py run_all
 ```bash
 python scripts/matrix_vis/scripts/run_disentanglenet_phase_comparison.py run_all \
   --run_root outputs/disentangleNet_frame/reflex_pair_side_2Phase_TTMORECF_static_side_{x|y} \
-  --patient_id TTMOREC-851519 \
+  --patient_id TTMORECF-851519 \
   --lambda_laplacian 1.0 \
   --lambda_area_sign 1.0 \
   --area_barrier_margin 0.05

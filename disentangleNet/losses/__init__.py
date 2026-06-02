@@ -18,7 +18,14 @@ Important correction from parsed pyc metadata:
 """
 
 from .laplacian import attach_region_laplacian, matrix_laplacian_loss
-from .runtime import step_model
+from .runtime import (
+    build_no_side_eval_metrics,
+    forward_reflex_batch,
+    masked_mean,
+    masked_mean_per_sequence,
+    side_private_orthogonality_loss,
+    step_model,
+)
 from .weights import (
     build_lowrank_loss_weights,
     build_reflex_loss_weights,
@@ -27,9 +34,14 @@ from .weights import (
 
 __all__ = [
     "attach_region_laplacian",
+    "build_no_side_eval_metrics",
     "build_lowrank_loss_weights",
     "build_reflex_loss_weights",
     "build_v31_loss_weights",
+    "forward_reflex_batch",
+    "masked_mean",
+    "masked_mean_per_sequence",
     "matrix_laplacian_loss",
+    "side_private_orthogonality_loss",
     "step_model",
 ]

@@ -26,28 +26,36 @@ def build_modular_model(config: ModelConfig, *, num_dataset_classes: int) -> obj
 
     side_kwargs = build_side_branch_config_overrides(config)
     basis_provider = build_basis_provider(config)
-    basis_levels = config.reflex.basis_levels if config.reflex.enabled else config.basis.levels
-
-    model_extra = {
-        key: value
-        for key, value in config.extra.items()
-        if key
-        not in {
-            "reflex_self_count",
-            "reflex_pair_count",
-            "reflex_basis_levels",
-            "shared_self_reflex_all",
-        }
-    }
-    if config.basis.mode_type != BasisModeType.LOWRANK:
-        model_extra.pop("action_side_detach", None)
+    if config.reflex.enabled:
+        basis_levels = tuple(
+            int(v)
+            for v in config.extra.get("reflex_basis_levels", config.basis.levels)
+        )
+    else:
+        basis_levels = config.basis.levels
+    num_side_classes = int(config.extra.get("num_side_classes", 3))
+    num_severity_classes = int(config.extra.get("num_severity_classes", 3))
+    private_residual_weight = float(config.extra.get("private_residual_weight", 0.0))
+    private_residual_max_l1 = config.extra.get("private_residual_max_l1")
+    early_branch_factorization = bool(config.extra.get("early_branch_factorization", True))
+    shared_basis_soft_mixing = bool(config.extra.get("shared_basis_soft_mixing", False))
+    shared_selection_mode = config.extra.get("shared_selection_mode", "mlp_coeff")
+    shared_basis_anchor_bias = float(config.extra.get("shared_basis_anchor_bias", 0.0))
+    shared_basis_topk = config.extra.get("shared_basis_topk")
+    quantizer_type = str(config.extra.get("quantizer_type", "residual_fsq"))
+    fsq_preserve_symmetry = bool(config.extra.get("fsq_preserve_symmetry", True))
+    lq_commitment_loss_weight = float(config.extra.get("lq_commitment_loss_weight", 0.0))
+    lq_quantization_loss_weight = float(config.extra.get("lq_quantization_loss_weight", 0.0))
+    lq_optimize_values = bool(config.extra.get("lq_optimize_values", False))
+    action_side_detach = bool(config.extra.get("action_side_detach", False))
 
     common_kwargs: dict[str, Any] = {
         "levels": basis_levels,
         "basis_size": config.basis.basis_size,
+        "basis_provider": basis_provider,
         "hidden_dim": config.hidden_dim,
         "pool_size": config.pool_size,
-        "early_branch_factorization": config.early_branch_factorization,
+        "early_branch_factorization": early_branch_factorization,
         "shared_dim": config.shared_dim,
         "private_dim": config.private_dim,
         "private_decoder_hidden_dim": config.private_decoder_hidden_dim,
@@ -60,25 +68,25 @@ def build_modular_model(config: ModelConfig, *, num_dataset_classes: int) -> obj
         "shared_trunk_attention_ffn_dim": int(config.shared_trunk_attention_ffn_dim),
         "private_adapter_enabled": config.private_adapter_enabled,
         "private_branch_enabled": config.private_branch_enabled,
-        "num_side_classes": int(config.num_side_classes),
-        "num_severity_classes": int(config.num_severity_classes),
-        "private_residual_max_l1": config.private_residual_max_l1,
-        "shared_basis_soft_mixing": bool(config.shared_basis_soft_mixing),
+        "num_side_classes": num_side_classes,
+        "num_severity_classes": num_severity_classes,
+        "private_residual_weight": private_residual_weight,
+        "private_residual_max_l1": private_residual_max_l1,
+        "shared_basis_soft_mixing": shared_basis_soft_mixing,
         "shared_selection_mode": (
-            config.shared_selection_mode.value
-            if hasattr(config.shared_selection_mode, "value")
-            else str(config.shared_selection_mode)
+            shared_selection_mode.value
+            if hasattr(shared_selection_mode, "value")
+            else str(shared_selection_mode)
         ),
-        "shared_basis_anchor_bias": float(config.shared_basis_anchor_bias),
-        "shared_basis_topk": config.shared_basis_topk,
-        "quantizer_type": str(config.quantizer_type),
-        "fsq_preserve_symmetry": bool(config.fsq_preserve_symmetry),
-        "lq_commitment_loss_weight": float(config.lq_commitment_loss_weight),
-        "lq_quantization_loss_weight": float(config.lq_quantization_loss_weight),
-        "lq_optimize_values": bool(config.lq_optimize_values),
+        "shared_basis_anchor_bias": shared_basis_anchor_bias,
+        "shared_basis_topk": shared_basis_topk,
+        "quantizer_type": quantizer_type,
+        "fsq_preserve_symmetry": fsq_preserve_symmetry,
+        "lq_commitment_loss_weight": lq_commitment_loss_weight,
+        "lq_quantization_loss_weight": lq_quantization_loss_weight,
+        "lq_optimize_values": lq_optimize_values,
         "num_dataset_classes": num_dataset_classes,
         **side_kwargs,
-        **model_extra,
     }
 
     if config.family == ModelFamily.LEGACY_V31:
@@ -124,34 +132,30 @@ def build_modular_model(config: ModelConfig, *, num_dataset_classes: int) -> obj
             quantizer_type=str(config.quantizer_type),
             fsq_preserve_symmetry=bool(config.fsq_preserve_symmetry),
             basis_orthogonalization=config.basis.orthogonalization,
-            basis_abs_max=config.basis.basis_abs_max,
+            basis_abs_max=config.extra.get("basis_abs_max"),
             discrete_side_loss_enabled=bool(config.extra.get("discrete_side_loss_enabled", False)),
         )
 
-    if config.basis.mode_type == BasisModeType.LOWRANK:
-        if config.reflex.enabled:
-            return LowRankReflexDistNet(
-                **common_kwargs,
-                lowrank_level_ranks=config.basis.lowrank_level_ranks or (3, 5),
-                action_basis_init_path=config.basis.init_path,
-                basis_provider=basis_provider,
-                basis_abs_max=config.basis.basis_abs_max,
-            )
-        return LowRankDistNet(
+    if config.basis.mode_type in {BasisModeType.LOWRANK, BasisModeType.LOWRANK_BASIS}:
+        lowrank_common_kwargs = {
             **common_kwargs,
-            lowrank_level_ranks=config.basis.lowrank_level_ranks or (3, 5),
-            action_basis_init_path=config.basis.init_path,
-            basis_provider=basis_provider,
-            basis_abs_max=config.basis.basis_abs_max,
-        )
+            "action_basis_init_path": config.basis.init_path,
+            "basis_orthogonalization": config.basis.orthogonalization,
+            "lowrank_level_ranks": tuple(int(v) for v in config.basis.lowrank_level_ranks),
+            "reflex_basis_enabled": config.reflex.enabled,
+            "mirror_perm": config.extra.get("mirror_perm"),
+            "action_side_detach": action_side_detach,
+        }
+        if config.reflex.enabled:
+            return LowRankReflexDistNet(**lowrank_common_kwargs)
+        return LowRankDistNet(**lowrank_common_kwargs)
 
     return V6DistNet(
         **common_kwargs,
         action_basis_init_path=config.basis.init_path,
         basis_orthogonalization=config.basis.orthogonalization,
         reflex_basis_enabled=config.reflex.enabled,
-        basis_provider=basis_provider,
-        basis_abs_max=config.basis.basis_abs_max,
+        mirror_perm=config.extra.get("mirror_perm"),
     )
 
 

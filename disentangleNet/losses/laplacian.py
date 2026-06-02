@@ -125,11 +125,32 @@ def build_subset_topology(
 
 
 def resolve_region_point_ids(*, ordered_indices_path, region):
-    """Resolve the point ids for a selected facial region."""
+    """
+    Resolve the point ids for a selected facial region.
+
+    TODO(recovery): restore the original point-id remapping logic. This likely
+    needs to stay aligned with the subset-geometry path used in:
+    - scripts/matrix_vis/qp/geometry.py
+    - scripts/matrix_vis/qp/builder.py
+    For the current PhaseAB short-run recovery, laplacian regularization is
+    intentionally disabled, so callers must tolerate a `None` result.
+    """
+
+    _ = ordered_indices_path, region
+    return None
 
 
 def build_subset_edges(*, point_ids, topology_source):
-    """Build local subset edges from the full face-mesh topology."""
+    """
+    Build local subset edges from the full face-mesh topology.
+
+    TODO(recovery): mirror the subset-edge extraction used by
+    `scripts/matrix_vis/qp/geometry.py`. The current training recovery does not
+    consume laplacian penalties, so this remains intentionally unimplemented.
+    """
+
+    _ = point_ids, topology_source
+    return np.zeros((0, 2), dtype=np.int64)
 
 
 def build_graph_laplacian_from_edges(*, num_points, edges_local):
@@ -165,15 +186,44 @@ def build_graph_laplacian_from_edges(*, num_points, edges_local):
 
 
 def build_region_laplacian(*, ordered_indices_path, region, topology_source):
-    """Build a graph Laplacian for the selected facial region."""
+    """
+    Build a graph Laplacian for the selected facial region.
+
+    TODO(recovery): re-enable this by porting the region-topology plumbing from
+    `scripts/matrix_vis/qp/geometry.py` and the laplacian assembly strategy from
+    `scripts/matrix_vis/qp/builder.py`.
+    """
+
+    _ = ordered_indices_path, region, topology_source
+    return None
 
 
 def attach_region_laplacian(model, *, ordered_indices_path, region, topology_source):
-    """Attach region-specific Laplacian data to a model or runtime object."""
+    """
+    Attach region-specific Laplacian data to a model or runtime object.
+
+    TODO(recovery): replace this no-op with the recovered region Laplacian
+    attachment once `build_region_laplacian()` is restored. Reference:
+    - scripts/matrix_vis/qp/geometry.py
+    - scripts/matrix_vis/qp/builder.py
+    """
+
+    _ = ordered_indices_path, region, topology_source
+    setattr(model, "region_laplacian", None)
+    return None
 
 
 def matrix_laplacian_loss(mats, laplacian):
-    """Compute Laplacian regularization loss over motion matrices."""
+    """
+    Compute Laplacian regularization loss over motion matrices.
+
+    TODO(recovery): this is intentionally disabled for the current PhaseAB
+    short-run training recovery. Reintroduce the historical smoothness penalty
+    using the topology and graph construction path from `scripts/matrix_vis`.
+    """
+
+    _ = mats, laplacian
+    return None
 
 
 __all__ = [

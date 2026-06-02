@@ -14,23 +14,30 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from .basis import (
-    ReflexBasisBank,
+from ..basis import (
+    collect_runtime_diagnostics,
     enforce_matrix_constraints,
     load_action_basis_init,
-    split_basis,
 )
-from .encoder import build_branch_adapter, build_branch_pool, build_motion_encoder
-from .heads import (
+from ..encoder import build_branch_adapter, build_branch_pool, build_motion_encoder
+from ..heads import (
     build_private_decoder,
     build_private_head,
     build_shared_basis_heads,
     build_shared_coeff_heads,
     build_shared_coeff_net,
 )
-from .quantizers import build_shared_quantizer, quantize_shared_latent
+from ..quantizers import build_shared_quantizer, quantize_shared_latent
+from ..reconstruction import build_phaseab_outputs, build_shared_reconstruction
+from ..sequence_utils import (
+    flatten_sequence_input,
+    flatten_sequence_labels,
+    mean_pool_sequence_tensor,
+    reshape_sequence_tensor,
+)
+from ..side_heads import build_action_side_outputs, build_side_residual_outputs
+from ..side_heads.features import fold_mouth_chunk_features
 
 
 class GradientReverse(torch.autograd.Function):
@@ -115,6 +122,12 @@ class V6DistNet(nn.Module):
         free_z_dim=None,
         private_adapter_enabled=False,
         private_branch_enabled: bool = True,
+        shared_trunk_attention_enabled: bool = False,
+        shared_trunk_attention_layers: int = 2,
+        shared_trunk_attention_heads: int = 4,
+        shared_trunk_attention_ffn_dim: int = 64,
+        shared_selection_mode: str = "mlp_coeff",
+        use_dataset_aux: bool = False,
         action_side_input: str = "free_path_coeff",  # "free_path_coeff" or "free_path_usage"
         side_residual_enabled: bool = False,
         side_feature_mode: str = "none",
@@ -125,6 +138,7 @@ class V6DistNet(nn.Module):
         private_side_grl_lambda: float = 1.0,
         reflex_basis_enabled: bool = False,
         mirror_perm: torch.Tensor | None = None,
+        basis_provider=None,
     ):
         super().__init__()
 
@@ -157,6 +171,8 @@ class V6DistNet(nn.Module):
         self.free_pool_size = int(free_pool_size)
         self.private_pool_size = int(private_pool_size)
         self.private_branch_enabled = bool(private_branch_enabled)
+        if action_side_input == "side_pair_choice_coeff":
+            action_side_input = "shared_side_coeff"
         self.action_side_input = action_side_input
         self.side_residual_enabled = bool(side_residual_enabled)
         self.side_feature_mode = str(side_feature_mode)
@@ -167,6 +183,19 @@ class V6DistNet(nn.Module):
         self.private_side_grl_lambda = float(private_side_grl_lambda)
         self.reflex_basis_enabled = bool(reflex_basis_enabled)
         self.mirror_perm = mirror_perm
+        self.use_dataset_aux = bool(use_dataset_aux)
+        self.shared_trunk_attention_enabled = bool(shared_trunk_attention_enabled)
+        self.shared_trunk_attention_layers = int(shared_trunk_attention_layers)
+        self.shared_trunk_attention_heads = int(shared_trunk_attention_heads)
+        self.shared_trunk_attention_ffn_dim = int(shared_trunk_attention_ffn_dim)
+        self.shared_selection_mode = str(shared_selection_mode)
+        self.basis_provider = basis_provider
+        self.shared_basis_runtime = None
+
+        # TODO(recovery): shared trunk attention and external basis-provider
+        # paths are not re-implemented for the current PhaseAB short-run
+        # recovery. These fields are accepted here to keep the recovered config
+        # interface loadable without pretending the features are active.
 
         self.free_z_dim = int(free_z_dim if free_z_dim is not None else hidden_dim)
         self.shared_dim = self.free_z_dim
@@ -258,22 +287,27 @@ class V6DistNet(nn.Module):
 
         # Action basis bank
         if self.reflex_basis_enabled:
-            self.action_basis_bank = nn.Parameter(
-                torch.randn(self.total_basis_num, basis_size, basis_size) * 0.02,
-                requires_grad=False,
-            )
-            self.reflex_basis_bank = ReflexBasisBank(
-                levels=self.levels,
-                basis_size=basis_size,
-                init_path=action_basis_init_path,
-                mirror_perm=self.mirror_perm,
-            )
+            self.action_basis_bank = None
+            if self.basis_provider is not None:
+                self.shared_basis_runtime = self.basis_provider
+                self.reflex_basis_bank = self.shared_basis_runtime
+            else:
+                # TODO(recovery): restore a dense/direct reflex runtime only if a
+                # non-low-rank PhaseAB path is brought back intentionally.
+                raise RuntimeError(
+                    "reflex_basis_enabled requires a basis_provider in the recovered "
+                    "PhaseAB path; dense ReflexBasisBank fallback is disabled"
+                )
         else:
-            self.action_basis_bank = nn.Parameter(
-                torch.randn(self.total_basis_num, basis_size, basis_size) * 0.02
-            )
-            if action_basis_init_path is not None:
-                self._load_action_basis_init(action_basis_init_path)
+            if self.basis_provider is not None:
+                self.action_basis_bank = None
+                self.shared_basis_runtime = self.basis_provider
+            else:
+                self.action_basis_bank = nn.Parameter(
+                    torch.randn(self.total_basis_num, basis_size, basis_size) * 0.02
+                )
+                if action_basis_init_path is not None:
+                    self._load_action_basis_init(action_basis_init_path)
 
         # Shared coefficient heads
         self.shared_coeff_net = build_shared_coeff_net(
@@ -330,6 +364,8 @@ class V6DistNet(nn.Module):
         )
 
     def get_structured_basis(self) -> torch.Tensor:
+        if self.shared_basis_runtime is not None:
+            return self.shared_basis_runtime.get_structured_basis()
         if self.reflex_basis_enabled:
             return self.reflex_basis_bank()
         return self.action_basis_bank
@@ -341,46 +377,6 @@ class V6DistNet(nn.Module):
         scale = torch.clamp(mean_abs / float(self.private_residual_max_l1), min=1.0)
         return residual / scale
 
-    def split_basis(self, all_basis: torch.Tensor):
-        return split_basis(all_basis, self.levels)
-
-    def _flatten_sequence_input(self, x):
-        if x.ndim == 5:
-            B, T = x.shape[:2]
-            x = x.reshape(B * T, *x.shape[2:])
-            return x, (B, T)
-        return x, None
-
-    def _flatten_sequence_labels(self, labels, sequence_shape):
-        if labels is None or sequence_shape is None:
-            return labels
-        B, T = sequence_shape
-        return labels.reshape(B * T) if labels.ndim > 1 else labels
-
-    def _reshape_sequence_tensor(self, tensor, sequence_shape):
-        if sequence_shape is None:
-            return tensor
-        B, T = sequence_shape
-        if tensor.ndim == 1:
-            return tensor.reshape(B, T)
-        return tensor.reshape(B, T, *tensor.shape[1:])
-
-    def _mean_pool_sequence_tensor(self, tensor, sequence_shape, mask=None):
-        if tensor is None or sequence_shape is None:
-            return None
-        B, T = sequence_shape
-        if mask is not None:
-            mask = mask.to(device=tensor.device, dtype=tensor.dtype)
-            if tensor.ndim == 1:
-                tensor = tensor.reshape(B, T)
-                return (tensor * mask).sum(dim=1) / mask.sum(dim=1).clamp_min(1.0)
-            tensor = tensor.reshape(B, T, -1)
-            expanded_mask = mask.unsqueeze(-1)
-            return (tensor * expanded_mask).sum(dim=1) / expanded_mask.sum(dim=1).clamp_min(1.0)
-        if tensor.ndim == 1:
-            return tensor.reshape(B, T).mean(dim=1)
-        return tensor.reshape(B, T, -1).mean(dim=1)
-
     def _apply_sparse_basis_topk(self, logits):
         if self.shared_basis_topk is None or not self.training:
             return logits
@@ -389,60 +385,6 @@ class V6DistNet(nn.Module):
         mask = torch.zeros_like(logits).scatter_(-1, idx, 1.0)
         return logits * mask
 
-    def _fold_mouth_chunk_features(self, x: torch.Tensor) -> torch.Tensor:
-        if self.side_feature_mode == "none":
-            return x.new_zeros((x.shape[0], 0))
-        if self.basis_size != 119:
-            raise ValueError("folded_mouth_chunks expects the 119x119 mouth crop")
-
-        chunk_slices = (
-            slice(0, 22),    # around_mouth_left
-            slice(22, 45),   # around_mouth_right
-            slice(45, 82),   # mouth_left
-            slice(82, 119),  # mouth_right
-        )
-        matrix = x[:, 0] if x.ndim == 4 else x
-        abs_matrix = matrix.abs()
-
-        row_means = [abs_matrix[:, current, :].mean(dim=(1, 2)) for current in chunk_slices]
-        col_means = [abs_matrix[:, :, current].mean(dim=(1, 2)) for current in chunk_slices]
-        block_means = [
-            abs_matrix[:, chunk_slices[0], chunk_slices[0]].mean(dim=(1, 2)),
-            abs_matrix[:, chunk_slices[1], chunk_slices[1]].mean(dim=(1, 2)),
-            abs_matrix[:, chunk_slices[2], chunk_slices[2]].mean(dim=(1, 2)),
-            abs_matrix[:, chunk_slices[3], chunk_slices[3]].mean(dim=(1, 2)),
-        ]
-        around_left = 0.5 * (row_means[0] + col_means[0])
-        around_right = 0.5 * (row_means[1] + col_means[1])
-        mouth_left = 0.5 * (row_means[2] + col_means[2])
-        mouth_right = 0.5 * (row_means[3] + col_means[3])
-        around_contrast = around_left - around_right
-        mouth_contrast = mouth_left - mouth_right
-        around_sum = around_left + around_right
-        mouth_sum = mouth_left + mouth_right
-        within_around_contrast = block_means[0] - block_means[1]
-        within_mouth_contrast = block_means[2] - block_means[3]
-        return torch.stack(
-            [
-                around_contrast,
-                mouth_contrast,
-                around_sum,
-                mouth_sum,
-                within_around_contrast,
-                within_mouth_contrast,
-            ],
-            dim=1,
-        )
-
-    def _side_private_orthogonality_loss(
-        self,
-        side_residual: torch.Tensor,
-        private_residual: torch.Tensor,
-    ) -> torch.Tensor:
-        side_flat = F.normalize(side_residual.reshape(side_residual.shape[0], -1), dim=1)
-        private_flat = F.normalize(private_residual.reshape(private_residual.shape[0], -1), dim=1)
-        return (side_flat * private_flat).sum(dim=1).abs().mean()
-
     def forward(
         self,
         x,
@@ -450,10 +392,15 @@ class V6DistNet(nn.Module):
         label5_labels=None,
         dataset_labels=None,
         valid_mask=None,
+        static_side_input=None,
         return_group_pooled: bool = False,
     ):
-        x, sequence_shape = self._flatten_sequence_input(x)
-        side_labels = self._flatten_sequence_labels(side_labels, sequence_shape)
+        _ = label5_labels, dataset_labels, static_side_input
+        # TODO(recovery): wire `static_side_input` back into the model if future
+        # stages re-enable static-side fusion. The current PhaseAB path keeps
+        # the argument for interface compatibility only.
+        x, sequence_shape = flatten_sequence_input(x)
+        side_labels = flatten_sequence_labels(side_labels, sequence_shape)
 
         # Encoder
         feats = self.initial_conv(x)
@@ -496,7 +443,6 @@ class V6DistNet(nn.Module):
 
         # Basis
         basis = self.get_structured_basis()
-        basis_list = self.split_basis(basis)
 
         # Coefficients
         coeffs = (
@@ -510,48 +456,24 @@ class V6DistNet(nn.Module):
             else [free_latent for _ in self.levels]
         )
 
-        # Reconstruction loop — identical structure to distnet forward
-        shared_reconstruction = torch.zeros(
-            x.shape[0], self.basis_size, self.basis_size,
-            device=x.device, dtype=x.dtype,
+        shared_outputs = build_shared_reconstruction(
+            basis=basis,
+            levels=self.levels,
+            level_quantized_list=level_quantized_list,
+            coeffs=coeffs,
+            shared_basis_heads=self.shared_basis_heads,
+            shared_coeff_heads=self.shared_coeff_heads,
+            shared_basis_soft_mixing=self.shared_basis_soft_mixing,
+            shared_basis_anchor_bias=self.shared_basis_anchor_bias,
+            apply_sparse_basis_topk=self._apply_sparse_basis_topk,
         )
-        free_path_coeff_levels = []
-        free_path_usage_levels = []
-        free_path_rep_levels = []
-
-        for level_idx, (basis_i, level_quantized_i) in enumerate(
-            zip(basis_list, level_quantized_list)
-        ):
-            if self.shared_basis_soft_mixing:
-                level_logits = self.shared_basis_heads[level_idx](level_quantized_i)
-                if self.shared_basis_anchor_bias != 0.0:
-                    # Anchor toward discrete index (reconstruction target)
-                    pass
-                level_logits = self._apply_sparse_basis_topk(level_logits)
-                level_weights = F.softmax(level_logits, dim=-1)
-                selected_basis = torch.einsum("bl,lxy->bxy", level_weights, basis_i)
-            else:
-                raise NotImplementedError("V6 only supports shared_basis_soft_mixing=True")
-
-            if coeffs is None:
-                coeff = self.shared_coeff_heads[level_idx](level_quantized_i)
-                coeff = coeff.view(x.shape[0], 1, 1)
-            else:
-                coeff = coeffs[:, level_idx].view(x.shape[0], 1, 1)
-
-            shared_reconstruction = shared_reconstruction + coeff * selected_basis
-            free_path_coeff_levels.append(coeff.view(x.shape[0], 1))
-            free_path_usage_levels.append(level_weights)
-            free_path_rep_levels.append(level_weights * coeff.view(x.shape[0], 1))
-
-        free_path_coefficients = torch.cat(free_path_coeff_levels, dim=1)
-        free_path_usage = torch.cat(free_path_usage_levels, dim=1)
-        free_path_rep = torch.cat(free_path_rep_levels, dim=1)
-        free_level2_usage = free_path_usage_levels[1] if len(free_path_usage_levels) >= 2 else None
-        free_level2_rep = free_path_rep_levels[1] if len(free_path_rep_levels) >= 2 else None
-        free_level2_coefficients = (
-            free_path_coeff_levels[1] if len(free_path_coeff_levels) >= 2 else None
-        )
+        shared_reconstruction = shared_outputs.shared_reconstruction
+        free_path_coefficients = shared_outputs.free_path_coefficients
+        free_path_usage = shared_outputs.free_path_usage
+        free_path_rep = shared_outputs.free_path_rep
+        free_level2_usage = shared_outputs.free_level2_usage
+        free_level2_rep = shared_outputs.free_level2_rep
+        free_level2_coefficients = shared_outputs.free_level2_coefficients
 
         # Private decoder
         if self.private_branch_enabled:
@@ -564,35 +486,31 @@ class V6DistNet(nn.Module):
                 x.shape[0], self.basis_size, self.basis_size,
                 device=x.device, dtype=x.dtype,
             )
-        if self.side_residual_enabled:
-            fold_features = self._fold_mouth_chunk_features(x)
-            side_coeff_input = (
-                side_z
-                if self.side_fold_feature_dim == 0
-                else torch.cat([side_z, fold_features], dim=1)
-            )
-            side_coefficients = self.side_coeff_head(side_coeff_input)
-            side_basis = self._enforce_matrix_constraints(self.side_basis_bank)
-            side_residual = torch.einsum("bc,cxy->bxy", side_coefficients, side_basis)
-            private_side_logits = (
-                self.private_side_adversary(
-                    grad_reverse(private_z, self.private_side_grl_lambda)
-                )
-                if self.private_side_adversary is not None
-                else None
-            )
-            side_coeff_l1 = side_coefficients.abs().mean()
-            side_private_orth = self._side_private_orthogonality_loss(
-                side_residual,
-                private_residual,
-            )
-        else:
-            fold_features = x.new_zeros((x.shape[0], 0))
-            side_coefficients = x.new_zeros((x.shape[0], 0))
-            side_residual = torch.zeros_like(private_residual)
-            private_side_logits = None
-            side_coeff_l1 = x.new_zeros(())
-            side_private_orth = x.new_zeros(())
+        side_outputs = build_side_residual_outputs(
+            x=x,
+            side_z=side_z,
+            private_z=private_z,
+            private_residual=private_residual,
+            side_residual_enabled=self.side_residual_enabled,
+            side_fold_feature_dim=self.side_fold_feature_dim,
+            side_head_input_builder=lambda current_x: fold_mouth_chunk_features(
+                current_x,
+                side_feature_mode=self.side_feature_mode,
+                basis_size=self.basis_size,
+            ),
+            side_coeff_head=self.side_coeff_head,
+            side_basis_bank=self.side_basis_bank,
+            private_side_adversary=self.private_side_adversary,
+            private_side_grl_lambda=self.private_side_grl_lambda,
+            grad_reverse=grad_reverse,
+            enforce_matrix_constraints=self._enforce_matrix_constraints,
+        )
+        fold_features = side_outputs.fold_features
+        side_coefficients = side_outputs.side_coefficients
+        side_residual = side_outputs.side_residual
+        private_side_logits = side_outputs.private_side_logits
+        side_coeff_l1 = side_outputs.side_coeff_l1
+        side_private_orth = side_outputs.side_private_orth
 
         reconstructed = (
             shared_reconstruction
@@ -600,148 +518,68 @@ class V6DistNet(nn.Module):
             - self.private_residual_weight * private_residual
         )
 
-        # Reshape to sequence form
-        side_residual_seq = self._reshape_sequence_tensor(
-            side_residual.unsqueeze(1), sequence_shape
+        action_side_outputs = build_action_side_outputs(
+            side_residual_enabled=self.side_residual_enabled,
+            action_side_input=self.action_side_input,
+            action_side_detach=getattr(self, "action_side_detach", False),
+            side_coefficients=side_coefficients,
+            side_coefficients_seq=reshape_sequence_tensor(
+                side_coefficients, sequence_shape,
+            ),
+            free_path_coefficients=free_path_coefficients,
+            free_path_coefficients_seq=reshape_sequence_tensor(
+                free_path_coefficients, sequence_shape,
+            ),
+            free_path_usage=free_path_usage,
+            free_path_usage_seq=reshape_sequence_tensor(
+                free_path_usage, sequence_shape,
+            ),
+            valid_mask=valid_mask,
+            sequence_shape=sequence_shape,
+            mean_pool_sequence_tensor=mean_pool_sequence_tensor,
+            side_coeff_to_logits=self.side_coeff_to_logits,
+            action_usage_to_side=self.action_usage_to_side,
         )
-        private_residual_seq = self._reshape_sequence_tensor(
-            private_residual.unsqueeze(1), sequence_shape
-        )
-        shared_recon_seq = self._reshape_sequence_tensor(
-            shared_reconstruction.unsqueeze(1), sequence_shape
-        )
-        reconstructed_seq = self._reshape_sequence_tensor(
-            reconstructed.unsqueeze(1), sequence_shape
-        )
-        free_path_coefficients_seq = self._reshape_sequence_tensor(
-            free_path_coefficients, sequence_shape,
-        )
-        free_path_usage_seq = self._reshape_sequence_tensor(
-            free_path_usage, sequence_shape,
-        )
-        free_level2_coefficients_seq = self._reshape_sequence_tensor(
-            free_level2_coefficients, sequence_shape,
-        )
-        side_coefficients_seq = self._reshape_sequence_tensor(
-            side_coefficients, sequence_shape,
-        )
-        private_z_seq = self._reshape_sequence_tensor(private_z, sequence_shape)
-        private_side_logits_seq = self._reshape_sequence_tensor(
-            private_side_logits, sequence_shape,
-        ) if private_side_logits is not None else None
+        group_action_logits = action_side_outputs.group_action_logits
+        action_side_representation = action_side_outputs.action_side_representation
 
-        if free_path_usage_seq is None:
-            action_side_representation = None
-        elif free_path_usage_seq.ndim == 2:
-            action_side_representation = free_path_usage_seq.unsqueeze(1)
-        else:
-            action_side_representation = free_path_usage_seq
-
-        # V6: group-pool action usage → side prediction
-        if self.side_residual_enabled:
-            pooled_side = self._mean_pool_sequence_tensor(
-                side_coefficients_seq, sequence_shape, mask=valid_mask,
-            )
-            if pooled_side is None:
-                pooled_side = side_coefficients
-            if self.action_side_input == "shared_side_coeff":
-                pooled_shared = self._mean_pool_sequence_tensor(
-                    free_path_coefficients_seq, sequence_shape, mask=valid_mask,
-                )
-                if pooled_shared is None:
-                    pooled_shared = free_path_coefficients
-                pooled = torch.cat([pooled_shared, pooled_side], dim=1)
-            else:
-                pooled = pooled_side
-            if getattr(self, "action_side_detach", False):
-                pooled = pooled.detach()
-            group_action_logits = self.side_coeff_to_logits(pooled)
-            action_side_representation = side_coefficients_seq
-        elif self.action_side_input == "free_path_coeff":
-            pooled = self._mean_pool_sequence_tensor(
-                free_path_coefficients_seq, sequence_shape, mask=valid_mask,
-            )
-            if pooled is None:
-                pooled = free_path_coefficients
-        else:  # free_path_usage
-            pooled = self._mean_pool_sequence_tensor(
-                free_path_usage_seq, sequence_shape, mask=valid_mask,
-            )
-            if pooled is None:
-                pooled = free_path_usage
-        if not self.side_residual_enabled and getattr(self, "action_side_detach", False):
-            pooled = pooled.detach()
-        if not self.side_residual_enabled:
-            group_action_logits = self.action_usage_to_side(pooled)
-
-        # Group pooling for outputs
-        free_latent_seq = self._reshape_sequence_tensor(free_latent, sequence_shape)
-        group_pooled_free_rep = (
-            self._mean_pool_sequence_tensor(free_latent_seq, sequence_shape, mask=valid_mask)
-            if return_group_pooled else None
+        outputs = build_phaseab_outputs(
+            sequence_shape=sequence_shape,
+            valid_mask=valid_mask,
+            return_group_pooled=return_group_pooled,
+            reshape_sequence_tensor=reshape_sequence_tensor,
+            mean_pool_sequence_tensor=mean_pool_sequence_tensor,
+            reconstructed=reconstructed,
+            shared_reconstruction=shared_reconstruction,
+            side_residual=side_residual,
+            private_residual=private_residual,
+            free_path_coefficients=free_path_coefficients,
+            free_path_usage=free_path_usage,
+            free_level2_coefficients=free_level2_coefficients,
+            side_coefficients=side_coefficients,
+            fold_features=fold_features,
+            private_side_logits=private_side_logits,
+            free_latent=free_latent,
+            side_z=side_z,
+            private_z=private_z,
+            action_side_representation=action_side_representation,
+            group_action_logits=group_action_logits,
+            stage_quantized=stage_quantized,
+            side_coeff_l1=side_coeff_l1,
+            side_private_orth=side_private_orth,
         )
-
-        lq_loss = x.new_zeros(())
-        orth_loss = x.new_zeros(())
-        shared_basis_l1 = x.new_zeros(())
-        side_basis_l1 = x.new_zeros(())
-        basis_l1 = x.new_zeros(())
-        residual_l1 = x.new_zeros(())
-        lq_loss_per_sample = x.new_ones(x.shape[0]) * 1e-6
-        residual_l1_per_sample = private_residual.abs().mean(dim=(1, 2))
-        lq_loss_per_sample = self._reshape_sequence_tensor(lq_loss_per_sample, sequence_shape)
-        residual_l1_per_sample = self._reshape_sequence_tensor(
-            residual_l1_per_sample, sequence_shape
-        )
-
-        outputs = {
-            "reconstructed": reconstructed_seq,
-            "action_reconstruction": shared_recon_seq,
-            "shared_reconstruction": shared_recon_seq,
-            "side_reconstruction": side_residual_seq,
-            "private_residual": private_residual_seq,
-            "shared_quantized": stage_quantized[0] if stage_quantized is not None else free_latent,
-            "free_latent": free_latent,
-            "side_latent": side_z,
-            "private_latent": private_z,
-            "action_path_representation": action_side_representation,
-            "lq_loss": lq_loss,
-            "lq_loss_per_sample": lq_loss_per_sample,
-            "orth_loss": orth_loss,
-            "shared_basis_l1": shared_basis_l1,
-            "side_basis_l1": side_basis_l1,
-            "basis_l1": basis_l1,
-            "residual_l1": residual_l1,
-            "residual_l1_per_sample": residual_l1_per_sample,
-            "side_coeff_l1": side_coeff_l1,
-            "side_private_orth_loss": side_private_orth,
-            "free_path_coefficients": free_path_coefficients,
-            "free_path_usage": free_path_usage,
-            "free_level2_coefficients": free_level2_coefficients,
-            "side_coefficients": side_coefficients_seq,
-            "side_coefficients_flat": side_coefficients,
-            "side_fold_features": fold_features,
-            "private_side_logits": private_side_logits_seq,
-            "private_latent_seq": private_z_seq,
-            "group_action_logits": group_action_logits,
-            "group_pooled_free_rep": group_pooled_free_rep,
-            "side_loss": {
-                "side_loss": None,
-                "side_loss_cont": None,
-                "side_loss_disc": None,
-                "side_loss_per_sample": None,
-                "side_loss_cont_per_sample": None,
-                "side_loss_disc_per_sample": None,
-            },
-        }
+        outputs.pop("_free_path_coefficients_seq", None)
+        outputs.pop("_free_path_usage_seq", None)
+        outputs.pop("_free_level2_coefficients_seq", None)
+        outputs.pop("_side_coefficients_seq", None)
         if self.reflex_basis_enabled:
-            b = self.reflex_basis_bank
-            outputs["v9_freq_loss"] = b.frequency_loss()
-            outputs["reflex_orth_loss"] = b.orthogonality_loss()
-            d = b.diagnostics()
-            outputs["reflex_max_diag_abs"] = d.max_diag_abs
-            outputs["reflex_max_symmetry_error"] = d.max_symmetry_error
-            outputs["reflex_max_offdiag_gram_abs"] = d.max_offdiag_gram_abs
+            outputs.update(
+                collect_runtime_diagnostics(
+                    self.reflex_basis_bank,
+                    orth_key="reflex_orth_loss",
+                    diag_prefix="reflex",
+                )
+            )
         return outputs
 
     @property

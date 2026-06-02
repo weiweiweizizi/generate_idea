@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import torch
 
+from ..basis import collect_runtime_diagnostics
 from .v6_distnet import V6DistNet
 
 
@@ -37,16 +38,12 @@ class LowRankReflexDistNet(V6DistNet):
 
     def forward(self, *args, **kwargs):
         outputs = super().forward(*args, **kwargs)
-        diagnostics = self.shared_basis_runtime.diagnostics()
-        outputs["v9_freq_loss"] = self.shared_basis_runtime.frequency_loss()
-        outputs["lowrank_freq_loss"] = outputs["v9_freq_loss"]
-        outputs["lowrank_orth_loss"] = self.shared_basis_runtime.orthogonality_loss()
-        if isinstance(diagnostics, dict):
-            outputs["lowrank_max_diag_abs"] = diagnostics["max_diag_abs"]
-            outputs["lowrank_max_symmetry_error"] = diagnostics["max_symmetry_error"]
-            outputs["lowrank_max_offdiag_gram_abs"] = diagnostics["max_offdiag_gram_abs"]
-        else:
-            outputs["lowrank_max_diag_abs"] = diagnostics.max_diag_abs
-            outputs["lowrank_max_symmetry_error"] = diagnostics.max_symmetry_error
-            outputs["lowrank_max_offdiag_gram_abs"] = diagnostics.max_offdiag_gram_abs
+        outputs.update(
+            collect_runtime_diagnostics(
+                self.shared_basis_runtime,
+                orth_key="lowrank_orth_loss",
+                diag_prefix="lowrank",
+                extra_freq_key="lowrank_freq_loss",
+            )
+        )
         return outputs
